@@ -18,11 +18,21 @@ from datetime import datetime, timedelta
 
 import pytest
 
-YEAR = datetime.now().year - 30
-TODAY = datetime.now().strftime("%m-%d")
-TOMORROW = (datetime.now() + timedelta(days=1)).strftime("%m-%d")
-DAY_AFTER = (datetime.now() + timedelta(days=2)).strftime("%m-%d")
 FIELDS_ALLOWED = {"id", "name", "tier", "birthday"}
+
+
+def dates():
+    """每次调用时现算今天/明天/后天。
+
+    ⚠️ 不要在模块级缓存：仓库的 `tests/conftest.py` 会把进程 TZ 设成 UTC（CI 口径），
+    而模块导入发生在夹具生效之前 —— 模块级缓存的"今天"会与工具运行时的"今天"差一天，
+    表现为"名单全空"的假红（2026-09-27 本地全量跑时实测踩到）。
+    """
+    now = datetime.now()
+    return (now.year - 30,
+            now.strftime("%m-%d"),
+            (now + timedelta(days=1)).strftime("%m-%d"),
+            (now + timedelta(days=2)).strftime("%m-%d"))
 
 
 @pytest.fixture
@@ -45,6 +55,7 @@ def _add(db, name, phone, birthday=None):
 
 # ── ① 精简行：只给提醒需要的字段 ──────────────────────────────────────
 def test_rows_are_brief_and_have_no_contacts(wired, db):
+    YEAR, TODAY, TOMORROW, DAY_AFTER = dates()
     _add(db, "生日精简-今天", "13700007001", f"{YEAR}-{TODAY}")
     out = _call(wired)
     row = (out["today_birthdays"] or [{}])[0]
@@ -54,6 +65,7 @@ def test_rows_are_brief_and_have_no_contacts(wired, db):
 
 
 def test_row_carries_readable_bits(wired, db):
+    YEAR, TODAY, TOMORROW, DAY_AFTER = dates()
     cid = _add(db, "生日精简-今天", "13700007002", f"{YEAR}-{TODAY}")
     row = (_call(wired)["today_birthdays"] or [{}])[0]
     assert row["id"] == cid, "保留客户编号，便于后续写跟进/拟祝福"
@@ -64,6 +76,7 @@ def test_row_carries_readable_bits(wired, db):
 
 # ── ② 密文防御 ────────────────────────────────────────────────────────
 def test_ciphertext_never_leaks_and_warns(wired, db):
+    YEAR, TODAY, TOMORROW, DAY_AFTER = dates()
     cid = _add(db, "生日密文-今天", "13700007003", f"{YEAR}-{TODAY}")
     # 用**另一把密钥**加密 → 这才是真实的"密钥不一致"场景（应用侧解不开，密文原样落库）
     from cryptography.fernet import Fernet
@@ -80,6 +93,7 @@ def test_ciphertext_never_leaks_and_warns(wired, db):
 
 # ── ③ 空态分说法 ──────────────────────────────────────────────────────
 def test_empty_library_says_register_first(wired, db):
+    YEAR, TODAY, TOMORROW, DAY_AFTER = dates()
     out = _call(wired)
     assert out["success"] is True
     msg = out.get("message", "")
@@ -87,6 +101,7 @@ def test_empty_library_says_register_first(wired, db):
 
 
 def test_nobody_has_birthday_today_is_its_own_wording(wired, db):
+    YEAR, TODAY, TOMORROW, DAY_AFTER = dates()
     _add(db, "生日空态-没录生日", "13700007004", None)
     msg = _call(wired).get("message", "")
     assert "都没有客户过生日" in msg, f"有客户但今明没人过生日，要与空库分开说，实际 {msg!r}"
@@ -94,6 +109,7 @@ def test_nobody_has_birthday_today_is_its_own_wording(wired, db):
 
 
 def test_only_tomorrow_has_birthday(wired, db):
+    YEAR, TODAY, TOMORROW, DAY_AFTER = dates()
     _add(db, "生日空态-明天", "13700007005", f"{YEAR}-{TOMORROW}")
     out = _call(wired)
     assert out["count_today"] == 0 and out["count_tomorrow"] == 1
@@ -102,6 +118,7 @@ def test_only_tomorrow_has_birthday(wired, db):
 
 
 def test_both_days_have_birthday_message(wired, db):
+    YEAR, TODAY, TOMORROW, DAY_AFTER = dates()
     _add(db, "生日空态-今天", "13700007006", f"{YEAR}-{TODAY}")
     _add(db, "生日空态-明天", "13700007007", f"{YEAR}-{TOMORROW}")
     out = _call(wired)
@@ -113,6 +130,7 @@ def test_both_days_have_birthday_message(wired, db):
 
 # ── ④ 名单口径 ────────────────────────────────────────────────────────
 def test_only_active_customers_with_birthday(wired, db):
+    YEAR, TODAY, TOMORROW, DAY_AFTER = dates()
     _add(db, "生日名单-今天", "13700007008", f"{YEAR}-{TODAY}")
     closed = _add(db, "生日名单-已关闭", "13700007009", f"{YEAR}-{TODAY}")
     db.update_customer(closed, status="closed")
@@ -122,12 +140,14 @@ def test_only_active_customers_with_birthday(wired, db):
 
 
 def test_legacy_keys_still_present(wired, db):
+    YEAR, TODAY, TOMORROW, DAY_AFTER = dates()
     _add(db, "生日键名-今天", "13700007011", f"{YEAR}-{TODAY}")
     out = _call(wired)
     assert "today_birthdays" in out and "tomorrow_birthdays" in out, "老键名要保留（有消费方）"
 
 
 def test_mm_dd_birthday_is_recognised(wired, db):
+    YEAR, TODAY, TOMORROW, DAY_AFTER = dates()
     """只记了月日的生日（MM-DD）同样要认出来，否则提醒会静默漏人。"""
     _add(db, "生日写法-MMDD", "13700007012", TODAY)
     names = [r["name"] for r in _call(wired)["today_birthdays"]]
