@@ -82,12 +82,20 @@ class TestAnalyticsAndIntent:
 
 class TestPolicyAndCron:
     def test_policy_library_disabled_returns_guidance(self, db, monkeypatch):
-        """政策库已停用：必须给出可执行指引（联网查/咨询官方），而不是编造政策数字"""
+        """政策库已停用：必须给出可执行指引（联网查 / 咨询官方），而不是编造政策数字
+
+        2026-09-27 更新口径（第十二组 F401–F403）：指引里**不许出现内部工具名**（如 web_search），
+        改成"跟我说一声，我联网查给你"；`list_policy_cities` 同样如实说停用（不再 success=true + 空列表）。
+        """
         out = _dispatch(db, monkeypatch, "get_loan_policy", {"city": "海口", "policy_type": "首付比例"})
         assert out.get("success") is False
-        assert "web_search" in out.get("error", "") or "咨询" in out.get("error", ""), out
+        text = out.get("error", "")
+        assert "联网" in text or "咨询" in text, out
+        assert "web_search" not in text, "对外文案不许出现内部工具名"
+        assert "「海口」" in text, "问的是哪个城市要回显出来"
         cities = _dispatch(db, monkeypatch, "list_policy_cities", {})
-        assert cities.get("success") is True, cities
+        assert cities.get("success") is False, cities
+        assert "停用" in cities.get("error", ""), cities
 
     def test_cron_toggle_reports_json(self, db, monkeypatch):
         """定时任务开关：无论能否注册（依赖 croniter）都必须返回结构化结果，不抛异常"""
