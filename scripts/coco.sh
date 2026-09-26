@@ -132,7 +132,7 @@ case "${1:-version}" in
       exec bash "$REPO_ROOT/scripts/update.sh" "$@"
     fi
     echo "找不到更新脚本（$REPO_ROOT/scripts/update.sh）—— 安装可能不完整" >&2
-    echo "可重装（会保留数据库与密钥）：curl -fsSL https://gitee.com/lyh-gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh" >&2
+    echo "可重装（会保留数据库与密钥）：curl -fsSL https://gitee.com/LYH-Gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh" >&2
     exit 1
     ;;
   uninstall)

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Coco（可可）房产智能体 - 一键安装脚本
-# 用法(国内): curl -fsSL https://gitee.com/lyh-gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh
+# 用法(国内): curl -fsSL https://gitee.com/LYH-Gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh
 # 用法(海外): curl -fsSL https://raw.githubusercontent.com/LYH-Gini/coco-real-estate-agent/master/install.sh -o install.sh && bash install.sh
 # 强制指定源: COCO_SOURCE=github bash install.sh   （不指定则并行探测，谁快用谁）
 # 脚本自动探测网络：Gitee 不通时自动切换 GitHub 源
@@ -12,9 +12,9 @@ set -euo pipefail
 # 双源配置：Gitee（国内快）+ GitHub（海外稳定），自动切换
 # 通道：默认装稳定版(master)；装测试版用 COCO_CHANNEL=next bash install.sh
 COCO_CHANNEL="${COCO_CHANNEL:-master}"
-GITEE_RAW_URL="https://gitee.com/lyh-gini/coco-real-estate-agent/raw/master/install.sh"
-GITEE_REPO_URL="https://gitee.com/lyh-gini/coco-real-estate-agent.git"
-GITEE_ZIP_URL="https://gitee.com/lyh-gini/coco-real-estate-agent/repository/archive/${COCO_CHANNEL}.zip"
+GITEE_RAW_URL="https://gitee.com/LYH-Gini/coco-real-estate-agent/raw/master/install.sh"
+GITEE_REPO_URL="https://gitee.com/LYH-Gini/coco-real-estate-agent.git"
+GITEE_ZIP_URL="https://gitee.com/LYH-Gini/coco-real-estate-agent/repository/archive/${COCO_CHANNEL}.zip"
 GITHUB_REPO_URL="https://github.com/LYH-Gini/coco-real-estate-agent.git"
 GITHUB_ZIP_URL="https://github.com/LYH-Gini/coco-real-estate-agent/archive/refs/heads/${COCO_CHANNEL}.zip"
 INSTALL_DIR="${COCO_INSTALL_DIR:-$HOME/coco}"   # 安装目录（2026-09-21 起为 ~/coco，可用 COCO_INSTALL_DIR 自定义）

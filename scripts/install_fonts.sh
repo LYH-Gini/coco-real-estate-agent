@@ -27,7 +27,7 @@ QUIET=0
 [[ "${1:-}" == "--quiet" ]] && QUIET=1
 FONT_DIR="/usr/local/share/fonts/coco"
 # Gitee 字体包（国内首选；一个文件装齐全部字体）
-BUNDLE_BASE="https://gitee.com/lyh-gini/coco-real-estate-agent/releases/download/fonts-v1"
+BUNDLE_BASE="https://gitee.com/LYH-Gini/coco-real-estate-agent/releases/download/fonts-v1"
 BUNDLE_CORE="coco_fonts_core_v1.tar.gz"
 BUNDLE_EXTRA="coco_fonts_extra_v1.tar.gz"
 TMP="$(mktemp -d)"

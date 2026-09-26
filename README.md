@@ -4,7 +4,7 @@
 
 [![Coco AI](https://img.shields.io/github/v/release/LYH-Gini/coco-real-estate-agent?label=Coco%20AI)](https://github.com/LYH-Gini/coco-real-estate-agent/releases/latest)
 
-> **当前版本：v0.21.5-1** · [Gitee](https://gitee.com/lyh-gini/coco-real-estate-agent/releases) · [GitHub](https://github.com/LYH-Gini/coco-real-estate-agent/releases/tag/v0.21.5-1)
+> **当前版本：v0.21.5-1** · [Gitee](https://gitee.com/LYH-Gini/coco-real-estate-agent/releases) · [GitHub](https://github.com/LYH-Gini/coco-real-estate-agent/releases/tag/v0.21.5-1)
 
 ## 免责声明
 
@@ -104,7 +104,7 @@ SSH 重新连接后，按顺序执行：
 
 **国内服务器（Gitee 源）：**
 ```bash
-curl -fsSL https://gitee.com/lyh-gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh
+curl -fsSL https://gitee.com/LYH-Gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh
 ```
 
 **海外服务器（GitHub 源）：**

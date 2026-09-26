@@ -73,7 +73,7 @@ scp root@服务器IP:/root/coco_migration.tar.gz ~/Desktop/
 
 **国内服务器（Gitee 源）：**
 ```bash
-curl -fsSL https://gitee.com/lyh-gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh
+curl -fsSL https://gitee.com/LYH-Gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh
 ```
 
 **海外服务器（GitHub 源）：**
@@ -201,7 +201,7 @@ scp root@旧IP:/root/coco_migration.tar.gz ~/Desktop/
 
 **国内服务器（Gitee 源）：**
 ```bash
-curl -fsSL https://gitee.com/lyh-gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh
+curl -fsSL https://gitee.com/LYH-Gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh
 ```
 
 **海外服务器（GitHub 源）：**
