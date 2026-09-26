@@ -1,0 +1,31 @@
+name: Migration Safety Scan
+
+# Coco 房产模块专用：迁移文件安全扫描
+# 在改动 migrations/ 或 migrate.py 时自动运行，拦截"会破坏用户数据"的危险迁移。
+# 触发路径：migrations/** 与 scripts/migrate.py 与 workflow 自身。
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'migrations/**'
+      - 'scripts/migrate.py'
+      - '.github/workflows/migration-scan.yml'
+  pull_request:
+    paths:
+      - 'migrations/**'
+      - 'scripts/migrate.py'
+      - '.github/workflows/migration-scan.yml'
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate migrations (add-only, no destructive ops)
+        run: python scripts/migrate.py --check

@@ -1,0 +1,93 @@
+diff --git a/gateway/run_busy.py b/gateway/run_busy.py
+index 2688b957..d34857bb 100644
+--- a/gateway/run_busy.py
++++ b/gateway/run_busy.py
+@@ -847,11 +847,11 @@ class GatewayBusySessionMixin:
+         if args.lower() in {"off", "resume", "stop", "disengage"}:
+             if estop.disengage():
+                 return "▶️ Resumed — new work is accepted again."
+-            return "Hermes wasn't paused."
++            return "Coco wasn't paused."
+         state = estop.get_state()
+         if state is not None and not args:
+             suffix = f" (reason: {state.get('reason')})" if state.get("reason") else ""
+-            return f"⏸️ Hermes is already paused{suffix}. Use `/pause off` to resume."
++            return f"⏸️ Coco is already paused{suffix}. Use `/pause off` to resume."
+         estop.engage(reason=args or None)
+         suffix = f" (reason: {args})" if args else ""
+         return (
+diff --git a/gateway/run_notifications.py b/gateway/run_notifications.py
+index 1fa8c802..92b0bb1d 100644
+--- a/gateway/run_notifications.py
++++ b/gateway/run_notifications.py
+@@ -584,8 +584,8 @@ class GatewayNotificationsMixin:
+                 with _log_suppressed(logging.WARNING, "Update final notification failed: %s"):
+                     exit_code = self._update_exit_code(paths)
+                     await target.send(
+-                        "✅ Hermes update finished." if exit_code == 0
+-                        else "❌ Hermes update failed (exit code {}).".format(exit_code)
++                        "✅ Coco update finished." if exit_code == 0
++                        else "❌ Coco update failed (exit code {}).".format(exit_code)
+                     )
+                     logger.info("Update finished (exit=%s), notified %s", exit_code, session_key)
+                 self._clear_update_markers(paths, session_key)
+@@ -612,7 +612,7 @@ class GatewayNotificationsMixin:
+             paths.exit_code.write_text("124", encoding="utf-8")
+             await _flush_buffer()
+             with suppress(Exception):
+-                await target.send("❌ Hermes update timed out after 30 minutes.")
++                await target.send("❌ Coco update timed out after 30 minutes.")
+             self._clear_update_markers(paths, session_key)
+ 
+     async def _send_update_notification(self) -> bool:
+@@ -664,12 +664,12 @@ class GatewayNotificationsMixin:
+                 if output:
+                     if len(output) > 3500:
+                         output = "…" + output[-3500:]
+-                    status = "✅ Hermes update finished." if exit_code == 0 else "❌ Hermes update failed."
++                    status = "✅ Coco update finished." if exit_code == 0 else "❌ Coco update failed."
+                     msg = f"{status}\n\n```\n{output}\n```"
+                 else:
+                     msg = (
+-                        "✅ Hermes update finished successfully." if exit_code == 0 else
+-                        "❌ Hermes update failed. Check the gateway logs or run `hermes update` manually for details."
++                        "✅ Coco update finished successfully." if exit_code == 0 else
++                        "❌ Coco update failed. Check the gateway logs or run `coco update` manually for details."
+                     )
+                 await adapter.send(chat_id, msg, metadata=_non_conversational_metadata(metadata, platform=platform))
+                 logger.info("Sent post-update notification to %s:%s (exit=%s)", platform_str, chat_id, exit_code)
+@@ -800,7 +800,7 @@ class GatewayNotificationsMixin:
+         """
+         delivered: set[tuple[str, str, Optional[str]]] = set()
+         skipped = skip_targets or set()
+-        message = "♻️ Gateway online — Hermes is back and ready."
++        message = "♻️ Gateway online — Coco is back and ready."
+         free_tier_line = self._free_tier_startup_line()
+         if free_tier_line:
+             message = f"{message}\n{free_tier_line}"
+diff --git a/hermes_cli/gateway.py b/hermes_cli/gateway.py
+index ba67b0b4..2394977f 100644
+--- a/hermes_cli/gateway.py
++++ b/hermes_cli/gateway.py
+@@ -4830,7 +4830,7 @@ _PLATFORMS = [
+              "password": False, "is_allowlist": True, "help": "Your Mattermost user ID from step 4 above."},
+             {"name": "MATTERMOST_HOME_CHANNEL",
+              "prompt": "Home channel ID (for cron/notification delivery, or empty to set later with /set-home)",
+-             "password": False, "help": "Channel ID where Hermes delivers cron results and notifications."},
++             "password": False, "help": "Channel ID where Coco delivers cron results and notifications."},
+             {"name": "MATTERMOST_REPLY_MODE",
+              "prompt": "Reply mode — 'off' for flat messages, 'thread' for threaded replies (default: off)",
+              "password": False,
+diff --git a/hermes_cli/setup_platforms.py b/hermes_cli/setup_platforms.py
+index bb1e9ee6..b364a427 100644
+--- a/hermes_cli/setup_platforms.py
++++ b/hermes_cli/setup_platforms.py
+@@ -170,7 +170,7 @@ def _setup_telegram():
+         "TELEGRAM_ALLOWED_USERS", "Allowed user IDs (comma-separated, leave empty for open access)",
+         "Telegram allowlist configured - only listed users can use the bot",
+         "⚠️  No allowlist set - anyone who finds your bot can use it!", preset=allowed_users)
+-    _info(None, "📬 Home Channel: where Hermes delivers cron job results,",
++    _info(None, "📬 Home Channel: where Coco delivers cron job results,",
+           "   cross-platform messages, and notifications.",
+           "   For Telegram DMs, this is your user ID (same as above).")
+     first_user_id = allowed_users.split(",")[0].strip() if allowed_users else ""

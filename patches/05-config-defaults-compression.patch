@@ -1,0 +1,81 @@
+# Coco 改动：hermes_cli/config_defaults.py
+# 基准：官方 3bd844edf1777a680115f88a68474b4fb434092f (2026-08-09)
+# 说明：本补丁记录 Coco 对该官方文件的改动，供理解与重新应用参考。
+#       上游版本变化后不要机械 git apply，按 patches/README.md 的语义重新实现。
+#
+--- a/hermes_cli/config_defaults.py
++++ b/hermes_cli/config_defaults.py
+@@ -603,7 +603,7 @@
+                                       # surfaces (server-side logging only). Failure
+                                       # notices and manual /compress feedback are
+                                       # always visible regardless of this setting.
+-        "threshold": 0.50,            # compress when context usage exceeds this ratio.
++        "threshold": 0.8,              # compress when context usage exceeds this ratio.（2026-08-29 设为 0.8，替代官方 0.50；与生产 Coco 统一）
+                                       # Models with context windows below 512K are
+                                       # floored at 0.75 (raise-only) so compaction
+                                       # doesn't fire with half the window still free;
+@@ -613,7 +613,7 @@
+                                       # threshold and this token count. Clamped to
+                                       # the model's context length at apply-time.
+         "target_ratio": 0.20,         # fraction of threshold to preserve as recent tail
+-        "protect_last_n": 20,         # minimum recent messages to keep uncompressed
++        "protect_last_n": 40,          # minimum recent messages to keep uncompressed（2026-08-29 设为 40，替代官方 20）
+         "min_tail_user_messages": 1,  # REAL (actionable) user messages guaranteed to
+                                       # survive in the uncompressed tail. 1 = existing
+                                       # single last-user anchor (default, behavior-
+@@ -743,16 +743,6 @@
+                                       # Hermes' compression threshold triggers
+                                       # thread/compact/start; off = never auto-trigger
+                                       # (codex may still compact natively).
+-        "codex_responses_native": False,  # Opt in to OpenAI's server-side compaction
+-                                      # on the Responses API. Engages ONLY for
+-                                      # gpt-5.6-family models on api.openai.com or
+-                                      # the ChatGPT Codex backend; every other
+-                                      # route/model is unaffected. Hermes' local
+-                                      # compression stays armed as the fallback.
+-        "codex_responses_compact_threshold": 200000,  # Server-side compaction trigger
+-                                      # (input tokens). Clamped below the local
+-                                      # compression threshold at request time so
+-                                      # the server compacts before Hermes does.
+         "in_place": True,             # When True, compaction rewrites the message
+                                       # list and rebuilds the system prompt WITHOUT
+                                       # rotating the session id — the conversation
+@@ -2579,24 +2569,14 @@
+         # keeps triggering another kill (e.g. the agent runs a raw
+         # `launchctl kickstart ai.hermes.gateway` that defenses 1-2 don't
+         # cover), the result is a tight SIGTERM-respawn loop. This breaker
+-        # chains restart-interrupted boots together and, once `max_restarts`
+-        # of them chain up, SKIPS auto-resume for that boot — the gateway
+-        # still starts and serves real inbound messages, it just stops
+-        # replaying the session that keeps killing it. Set `max_restarts` to
+-        # 0 to disable the breaker.
+-        # Two boots belong to the same chain when they are no more than
+-        # `max_gap_seconds` apart (floored by `window_seconds`). Chaining on
+-        # the GAP rather than on a fixed window is what makes the breaker see
+-        # SLOW crash cycles: a loop whose period exceeds the window used to
+-        # prune its own history on every boot, so the counter never left 1 and
+-        # the breaker never tripped — e.g. the ~150s wedged-event-loop cycle in
+-        # #81642 (stall -> ~90s liveness-watchdog hard-exit -> respawn ->
+-        # auto-resume replays the same session), which also makes
+-        # `hermes update` hang because it can never drain the gateway.
++        # counts restart-interrupted boots in a rolling window and, once
++        # `max_restarts` boots happen within `window_seconds`, SKIPS
++        # auto-resume for that boot — the gateway still starts and serves
++        # real inbound messages, it just stops replaying the session that
++        # keeps killing it. Set `max_restarts` to 0 to disable the breaker.
+         "restart_loop_guard": {
+             "max_restarts": 3,
+             "window_seconds": 60,
+-            "max_gap_seconds": 300,
+         },
+ 
+         # Portable respawn-storm circuit breaker (complements
+@@ -3224,7 +3204,7 @@
+     },
+ 
+     # Config schema version - bump this when adding new required fields
+-    "_config_version": 34,
++    "_config_version": 33,
+ }
+ 
+ # Optional environment variables that enhance functionality

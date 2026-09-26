@@ -1,0 +1,60 @@
+name: Real Estate Tests
+
+# Coco 房产模块专用 CI：只测房产代码，与上游 Hermes CI 互不干扰
+on:
+  push:
+    branches: [master, next]
+    paths:
+      - 'tools/real_estate_*'
+      - 'agent/real_estate_*'
+      - 'tests/real_estate/**'
+      - '.github/workflows/real-estate-tests.yml'
+  pull_request:
+    paths:
+      - 'tools/real_estate_*'
+      - 'agent/real_estate_*'
+      - 'tests/real_estate/**'
+      - '.github/workflows/real-estate-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # 10 分钟会撞上限：这套用例正常跑 4 分钟，但 GitHub 偶尔给出被降速的 runner
+    # （实测同一次提交跑到 52% 就耗掉 9.5 分钟，比正常慢近 5 倍）→ 直接判 cancelled，
+    # 看起来像代码坏了。给足 20 分钟，宁可等也别误报红灯。
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install minimal dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # 最小依赖：必须覆盖被测代码真正的运行依赖
+          # 2026-09-20 修：海报功能依赖 Pillow（PIL），此前漏装 → CI 红而本地绿
+          # 2026-09-20 再修：qrcode 也是运行依赖（海报二维码 + pyproject 的 feishu 附加项），
+          # 此前漏装 → 本地有它才过、CI 里相关断言失败
+          # 2026-09-21 再修：croniter 是定时任务（enable_cron）的运行依赖，漏装则该
+          # 用例在 CI 里注册失败、断言拿不到任务（本地有它才过）
+          pip install sqlalchemy cryptography pytest pyyaml httpx python-dateutil pillow requests qrcode croniter
+
+      - name: Install the SVG renderer (librsvg)
+        # 海报渲染走 rsvg-convert；不装它，所有 @needs_rsvg 渲染测试会被静默跳过 ——
+        # 绿灯但零覆盖（同样属于「依赖清单必须覆盖运行依赖」这一类问题）
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq librsvg2-bin
+
+      - name: Syntax check (compileall)
+        run: |
+          python -m compileall -q agent/real_estate_db.py agent/real_estate_prompt.py
+          python -m compileall -q tools/real_estate_*.py
+
+      - name: Run real estate test suite
+        env:
+          # 确保测试环境无任何生产凭证
+          COCO_ENC_KEY: ""
+          DATABASE_URL: ""
+        run: |
+          python -m pytest tests/real_estate/ -v --tb=short

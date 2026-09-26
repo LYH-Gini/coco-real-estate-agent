@@ -1,0 +1,100 @@
+# =============================================================================
+# 官方版本监控 —— 每天检查 Hermes 官方有没有发新版本，有就开一张提醒单
+#
+# 【重要】本工作流不含任何模型调用（不消耗 AI token）：
+#         它只是跑 shell 命令比较版本号，然后开一个 GitHub issue。
+#         设计上就刻意不引入任何会烧 token 的步骤（定时任务消耗 token 的教训）。
+#
+# 跑在哪：GitHub 云端（本仓库是公开仓库，公开仓库的 Actions 免费且不限分钟数）
+# 不跑在哪：你的服务器（完全不动生产实例）
+# 它不会：改代码、推代码、动仓库 —— 只报告，要不要同步由人决定
+# =============================================================================
+name: 官方版本监控
+
+on:
+  schedule:
+    # 每天 UTC 01:00 = 北京时间 09:00
+    - cron: '0 1 * * *'
+  workflow_dispatch:   # 也支持手动触发
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 读取当前已同步的官方版本
+        id: current
+        run: |
+          if [ -f UPSTREAM_VERSION ]; then
+            ver=$(head -n1 UPSTREAM_VERSION | tr -d '[:space:]')
+          else
+            ver="(未记录)"
+          fi
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "当前记录：$ver"
+
+      - name: 查询官方最新版本
+        id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh release list --repo NousResearch/hermes-agent --limit 1 --json tagName --jq '.[0].tagName')
+          name=$(gh release list --repo NousResearch/hermes-agent --limit 1 --json name --jq '.[0].name')
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "官方最新：$tag （$name）"
+
+      - name: 有新版本则开提醒单（同版本不重复开）
+        if: steps.current.outputs.version != steps.latest.outputs.tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CUR: ${{ steps.current.outputs.version }}
+          LATEST: ${{ steps.latest.outputs.tag }}
+          LATEST_NAME: ${{ steps.latest.outputs.name }}
+        run: |
+          existing=$(gh issue list --state open --search "官方新版本 $LATEST in:title" --json number --jq 'length')
+          if [ "$existing" != "0" ]; then
+            echo "已有未关闭的同类提醒，跳过。"
+            exit 0
+          fi
+
+          body=$(cat <<EOF
+          ## 官方 Hermes 发布了新版本
+
+          | 项目 | 值 |
+          |---|---|
+          | 官方最新 | **$LATEST** （$LATEST_NAME） |
+          | Coco 当前同步到 | $CUR |
+
+          ## 下一步（照着做即可）
+
+          1. 查看官方这次改了什么：
+             \`\`\`bash
+             gh release view $LATEST --repo NousResearch/hermes-agent
+             \`\`\`
+          2. 演练同步（不改任何文件）：
+             \`\`\`bash
+             bash scripts/sync_upstream.sh $LATEST --dry-run
+             \`\`\`
+          3. 走完整流程：见 \`docs/UPSTREAM_SYNC.md\`
+             （重新应用 patches/ 里记录的 7 处改动 → 自检 → 三层验收 → 灰度）
+
+          > 本提醒由 GitHub Actions 自动生成，**不含任何模型调用，不消耗 AI token**。
+          > 关闭条件：完成同步并把 \`UPSTREAM_VERSION\` 更新为 $LATEST。
+          EOF
+          )
+
+          gh issue create \
+            --title "官方新版本 $LATEST（当前同步到 $CUR）" \
+            --body "$body" \
+            --label "" 2>/dev/null || \
+          gh issue create \
+            --title "官方新版本 $LATEST（当前同步到 $CUR）" \
+            --body "$body"
+
+          echo "已开提醒单。"

@@ -1,0 +1,33 @@
+name: 通道守卫（正式版/测试版）
+
+# 目的：让"别人用原来的命令只会拿到正式版代码"这件事**机械成立**，而不是靠人记得。
+# 仓库默认分支一旦被改成 next，别人 clone/安装就会拿到未验收的测试版 —— 这里直接拦下。
+on:
+  push:
+    branches: [master, next]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  guard:
+    name: 默认分支与安装默认通道
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 仓库默认分支必须是 master
+        run: |
+          default_branch="${{ github.event.repository.default_branch }}"
+          if [ "$default_branch" != "master" ]; then
+            echo "::error::仓库默认分支是 '$default_branch'，不是 master —— 别人安装/克隆会拿到测试版代码，必须改回 master"
+            exit 1
+          fi
+          echo "默认分支 = master（别人克隆/安装拿到正式版）"
+
+      - name: install.sh 默认通道必须是 master
+        run: |
+          if ! grep -q 'COCO_CHANNEL="${COCO_CHANNEL:-master}"' install.sh; then
+            echo "::error::install.sh 的默认通道不是 master —— 别人一条命令就会装到测试版"
+            exit 1
+          fi
+          echo "install.sh 默认通道 = master（不指定通道时装正式版）"

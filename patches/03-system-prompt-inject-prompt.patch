@@ -1,0 +1,45 @@
+# Coco 改动：agent/system_prompt.py
+# 基准：官方 3bd844edf1777a680115f88a68474b4fb434092f (2026-08-09)
+# 说明：本补丁记录 Coco 对该官方文件的改动，供理解与重新应用参考。
+#       上游版本变化后不要机械 git apply，按 patches/README.md 的语义重新实现。
+#
+--- a/agent/system_prompt.py
++++ b/agent/system_prompt.py
+@@ -257,6 +257,10 @@
+         from agent.prompt_builder import computer_use_guidance
+         stable_parts.append(computer_use_guidance())
+ 
++    # Coco Real Estate guidance — always inject for this fork
++    from agent.real_estate_prompt import get_real_estate_prompt
++    stable_parts.append(get_real_estate_prompt())
++
+     nous_subscription_prompt = _r.build_nous_subscription_prompt(agent.valid_tool_names)
+     if nous_subscription_prompt:
+         stable_parts.append(nous_subscription_prompt)
+@@ -445,22 +449,14 @@
+             pass
+ 
+     # For Telegram: append the rich-messages extension only when the user has
+-    # opted in to ``gateway.platforms.telegram.extra.rich_messages: true``
+-    # (the canonical location the adapter reads from).  Merge with the
+-    # top-level ``platforms.telegram.extra`` so config-wizard writes and
+-    # dashboard-setup keys are also visible — same precedence the adapter
+-    # uses: top-level platform overrides gateway.platforms at the leaf.
++    # opted in to ``platforms.telegram.extra.rich_messages: true``.  The base
++    # hint covers MarkdownV2-compatible constructs; the extension adds Bot API
++    # 10.1 guidance (tables, task lists, math, collapsible details, etc.).
+     if platform_key == "telegram" and _default_hint:
+         try:
+             from hermes_cli.config import load_config_readonly
+             _cfg = load_config_readonly()
+-            _gw_tg_extra = (((_cfg.get("gateway") or {}).get("platforms") or {}).get("telegram") or {}).get("extra")
+-            _top_tg_extra = ((_cfg.get("platforms") or {}).get("telegram") or {}).get("extra")
+-            if not isinstance(_gw_tg_extra, dict):
+-                _gw_tg_extra = {}
+-            if not isinstance(_top_tg_extra, dict):
+-                _top_tg_extra = {}
+-            _tg_extra = {**_gw_tg_extra, **_top_tg_extra}
++            _tg_extra = ((_cfg.get("platforms") or {}).get("telegram") or {}).get("extra") or {}
+             if _tg_extra.get("rich_messages"):
+                 _default_hint = _default_hint.rstrip() + " " + TELEGRAM_RICH_MESSAGES_HINT
+         except Exception:

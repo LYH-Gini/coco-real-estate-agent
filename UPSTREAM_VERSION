@@ -1,0 +1,8 @@
+v2026.9.24
+# ↑ 本文件记录「Coco 当前底座对应的官方 Hermes 版本」，供 .github/workflows/upstream-watch.yml 对比。
+#   同步上游后请更新第一行（并与 docs/UPSTREAM_SYNC.md 第五节的同步记录表保持一致）。
+#
+# 历史：
+#   2026-08-09  Coco 初始导入，底座为官方 0.20.0 发布版（tag v2026.8.3）
+#   2026-09-15  底座同步到官方 Hermes v0.21.3（tag v2026.9.14）—— 发布 Coco v2.0.0
+#   2026-09-27  底座同步到官方 Hermes v0.21.5（tag v2026.9.24）

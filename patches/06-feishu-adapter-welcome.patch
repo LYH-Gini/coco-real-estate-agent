@@ -1,0 +1,132 @@
+# Coco 改动：plugins/platforms/feishu/adapter.py
+# 基准：官方 3bd844edf1777a680115f88a68474b4fb434092f (2026-08-09)
+# 说明：本补丁记录 Coco 对该官方文件的改动，供理解与重新应用参考。
+#       上游版本变化后不要机械 git apply，按 patches/README.md 的语义重新实现。
+#
+--- a/plugins/platforms/feishu/adapter.py
++++ b/plugins/platforms/feishu/adapter.py
+@@ -3376,6 +3376,21 @@
+         chat_id = getattr(message, "chat_id", "") or ""
+         chat_info = await self.get_chat_info(chat_id)
+         sender_profile = await self._resolve_sender_profile(sender_id, is_bot=is_bot)
++
++        # Coco: 首次对话发送固定欢迎语（仅一次，独立于会话历史）
++        if not is_bot and inbound_type != MessageType.COMMAND:
++            await self._maybe_send_coco_welcome(chat_id)
++            # Coco: 首次对话提醒密钥备份（仅提醒一次，真实用户触发）
++            await self._maybe_remind_key_backup(chat_id)
++            # Coco: 首次对话自动注册定时任务（早报/午间/逾期检查）
++            try:
++                from agent.coco_cron import register_coco_cron_jobs
++                await asyncio.get_event_loop().run_in_executor(
++                    None, register_coco_cron_jobs, chat_id
++                )
++            except Exception as e:
++                logger.warning("[Feishu] Coco cron registration failed: %s", e)
++
+         source = self.build_source(
+             chat_id=chat_id,
+             chat_name=chat_info.get("name") or chat_id or "Feishu Chat",
+@@ -3401,6 +3416,102 @@
+         )
+         await self._dispatch_inbound_event(normalized)
+ 
++    async def _maybe_send_coco_welcome(self, chat_id: str) -> None:
++        """Coco: 首次对话发送固定欢迎语（仅一次）
++
++        通过飞书 adapter 直接发送固定文案，不依赖模型生成和会话历史判断。
++        marker 文件（.coco_welcome_sent）确保只发一次。
++        """
++        try:
++            marker = os.path.expanduser("~/.hermes/.coco_welcome_sent")
++            if os.path.exists(marker):
++                return
++            welcome = (
++                "你好，我是 Coco（可可），你的客户和房源管家。\n"
++                "可以直接发给我：\n"
++                "\"登记客户：张先生，预算300万，想买美兰区3室\"\n"
++                "\"添加房源：XX小区，200万，110平，3室2厅\"\n"
++                "我就能帮你建档、提醒跟进。目前你的数据库还是空的，先登记客户、添加房源，之后我就能自动帮你匹配房源。\n"
++                "另外提醒：系统支持每日早报、午间检查、逾期提醒等定时任务，默认关闭（节省用量）。需要开启的话，直接跟我说\"开启定时任务\"就行。"
++            )
++            await self.send(chat_id=chat_id, content=welcome)
++            try:
++                os.makedirs(os.path.dirname(marker), exist_ok=True)
++                with open(marker, "w", encoding="utf-8") as f:
++                    f.write("1")
++            except Exception:
++                pass
++        except Exception as e:
++            logger.warning("[Feishu] Coco welcome send failed: %s", e)
++
++    async def _maybe_remind_key_backup(self, chat_id: str) -> None:
++        """Coco: 首次对话时把加密密钥直接发给经纪人（仅一次）
++
++        安装脚本自动备份密钥到 ~/backups/real_estate/enc_key.txt，
++        但经纪人未必真正保存到外部。首次对话时把密钥内容直接推送给
++        经纪人，聊天记录里随时可查，确保密钥不丢失。
++
++        触发条件：
++        - 真实用户消息（非 bot、非命令）
++        - 未发送过提醒（标记文件 .coco_key_reminder_sent 不存在）
++        """
++        try:
++            marker = os.path.expanduser("~/.hermes/.coco_key_reminder_sent")
++            if os.path.exists(marker):
++                return
++
++            # 读取密钥内容（优先备份文件，兜底 .env.db）
++            enc_key = None
++            backup_key = os.path.expanduser("~/backups/real_estate/enc_key.txt")
++            if os.path.exists(backup_key):
++                try:
++                    for line in open(backup_key, encoding="utf-8"):
++                        line = line.strip()
++                        if line.startswith("COCO_ENC_KEY="):
++                            enc_key = line.split("=", 1)[1].strip()
++                            break
++                except Exception:
++                    pass
++            if not enc_key:
++                env_db = os.path.expanduser("~/hermes-agent/.env.db")
++                if os.path.exists(env_db):
++                    try:
++                        for line in open(env_db, encoding="utf-8"):
++                            line = line.strip()
++                            if line.startswith("COCO_ENC_KEY="):
++                                enc_key = line.split("=", 1)[1].strip()
++                                break
++                    except Exception:
++                        pass
++
++            if enc_key:
++                reminder = (
++                    "🔐 重要！请立即保存您的数据加密密钥（仅此一次）\n\n"
++                    "您的客户数据（手机号、微信号）已加密存储，加密密钥如下：\n\n"
++                    f"COCO_ENC_KEY={enc_key}\n\n"
++                    "请立即复制上面的密钥，保存到您的电脑记事本 / 网盘。\n"
++                    "如果服务器重装或文件丢失，没有这把钥匙，客户数据将永远无法解密！\n\n"
++                    "密钥文件同时备份在服务器 ~/backups/real_estate/enc_key.txt"
++                )
++            else:
++                reminder = (
++                    "🔐 重要！请立即备份数据加密密钥（仅此一次）\n\n"
++                    "您的客户数据（手机号、微信号）已加密存储。\n"
++                    "密钥文件在服务器 ~/backups/real_estate/enc_key.txt\n"
++                    "请尽快把它保存到安全的地方（电脑/U盘/网盘），"
++                    "如果服务器重装或文件丢失，没有这把钥匙，客户数据将永远无法解密。"
++                )
++            await self.send(chat_id=chat_id, content=reminder)
++
++            try:
++                os.makedirs(os.path.dirname(marker), exist_ok=True)
++                with open(marker, "w", encoding="utf-8") as f:
++                    f.write("1")
++            except Exception:
++                pass
++        except Exception as e:
++            logger.warning("[Feishu] Key backup reminder failed: %s", e)
++
+     async def _dispatch_inbound_event(self, event: MessageEvent) -> None:
+         """Apply Feishu-specific burst protection before entering the base adapter."""
+         if event.message_type == MessageType.TEXT and not event.is_command():
