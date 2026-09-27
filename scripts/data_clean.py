@@ -79,7 +79,7 @@ def _describe(entry, bullet=True):
     parts = [f"{_RELATED_LABELS[k]}{v}条" for k, v in related.items() if v]
     tail = ("；关联：" + "、".join(parts)) if parts else ""
     prefix = "  · " if bullet else ""
-    if entry["kind"] == "property":
+    if entry["kind"] in ("property", "房源"):      # 条目的 kind 值已改用中文（两种都认，向后兼容）
         return f"{prefix}房源 #{entry['id']} {entry['title']}（{_STATUS_LABELS.get(entry['status'], entry['status'])}）{tail}"
     return f"{prefix}客户 #{entry['id']} {entry['name']}（{_STATUS_LABELS.get(entry['status'], entry['status'])}）{tail}"
 
