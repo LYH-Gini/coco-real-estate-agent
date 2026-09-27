@@ -121,3 +121,43 @@ class TestPurgeDataTool:
                                       "mode": "archive", "dry_run": False})
         assert result["success"] is True and result["archived"] == 1
         assert db.get_customer(c["id"])["status"] == "closed"
+
+
+class TestDeletePropertyWording:
+    """删除类回执的两条硬口径（2026-09-27 第十二组 F428/F429，证据 results/raw/t93.log）
+
+    ① 删除成功只说「已彻底删除这条房源（连同 N 条关联记录）」—— **没说"取不回来"**；
+    ② 默认拒删只说要"连历史一起删" —— **没给"只想下架就改状态"的替代方案**。
+    """
+
+    def test_receipt_says_irreversible_and_identifies_target(self, purge_tools):
+        _, db = purge_tools
+        p = make_property(db, title="待删房源-取不回", status="sold")
+        out = _call("delete_property", {"property_id": p["id"]})
+        msg = out["message"]
+        assert out["success"] is True
+        assert "彻底删除" in msg, msg
+        assert "取不回来" in msg or "无法恢复" in msg, msg
+        assert "待删房源-取不回" in msg and str(p["id"]) in msg, f"回执要能核对删的是哪一条：{msg}"
+
+    def test_force_receipt_lists_what_went_with_it(self, purge_tools):
+        _, db = purge_tools
+        p = make_property(db, title="连带删房源")
+        c = make_customer(db)
+        db.add_viewing(customer_id=c["id"], property_id=p["id"], viewing_time=datetime.now())
+        out = _call("delete_property", {"property_id": p["id"], "force": True})
+        msg = out["message"]
+        assert out["success"] is True
+        assert "带看 1" in msg or "带看1" in msg, f"连带删要说清删了什么：{msg}"
+
+    def test_refusal_offers_status_alternative(self, purge_tools):
+        _, db = purge_tools
+        p = make_property(db, title="有带看房源")
+        c = make_customer(db)
+        db.add_viewing(customer_id=c["id"], property_id=p["id"], viewing_time=datetime.now())
+        out = _call("delete_property", {"property_id": p["id"]})
+        msg = out["message"]
+        assert out["success"] is False, out
+        assert "带看" in msg, msg
+        assert "已售" in msg or "改回来" in msg, f"要给「只下架」的替代方案：{msg}"
+        assert "连历史" in msg, msg

@@ -3065,6 +3065,35 @@ class RealEstateDB:
         if row is not None:
             s.delete(row)
 
+    # 关联记录的中文标签（回执里给经纪人看）
+    _RELATED_LABELS = (('viewings', '带看'), ('deals', '成交'), ('followups', '跟进'),
+                       ('changes', '需求变更'), ('referrals', '转介绍'), ('price_history', '调价'))
+
+    @staticmethod
+    def _delete_target_text(entry) -> str:
+        """回执里点名删的是哪一条（编号 + 名字，便于经纪人核对）"""
+        if entry['kind'] == 'property':
+            return f'「{entry["title"]}」（房源编号 {entry["id"]}）'
+        return f'「{entry["name"]}」（客户编号 {entry["id"]}）'
+
+    @classmethod
+    def _purge_related_text(cls, entry) -> str:
+        """关联明细（只列非零项；全零就说"无关联记录"）"""
+        parts = []
+        for key, label in cls._RELATED_LABELS:
+            count = entry['related'].get(key)
+            if count:
+                parts.append(f'{label} {count}')
+        return ' / '.join(parts) if parts else '无关联记录'
+
+    @staticmethod
+    def _status_suggestion(kind) -> str:
+        return '把它标成已售/已租' if kind == 'property' else '把它标成已关闭'
+
+    @staticmethod
+    def _where_text(kind) -> str:
+        return '房源列表、报表、匹配' if kind == 'property' else '客户列表、跟进提醒、报表'
+
     def _delete_one(self, kind, property_id=None, title=None, customer_id=None,
                     name=None, phone=None, force=False, dry_run=False):
         label = '房源' if kind == 'property' else '客户'
@@ -3095,18 +3124,24 @@ class RealEstateDB:
                 row = rows[0]
             entry = self._purge_entry(s, kind, row)
             entry['dry_run'] = dry_run
+            target = self._delete_target_text(entry)
+            related_text = self._purge_related_text(entry)
             if entry['skip_reason'] and not force:
-                entry.update(success=False, error='has_history',
-                             message=f'没有删除这条{label}：{entry["skip_reason"]}')
+                entry.update(success=False, error='has_history', message=(
+                    f'没有删除{target}：{entry["skip_reason"]}。'
+                    f'如果只是想让它别再出现，我可以{self._status_suggestion(kind)}（随时能改回来）；'
+                    f'确实要连历史一起删掉、再也不会恢复，就跟我说「连历史一起删」。'))
                 return entry
             if dry_run:
-                entry.update(success=True,
-                             message=f'预演：可以删掉这条{label}（连同 {entry["related_total"]} 条关联记录）')
+                entry.update(success=True, message=(
+                    f'预演：可以删掉{target}（连同 {entry["related_total"]} 条关联记录：{related_text}）。'
+                    f'这一步不动任何数据。'))
                 return entry
             self._purge_delete(s, kind, row.id)
             s.commit()
-            entry.update(success=True, deleted_related=entry['related_total'],
-                         message=f'已彻底删除这条{label}（连同 {entry["related_total"]} 条关联记录）')
+            entry.update(success=True, deleted_related=entry['related_total'], message=(
+                f'已彻底删除{target}及其 {entry["related_total"]} 条关联记录（{related_text}）。'
+                f'删除后取不回来，之后在{self._where_text(kind)}里都不会再出现。'))
             return entry
 
     def delete_property(self, property_id=None, title=None, force=False, dry_run=False):
