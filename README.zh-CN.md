@@ -502,9 +502,8 @@ Coco（可可）把客户管理、房源匹配、跟进提醒、成交管理和�
 
 ## License
 
-MIT License · Copyright (c) 2026 liyuheng · 基于 [Hermes Agent](https://github.com/NousResearch/hermes-agent) 定制
+MIT 协议 · Copyright (c) 2026 LYH-Gini · 详见 [LICENSE](LICENSE)
 
 ## 致谢
 
-- [Nous Research](https://nousresearch.com) - Hermes Agent 原作者
-- [Hermes Agent](https://hermes-agent.nousresearch.com) - 基础框架
+- [Nous Research](https://nousresearch.com)
