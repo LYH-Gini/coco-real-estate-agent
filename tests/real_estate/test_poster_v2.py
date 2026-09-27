@@ -62,7 +62,9 @@ def test_save_agent_card_partial_keeps_old_values(wired):
     settings.save_agent_card(name="王经理", company="宇恒房产")
     settings.save_agent_card(phone="139-0000-0000")
     card = settings.get_agent_card_or_empty()
-    assert card == {"name": "王经理", "phone": "139-0000-0000", "wechat": "", "company": "宇恒房产"}
+    # 2026-09-27（第十二组 F414）起手机号会写法归一（去掉横线/空格/国码），
+    # 免得海报与名片上照印「139-0000-0000」这种写法
+    assert card == {"name": "王经理", "phone": "13900000000", "wechat": "", "company": "宇恒房产"}
 
 
 def test_save_agent_card_empty_input_rejected(wired):
