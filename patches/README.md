@@ -208,6 +208,18 @@
   显式值优先于这三处默认。
 - **上游变了怎么办**：跑 `python3 scripts/check_coco_hooks.py`（第 38/39/40 项分别守这三处）。
 
+## evals/ 最小必要集（保留 13 个文件，不是官方补丁）
+- 「用户装机用不到」而删掉的官方目录里，`evals/` 有个例外：`tests/gateway`（3 个）与 `tests/agent`（1 个）等
+  共 **10 个测试模块 `from evals... import ...`**，整个删掉会让这两个区在**收集阶段就中断**
+  （7278 + 7938 条一条都跑不了；2026-09-27 扩面扫描时踩到）。
+- 因此 `evals/` 只保留最小必要集 **13 个文件（约 124KB）**：`heartbeat_idle_wire.py`、
+  `providers/reasoning_shapes.py`、`compaction/{fixtures,jev_arm}.py`、`completion_backlog_probe.py`、
+  `mcp_device_flow.py`、`codebase_navigability/__init__.py`、`api_delegation_http_probe.py`、
+  `postmortem/forensics/{common,logcalls}.py`，以及 `evals/`、`evals/postmortem/`、
+  `evals/postmortem/forensics/` 三个空的 `__init__.py`。
+- 同步时 `evals` 仍留在 `COCO_DONT_SYNC` 里（官方那 215 个文件不再带回来）：自检 **A33** 守最小集在位、
+  **A35** 守「官方 evals/ 整体没被带回来」。
+
 ## 使用方法（同步时）
 
 ```bash

@@ -628,9 +628,12 @@ PATH_CHECKS = [
     ("A30", "已删官方目录·桌面版", "apps", "absent", 0, "apps/ 又被同步带回来了（Coco 不做桌面版，删它是为让用户少下 39MB / 3000+ 文件）"),
     ("A31", "已删官方目录·文档站", "website", "absent", 0, "website/ 又被同步带回来了（官方文档站，装机用不到）"),
     ("A32", "已删官方目录·可选技能", "optional-skills", "absent", 0, "optional-skills/ 又被同步带回来了（官方可选技能，Coco 用不到）"),
-    ("A33", "已删官方目录·离线评测", "evals", "absent", 0, "evals/ 又被同步带回来了（官方内部评测）"),
+    ("A33", "evals 最小必要集（测试收集依赖）", "evals/heartbeat_idle_wire.py", "file", 1,
+     "evals 最小必要集缺失 —— tests/gateway 与 tests/agent 里共 10 个用例 import 它，缺了整个区会在收集阶段中断（2026-09-27 踩过）"),
     ("A34", "已删官方目录·前端测试", "tests-js", "absent", 0, "tests-js/ 又被同步带回来了（官方前端测试）"),
-                    ]
+    ("A35", "已删官方目录·离线评测（整体）", "evals/acp_empty_session_wire.py", "absent", 0,
+     "官方 evals/ 整个被同步带回来了 —— 只需要最小必要集那 13 个文件（见 patches/README.md）"),
+]
 
 
 def check_content(repo: Path):

@@ -72,7 +72,10 @@ COCO_DONT_SYNC=(
   "contributors"
   # 2026-09-27 按老板决定删掉的官方目录（用户装机/运行都用不到，删了少下载、少占磁盘）。
   # 登记在这里 = 同步官方新版时不会被 rsync 带回本地（删过就不许再回来）；
-  # 配套的守护是 check_coco_hooks 的 A30–A34（应不存在，被带回来就报警）。
+  # 配套的守护是 check_coco_hooks 的 A30–A35（应不存在，被带回来就报警）。
+  # 例外：evals/ 保留「最小必要集」13 个文件（tests/gateway / tests/agent 里共 10 个用例
+  # import evals.heartbeat_idle_wire 等模块，整个删掉会让这两个区在收集阶段中断）。
+  # evals 登记在此，rsync 不碰它 → 那 13 个文件原样保留；A33 守它们在位。
   "apps"
   "website"
   "optional-skills"
