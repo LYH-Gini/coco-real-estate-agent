@@ -161,3 +161,48 @@ class TestDeletePropertyWording:
         assert "带看" in msg, msg
         assert "已售" in msg or "改回来" in msg, f"要给「只下架」的替代方案：{msg}"
         assert "连历史" in msg, msg
+
+
+class TestDeleteCustomerWording:
+    """客户侧的同一套口径（共用 `_delete_one`）—— 证据 results/raw/t94.before.log / t94.after.log
+
+    客户侧还多两件事要一起钉住：**force 之后不留孤儿**（跟进/带看/成交全清）、
+    以及**房子不受影响**（删客户不碰房源）。
+    """
+
+    def test_receipt_says_irreversible_and_identifies_target(self, purge_tools):
+        _, db = purge_tools
+        c = make_customer(db, name="待删客户-取不回", phone="13700007001")
+        out = _call("delete_customer", {"customer_id": c["id"]})
+        msg = out["message"]
+        assert out["success"] is True
+        assert "彻底删除" in msg and ("取不回来" in msg or "无法恢复" in msg), msg
+        assert "待删客户-取不回" in msg and str(c["id"]) in msg, f"回执要能核对删的是谁：{msg}"
+
+    def test_refusal_offers_status_alternative(self, purge_tools):
+        _, db = purge_tools
+        c = make_customer(db, name="有跟进客户", phone="13700007002")
+        db.add_followup(customer_id=c["id"], type="phone", content="回访")
+        out = _call("delete_customer", {"customer_id": c["id"]})
+        msg = out["message"]
+        assert out["success"] is False, out
+        assert "跟进" in msg, msg
+        assert "已关闭" in msg or "改回来" in msg, f"要给「只关闭」的替代方案：{msg}"
+        assert "连历史" in msg, msg
+
+    def test_force_leaves_no_orphans_and_keeps_properties(self, purge_tools):
+        from agent import real_estate_db as m
+        _, db = purge_tools
+        c = make_customer(db, name="连带删客户", phone="13700007003")
+        p = make_property(db, title="无关房源")
+        db.add_followup(customer_id=c["id"], type="phone", content="回访")
+        db.add_viewing(customer_id=c["id"], property_id=p["id"], viewing_time=datetime.now())
+        out = _call("delete_customer", {"customer_id": c["id"], "force": True})
+        assert out["success"] is True
+        assert "带看 1" in out["message"] or "跟进 1" in out["message"], out["message"]
+        with db.get_session() as s:
+            assert s.query(m.Customer).get(c["id"]) is None
+            for model in (m.Followup, m.Viewing):
+                left = s.query(model).filter(getattr(model, "customer_id") == c["id"]).count()
+                assert left == 0, f"{model.__name__} 还剩 {left} 条孤儿记录"
+            assert s.query(m.Property).get(p["id"]) is not None, "删客户不该动房源"
