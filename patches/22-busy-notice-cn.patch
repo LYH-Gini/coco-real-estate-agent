@@ -1,0 +1,227 @@
+diff --git a/agent/onboarding.py b/agent/onboarding.py
+index bb984d6b..5c0fb637 100644
+--- a/agent/onboarding.py
++++ b/agent/onboarding.py
+@@ -23,26 +23,24 @@ PROFILE_BUILD_FLAG = "profile_build_offered"
+ 
+ # Busy-input hints are keyed by the effective busy_input_mode that was just
+ # applied so the message matches reality; "interrupt" is the default branch.
++# Coco: 官方这几句是英文，会直接发到经纪人的飞书会话里，改成中文短句（仅网关版；CLI 版经纪人用不到，保持官方英文）。
+ _BUSY_INPUT_HINTS_GATEWAY = {
+     "queue": (
+-        "💡 First-time tip — I queued your message instead of interrupting. Send `/busy interrupt` to make new messages "
+-        "stop the current task immediately, or `/busy status` to check. This notice won't appear again."
++        "💡 提示：你这条已排队，等当前任务做完就处理。想让新消息立刻改用当前任务，发 `/busy interrupt`；"
++        "看当前模式发 `/busy status`。仅提示一次。"
+     ),
+     "steer": (
+-        "💡 First-time tip — I steered your message into the current run; it will arrive after the next tool "
+-        "call instead of interrupting. Send `/busy interrupt` or `/busy queue` to change this, or `/busy "
+-        "status` to check. This notice won't appear again."
++        "💡 提示：你这条会在下一步动作时带上。想改成打断或排队，发 `/busy interrupt` 或 `/busy queue`；"
++        "看当前模式发 `/busy status`。仅提示一次。"
+     ),
+     "redirect": (
+-        "💡 First-time tip — I redirected the current run using your message. Completed work stays in "
+-        "context, and `/stop` still cancels the task. Send `/busy queue` to wait for a separate turn, or "
+-        "`/busy status` to check. This notice won't appear again."
++        "💡 提示：新消息会改用当前任务继续做，前面做的不会丢。想让它先做完手头的再处理，发 `/busy queue`。"
++        "仅提示一次。"
+     ),
+ }
+ _BUSY_INPUT_HINT_GATEWAY_DEFAULT = (
+-    "💡 First-time tip — I just interrupted my current task to answer you. Send `/busy queue` to queue "
+-    "follow-ups for after the current task instead, `/busy steer` to inject them mid-run without "
+-    "interrupting, or `/busy status` to check. This notice won't appear again."
++    "💡 提示：我停下了手头的任务先回你。想让新消息排队等做完，发 `/busy queue`；想中途插话不改道，"
++    "发 `/busy steer`。仅提示一次。"
+ )
+ 
+ _BUSY_INPUT_HINTS_CLI = {
+@@ -76,8 +74,9 @@ def busy_input_hint_cli(mode: str) -> str:
+ 
+ 
+ def tool_progress_hint_gateway() -> str:
+-    return ("💡 First-time tip — that tool took a while and I'm streaming every step. If the progress messages "
+-            "feel noisy, send `/verbose` to cycle modes (all → new → off). This notice won't appear again.")
++    # Coco: 官方这句是英文，会发到经纪人飞书会话里，改中文
++    return ("💡 提示：刚才那个步骤跑得比较久，我把过程都发出来了。嫌吵可以发 `/verbose` 切换显示方式"
++            "（全部 → 仅新步骤 → 关闭）。仅提示一次。")
+ 
+ 
+ def tool_progress_hint_cli() -> str:
+diff --git a/gateway/run_busy.py b/gateway/run_busy.py
+index 27b64521..d0d7e2b6 100644
+--- a/gateway/run_busy.py
++++ b/gateway/run_busy.py
+@@ -15,7 +15,7 @@ import json
+ import os
+ import time
+ from agent.i18n import t
+-from agent.session_activity import format_iteration_progress
++from agent.session_activity import format_iteration_progress  # noqa: F401  # Coco: 状态行改中文后本文件已不用
+ from gateway.config import Platform
+ from gateway.platforms.base import EphemeralReply
+ from gateway.platforms.event import MessageEvent, MessageType
+@@ -489,11 +489,13 @@ class GatewayBusySessionMixin:
+         adapter = self._delivery_adapter_for(event.source)
+         if not adapter:
+             return
++        # Coco: 官方这两句是英文（restarting / shutting down），会直接发到经纪人飞书会话里，改中文
++        _coco_action = "重启" if getattr(self, "_restart_requested", False) else "关闭"
+         if self._queue_during_drain_enabled(effective_mode):
+             self._queue_or_replace_pending_event(session_key, event)
+-            message = f"⏳ Gateway {self._status_action_gerund()} — queued for the next turn after it comes back."
++            message = f"⏳ Coco 正在{_coco_action}，你这条已排队，恢复后马上处理。"
+         else:
+-            message = f"⏳ Gateway is {self._status_action_gerund()} and is not accepting another turn right now."
++            message = f"⏳ Coco 正在{_coco_action}，暂时不能开新任务。"
+         await self._send_busy_reply(event, adapter, message)
+ 
+     # Bare-word approval replies → (verb, args) for the synthesized slash command.
+@@ -683,8 +685,9 @@ class GatewayBusySessionMixin:
+             logger.debug("Busy steer ack suppressed for session %s", session_key)
+         return steer_ack_enabled
+ 
++    # Coco: 官方英文 " — your message is queued for when it finishes (use /stop to cancel everything)."
+     _BUSY_DEMOTED_TAIL = (
+-        " — your message is queued for when it finishes (use /stop to cancel everything)."
++        " —— 你这条已排队，当前任务做完就处理（要全停发 `/stop`）。"
+     )
+ 
+     def _compose_busy_ack_message(
+@@ -711,35 +714,31 @@ class GatewayBusySessionMixin:
+                 elapsed_min = 0
+                 if _busy_state and _busy_state.turn.started_ts:
+                     elapsed_min = int((now - _busy_state.turn.started_ts) / 60)
++                # Coco: 官方这里拼的是英文（"{n} min elapsed" / "iteration 3/500" / "running: terminal"），
++                # 经纪人看不懂；改成中文，并且不再展示内部英文工具名。
+                 if elapsed_min > 0:
+-                    status_parts.append(f"{elapsed_min} min elapsed")
++                    status_parts.append(f"已跑 {elapsed_min} 分钟")
+                 if summary.get("max_iterations", 0):
+-                    status_parts.append(
+-                        format_iteration_progress(
+-                            summary.get("api_call_count", 0), summary.get("max_iterations", 0)
+-                        )
+-                    )
+-                if summary.get("current_tool"):
+-                    status_parts.append(f"running: {summary.get('current_tool')}")
++                    status_parts.append(f"第 {summary.get('api_call_count', 0)} 步")
+             except Exception:
+                 pass
+-        status_detail = f" ({', '.join(status_parts)})" if status_parts else ""
++        status_detail = f"（{' · '.join(status_parts)}）" if status_parts else ""
+         if is_steer_mode and self._agent_has_active_subagents(running_agent):
+-            head = "⏩ Steered into current run and its active subagent(s)"
+-            tail = ". Your message arrives after their next tool call."
++            head = "⏩ 已收到，会同时带给在跑的子任务"
++            tail = "，下一步动作时带上你这句话。"
+         elif is_steer_mode:
+-            head, tail = "⏩ Steered into current run", ". Your message arrives after the next tool call."
++            head, tail = "⏩ 已收到", "，下一步动作就带上你这句话。"
+         elif is_redirect_mode:
+-            head, tail = "↪ Redirected current run", ". I'll adjust using your correction."
++            head, tail = "↪ 已改用你刚发的话继续", "，前面做的没丢。"
+         elif is_queue_mode and demoted_for_subagents:
+             # Explain the demotion: the follow-up didn't kill the subagent; /stop is the escape hatch.
+-            head, tail = "⏳ Subagent working", self._BUSY_DEMOTED_TAIL
++            head, tail = "⏳ 子任务还在跑", self._BUSY_DEMOTED_TAIL
+         elif is_queue_mode and demoted_for_compression:
+-            head, tail = "⏳ Compressing context", self._BUSY_DEMOTED_TAIL
++            head, tail = "⏳ 正在整理上下文", self._BUSY_DEMOTED_TAIL
+         elif is_queue_mode:
+-            head, tail = "⏳ Queued for the next turn", ". I'll respond once the current task finishes."
++            head, tail = "⏳ 已排队", "，手头这个做完就处理你这条。"
+         else:
+-            head, tail = "⚡ Interrupting current task", ". I'll respond to your message shortly."
++            head, tail = "⚡ 已打断手头任务", "，马上回你。"
+         message = f"{head}{status_detail}{tail}"
+ 
+         # One-time onboarding hint about the queue/interrupt knob (flag persisted to config.yaml).
+diff --git a/gateway/run_inbound.py b/gateway/run_inbound.py
+index 48d793d7..c3b958c1 100644
+--- a/gateway/run_inbound.py
++++ b/gateway/run_inbound.py
+@@ -699,10 +699,12 @@ class GatewayInboundMixin:
+             queue_during_drain = self._queue_during_drain_enabled(effective_busy_input_mode)
+             if queue_during_drain:
+                 self._queue_or_replace_pending_event(_quick_key, event)
++            # Coco: 官方这两句是英文，会发到经纪人飞书会话里，改中文
++            _coco_action = "重启" if getattr(self, "_restart_requested", False) else "关闭"
+             return (
+-                f"⏳ Gateway {self._status_action_gerund()} — queued for the next turn after it comes back."
++                f"⏳ Coco 正在{_coco_action}，你这条已排队，恢复后马上处理。"
+                 if queue_during_drain
+-                else f"⏳ Gateway is {self._status_action_gerund()} and is not accepting another turn right now."
++                else f"⏳ Coco 正在{_coco_action}，暂时不能开新任务。"
+             )
+         if effective_busy_input_mode == "queue":
+             logger.debug("PRIORITY queue follow-up for session %s", _quick_key)
+@@ -1027,7 +1029,9 @@ class GatewayInboundMixin:
+         """Drain gate, user-defined quick commands (exec/alias) and plugin slash commands →
+         ``(handled, result, command)``; an alias quick command rewrites ``command``."""
+         if self._draining:
+-            return True, f"⏳ Gateway is {self._status_action_gerund()} and is not accepting new work right now.", command
++            # Coco: 官方这句是英文，改中文（与 run_busy.py / 上面的 drain 提示同一口径）
++            _coco_action = "重启" if getattr(self, "_restart_requested", False) else "关闭"
++            return True, f"⏳ Coco 正在{_coco_action}，暂时不能开新任务。", command
+ 
+         # User-defined quick commands (bypass agent loop, no LLM call)
+         qcmd = self._hm_quick_commands().get(command) if command else None
+diff --git a/gateway/slash_commands.py b/gateway/slash_commands.py
+index 2dd77904..7ee4ca6d 100644
+--- a/gateway/slash_commands.py
++++ b/gateway/slash_commands.py
+@@ -49,6 +49,17 @@ _BUSY_MODE_BEHAVIOR = {
+     "interrupt": ("interrupts current run", "Messages will interrupt the current run while Hermes is busy."),
+ }
+ 
++# Coco: /busy 命令的回复里不能出现英文（经纪人是照着一次性提示来发这条命令的）——
++# 官方 _BUSY_MODE_BEHAVIOR 的文案是英文，这里另附一份中文口径，只用于 /busy 的回复文案。
++_BUSY_MODE_BEHAVIOR_ZH = {
++    "queue": ("已排队，等当前任务做完再逐条处理",
++              "连发消息时，新消息会排队，等当前任务做完再逐条处理。"),
++    "steer": ("插话到当前任务（下一步动作时带上）",
++              "连发消息时，新消息会插进当前任务，在下一步动作时带上。"),
++    "interrupt": ("打断当前任务",
++                  "连发消息时，新消息会打断当前任务，我马上按新消息来做。"),
++}
++
+ # /diff argument -> diff mode (unknown args leave the mode unchanged).
+ _DIFF_MODE_BY_ARG = {**dict.fromkeys(("staged", "--staged", "cached", "--cached"), "staged"),
+                      **dict.fromkeys(("all", "--all", "head"), "all"), "session": "session"}
+@@ -990,18 +1001,19 @@ class GatewaySlashCommandsMixin(
+         arg = event.get_command_args().strip().lower()
+         if not arg or arg == "status":
+             mode = self._effective_busy_input_mode(event.source)
+-            behavior = _BUSY_MODE_BEHAVIOR.get(mode, _BUSY_MODE_BEHAVIOR["interrupt"])[0]
++            behavior = _BUSY_MODE_BEHAVIOR_ZH.get(
++                mode, _BUSY_MODE_BEHAVIOR_ZH["interrupt"])[0]  # Coco: 中文口径
+             return EphemeralReply(
+-                f"**Busy input mode: `{mode}`\nMessages while busy: _{behavior}_\n"
+-                f"Change with `/busy queue`, `/busy steer`, or `/busy interrupt`.")
++                f"**当前连发消息模式：`{mode}`\n连发消息时：_{behavior}_\n"
++                f"可用 `/busy queue`、`/busy steer`、`/busy interrupt` 切换。")
+         if arg not in _BUSY_MODE_BEHAVIOR:
+             return EphemeralReply(
+-                f"Unknown mode `{arg}`. Use `/busy queue`, `/busy steer`, or `/busy interrupt`.")
++                f"不认识模式 `{arg}`。可用：`/busy queue`、`/busy steer`、`/busy interrupt`。")
+ 
+         # Persist before mutate
+         from cli import save_config_value
+         if not save_config_value("display.busy_input_mode", arg):
+-            return EphemeralReply("Busy input mode could not be saved to config. Mode unchanged.")
++            return EphemeralReply("连发消息模式没保存成功，模式未改动。")
+         profile_name = self._busy_profile_name_for_source(event.source)
+         if profile_name:
+             from gateway.run import _load_gateway_config
+@@ -1016,7 +1028,7 @@ class GatewaySlashCommandsMixin(
+         if adapter is not None:
+             adapter._busy_text_mode = self._effective_busy_text_mode(event.source)
+         return EphemeralReply(
+-            f"Busy input mode set to **`{arg}`** (saved).\n_{_BUSY_MODE_BEHAVIOR[arg][1]}_")
++            f"连发消息模式已设为 **`{arg}`**（已保存）。\n_{_BUSY_MODE_BEHAVIOR_ZH.get(arg, _BUSY_MODE_BEHAVIOR_ZH['interrupt'])[1]}_")
+ 
+     async def _handle_footer_command(self, event: MessageEvent) -> str:
+         """Handle /footer command — toggle the runtime-metadata footer."""

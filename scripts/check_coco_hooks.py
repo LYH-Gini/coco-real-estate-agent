@@ -716,6 +716,71 @@ CONTENT_CHECKS = [
         "本仓在系统提示词里注入了身份与房产业务段落（第 02/03 处），逐字比对整段提示词必然不符。\n"
         "处理：改回「关键段落相对顺序 + 静态段是前缀」的校验（参考 patches/README.md 第 21 处）。",
     ),
+    (
+        "52",
+        "连发消息状态行与更新期间提示的中文口径",
+        "gateway/run_busy.py",
+        [
+            r"↪ 已改用你刚发的话继续",
+            r"⏩ 已收到",
+            r"⏳ 已排队",
+            r"⏳ 子任务还在跑",
+            r"⏳ 正在整理上下文",
+            r"⚡ 已打断手头任务",
+            r"已跑 \{elapsed_min\} 分钟",
+            r"第 \{summary\.get\('api_call_count', 0\)\} 步",
+            r"⏳ Coco 正在\{_coco_action\}",
+            r"!Redirected current run",
+            r"!Interrupting current task",
+        ],
+        "经纪人在 Coco 干活时连发一条消息，收到的是英文状态行（`↪ Redirected current run…`），"
+        "状态细节还带英文工具名（`2 min elapsed, running: terminal, iteration 3/500`）；"
+        "更新/重启期间发消息也会收到英文提示。上游这些串写死在 gateway/run_busy.py，不走语言包（见第 22 处）。"
+        "处理：恢复中文文案（细节只留「已跑 N 分钟 · 第 N 步」；drain 提示用 `Coco 正在重启/关闭`）。"
+        "单测：tests/gateway/test_busy_session_ack.py、test_subagent_protection.py。",
+    ),
+    (
+        "53",
+        "一次性提示的中文口径（连发消息/工具耗时）",
+        "agent/onboarding.py",
+        [
+            r"💡 提示：新消息会改用当前任务继续做",
+            r"💡 提示：我停下了手头的任务先回你",
+            r"💡 提示：刚才那个步骤跑得比较久",
+            r"!First-time tip",
+        ],
+        "每台实例第一次连发消息时会附一条一次性提示（以及工具跑得久时的一条），原文是英文，"
+        "经纪人看不懂；上游写死在 agent/onboarding.py，不走语言包（见第 22 处）。"
+        "处理：恢复网关版 `_BUSY_INPUT_HINTS_GATEWAY` / `_BUSY_INPUT_HINT_GATEWAY_DEFAULT` / "
+        "`tool_progress_hint_gateway()` 的中文文案（CLI 版保持官方英文，经纪人用不到）。",
+    ),
+    (
+        "54",
+        "/busy 命令回复的中文口径",
+        "gateway/slash_commands.py",
+        [
+            r"_BUSY_MODE_BEHAVIOR_ZH",
+            r"当前连发消息模式",
+            r"连发消息模式已设为",
+            r"!Busy input mode",
+        ],
+        "一次性提示里让经纪人发 `/busy queue`，照做后回复却是英文（`Busy input mode: …`），接不上中文提示；"
+        "官方 `_BUSY_MODE_BEHAVIOR` 的文案是英文，且 CLI 也在用，不能直接改（见第 22 处）。"
+        "处理：恢复 `_BUSY_MODE_BEHAVIOR_ZH` 字典与 `/busy` 三处回复的中文文案（模式集合仍以官方字典为准）。",
+    ),
+    (
+        "55",
+        "网关更新/关闭期间提示的中文口径（优先路径）",
+        "gateway/run_inbound.py",
+        [
+            r"⏳ Coco 正在\{_coco_action\}",
+            r"!Gateway is \{self\._status_action_gerund\(\)\}",
+        ],
+        "经纪人赶在 coco update 期间发消息，走优先路径的 drain 提示同样是英文，"
+        "与 gateway/run_busy.py 的同类提示口径不一致（见第 22 处）。"
+        "处理：两处都改成 `⏳ Coco 正在重启/关闭，…`；"
+        "单测 tests/gateway/test_multiplex_busy_input_mode.py 断言已同步中文。",
+    ),
 ]
 
 # 文件/目录存在性检查：编号 / 名称 / 相对路径 / 类型(file|dir|glob) / 最少数量 / 失败提示

@@ -15,7 +15,7 @@
 > **正确的做法**：读本文件下面每一处的「改什么 / 为什么 / 上游变了怎么办」，
 > 在新底座上重新实现，再用自检脚本验证结果。
 
-## 改动清单（共 21 处官方文件 + 2 个自有文档）
+## 改动清单（共 22 处官方文件 + 2 个自有文档）
 
 | 编号 | 官方文件 | 改动内容 |
 |---|---|---|
@@ -40,6 +40,7 @@
 | 19 | `hermes_cli/setup.py`、`cli-config.yaml.example` | 向导默认值补齐：删掉官方那句把压缩阈值写回 `0.50` 的、提示文案改成实写的 500 / 0.8；示例配置（新装实例的种子）阈值 `0.50`→**0.8**、`protect_last_n` `20`→**40** |
 | 20 | `agent/agent_init.py`、`tui_gateway/session_compression.py`、`hermes_cli/context_switch_guard.py` | 压缩兜底值补齐：官方 `0.50` / `20` → **0.8 / 40**，与第 05 处的出厂默认值全口径一致（配置缺键或读取失败时走的就是这些兜底） |
 | 21 | `tests/gateway/test_update_command.py`、`test_restart_notification.py`、`test_restart_notice_replay.py`、`test_planned_restart_notice_multiplex.py`、`test_unauthorized_sender_notices.py`、`tests/agent/test_system_prompt.py` | 官方测试断言改按 Coco 口径：更新完成/重启上线/配对提示里的 Hermes 字样改 Coco（第 11 处的配套）；系统提示词那条从「逐字比对」改成「关键段落相对顺序 + 静态段是前缀」 |
+| 22 | `gateway/run_busy.py`、`gateway/run_inbound.py`、`gateway/slash_commands.py`、`agent/onboarding.py` | 经纪人连发消息时看到的英文提示全部改中文：连发状态行（含 `2 min elapsed, running: terminal` 这类英文细节）、一次性提示、`/busy` 命令回复、更新/重启期间的排队提示 |
 
 另有 2 个**自有文档**（不属于官方代码，同步时直接保留即可）：
 `README.md`、`README.zh-CN.md`。
@@ -292,6 +293,31 @@
   → 靠自检 **A36–A40** 守住（三个显式文件 + 引用扫描 + 「`evals/gateway_failure_ownership` 与删除前一致」）。
 - 同步时 `evals` 仍留在 `COCO_DONT_SYNC` 里（官方那 215 个文件不再带回来）：自检 **A33** 守最小集在位、
   **A35** 守「官方 evals/ 整体没被带回来」。
+
+### 22 连发消息等提示的中文口径（经纪人可见）
+- **改什么**：把这四类官方英文提示换成短中文（自检 52–55 守）——
+  `gateway/run_busy.py`（连发消息状态行 6 种 + 排队降级尾巴 + 状态细节 + 更新/重启期间提示）、
+  `gateway/run_inbound.py`（优先路径的同类更新/重启提示 2 处）、
+  `gateway/slash_commands.py`（`/busy` 的名字与回复，另附 `_BUSY_MODE_BEHAVIOR_ZH` 中文口径表）、
+  `agent/onboarding.py`（网关版一次性提示 4 条 + 工具耗时提示 1 条）。
+- **为什么**：经纪人在 Coco 干活时连发消息，会收到 `↪ Redirected current run. I'll adjust using your correction.`
+  这类英文；状态细节还带 `2 min elapsed, running: terminal, iteration 3/500`（英文工具名）。
+  Coco 的界面语言虽然是中文（`display.language: zh`，见 10），但这些串是**写死在代码里的**，
+  不走语言包，所以显示语言调不掉它们。经纪人看不懂英文，也就不知道"我刚发的消息到底被怎么处理了"。
+- **怎么改的**：直接写中文短句（不新建语言包键）—— 这样与 `display.language` 解耦，
+  某台实例语言被写回英文时也不会退回去。细节只保留「已跑 N 分钟 · 第 N 步」，不再打印内部英文工具名；
+  `/busy` 的模式集合仍以官方 `_BUSY_MODE_BEHAVIOR` 为准，只替换展示文案。
+- **连带改了 4 个官方单测的断言文本**（原文断言英文串）：`tests/gateway/test_busy_session_ack.py`、
+  `test_subagent_protection.py`、`test_busy_command.py`、`test_multiplex_busy_input_mode.py`。
+- **没动的同类文本**：`agent/onboarding.py` 里 CLI 版提示、`hermes_cli/cli_*` 的终端提示、
+  `/stop` 的英文回执、`gateway/run_turn.py` 的「Agent inactive for N min」超时诊断、
+  以及长任务期间的心跳（`display.long_running_notifications` 打开时每 N 分钟更新一次的
+  `⏳ Working — 3 min — iteration 1/60, terminal`；这项设成 `generic` 时还会用到
+  `gateway/assets/status_phrases.yaml` 里的英文状态短句）—— 前几条经纪人走飞书用不到/极少见，
+  心跳这条经纪人**会**看到；要一起改的话照本条的写法，并在自检里加对应条目。
+- **上游变了怎么办**：官方若把这些提示也 i18n 了（换成语言包键），按官方新键重挂并把中文写进语言包；
+  只要它还是硬编码，就按 `patches/22-busy-notice-cn.patch` 的语义在新版里重新替换，
+  然后跑 `python3 scripts/check_coco_hooks.py`（52–55）确认没被冲掉。
 
 ## 使用方法（同步时）
 
