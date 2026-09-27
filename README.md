@@ -400,7 +400,7 @@ coco check
 ```
 coco-real-estate-agent/
 ├── install.sh                    # 一键安装脚本
-├── run_agent.py                  # Agent 核心（Hermes）
+├── run_agent.py                  # Agent 核心
 ├── cli.py                        # 命令行入口
 ├── agent/
 │   ├── real_estate_db.py         # 房产数据库模块（PostgreSQL）
