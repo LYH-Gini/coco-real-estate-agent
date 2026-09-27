@@ -184,7 +184,8 @@ class TestRequireServiceInstalled:
         assert exc_info.value.code == 1
         out = capsys.readouterr().out
         assert "not installed" in out
-        assert "hermes gateway install" in out
+        # Coco 口径（2026-09-27）：提示里印 coco 命令（Coco 实例上没有 hermes 命令入口）。
+        assert "coco gateway install" in out
 
     def test_passes_when_unit_exists(self, tmp_path, monkeypatch):
         unit_path = tmp_path / "hermes-gateway.service"
