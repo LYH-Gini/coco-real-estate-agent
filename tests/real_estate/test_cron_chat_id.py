@@ -182,3 +182,23 @@ def test_enable_lists_jobs_in_plain_chinese():
     assert all(not str(x).startswith("coco_") for x in enabled), f"数组里还有内部任务名：{enabled}"
     assert set(enabled) == {job_label(n) for n in EXPECTED_JOBS}, enabled
     assert len(enabled) == len(_jobs()), f"数组与真实注册的任务数不一致：{enabled}"
+
+
+def test_disable_lists_jobs_in_plain_chinese():
+    """`disabled` 数组同样要给中文名 —— 同一个开关的另一端（2026-09-27 第十二组 F427 同族）
+
+    实测：`disable_cron` 的 `disabled` 数组装的也是 `coco_*` 内部名；只改 `enable_cron` 会让模型
+    一会儿看到中文、一会儿看到内部名。
+    """
+    from agent.coco_cron import job_label
+
+    session_id = _bind_gateway_turn(CHAT_ID)
+    assert _dispatch("enable_cron", {}, session_id=session_id, task_id=session_id)["success"] is True
+    out = _dispatch("disable_cron", {}, session_id=session_id, task_id=session_id)
+    disabled = out.get("disabled") or []
+
+    assert out.get("success") is True, out
+    assert disabled, f"关闭后应列出关了哪些任务：{out}"
+    assert all(not str(x).startswith("coco_") for x in disabled), f"数组里还有内部任务名：{disabled}"
+    assert set(disabled) == {job_label(n) for n in EXPECTED_JOBS}, disabled
+    assert not _jobs(), f"关闭后不该还有任务：{list(_jobs())}"

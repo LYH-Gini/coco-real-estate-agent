@@ -120,7 +120,7 @@ def disable_cron(task_id: str = None) -> str:
     if removed:
         return json.dumps({
             "success": True,
-            "disabled": removed,
+            "disabled": _job_label_list(removed),
             "message": f"定时任务已关闭：{_job_labels(removed)}",
         }, ensure_ascii=False)
     return json.dumps({
