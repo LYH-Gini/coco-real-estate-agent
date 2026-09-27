@@ -52,6 +52,64 @@ def _run(root, args, stdin_text=None, env=None):
                           capture_output=True, text=True, input=stdin_text, env=e, timeout=60)
 
 
+def _fake_systemd(tmp_path):
+    """假 systemctl + 隔离的 HERMES_HOME。
+
+    `coco restart` 现在会自己复查就绪，复查要问 systemctl 与 gateway_state.json ——
+    单测必须在沙箱里跑，否则会去问本机真服务（机器上没有该服务时会白等到上限）。
+    """
+    import shutil as _shutil
+
+    bindir = tmp_path / "bin"
+    bindir.mkdir(exist_ok=True)
+    for tool in ("bash", "readlink", "tr", "git", "sed", "head", "cat", "dirname", "journalctl"):
+        src = _shutil.which(tool)
+        if src:
+            (bindir / tool).symlink_to(src)
+    sc = bindir / "systemctl"
+    sc.write_text(
+        "#!/usr/bin/env bash\n"
+        'if [[ "$*" == *"MainPID"* ]]; then echo "MainPID=${COCO_TEST_MAIN_PID:-4242}"; exit 0; fi\n'
+        'if [[ "$*" == *"is-active"* ]]; then\n'
+        '  if [[ "$*" == *"hermes-gateway"* ]]; then\n'
+        # 可选的“跑着跑着就绪了”模拟：第 N 次被问时把状态文件改成 FLIP_TO
+        '    if [[ -n "${COCO_TEST_FLIP_AFTER:-}" ]]; then\n'
+        '      cnt_file="${HERMES_HOME}/.calls"\n'
+        '      n=$(( $(cat "$cnt_file" 2>/dev/null || echo 0) + 1 ))\n'
+        '      echo "$n" > "$cnt_file"\n'
+        '      if [[ $n -ge $COCO_TEST_FLIP_AFTER ]]; then\n'
+        '        printf \'{"pid": %s, "gateway_state": "%s"}\' "${COCO_TEST_MAIN_PID:-4242}" "${COCO_TEST_FLIP_TO:-running}" > "${HERMES_HOME}/gateway_state.json"\n'
+        "      fi\n"
+        "    fi\n"
+        '    echo "${COCO_TEST_STATE:-active}"; exit 0\n'
+        "  fi\n"
+        "  echo inactive; exit 3\n"
+        "fi\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    sc.chmod(0o755)
+    home = tmp_path / "hermes-home"
+    home.mkdir(exist_ok=True)
+    return bindir, home
+
+
+def _write_state(home, state="running", pid=4242):
+    """写一份 gateway_state.json（字段名与官方一致）"""
+    import json
+
+    (home / "gateway_state.json").write_text(
+        json.dumps({"pid": pid, "gateway_state": state, "updated_at": "2026-09-27T00:00:00Z"}),
+        encoding="utf-8",
+    )
+
+
+def _run_with_systemd(root, args, bindir, home, extra_env=None):
+    env = {"PATH": str(bindir), "HERMES_HOME": str(home)}
+    env.update(extra_env or {})
+    return _run(root, args, env=env)
+
+
 class TestForwarding:
     """安装配置类命令转发给官方程序（用 exec，退出码/参数都要原样）"""
 
@@ -70,8 +128,9 @@ class TestForwarding:
         assert "FAKE-HERMES args: pairing approve feishu 1234" in r.stdout, r.stdout
 
     def test_service_lifecycle_forward(self, tmp_path):
+        # restart 单独在 TestRestartRecheck 里覆盖（它多了「重启后复查就绪」那一步）
         root = _fake_install(tmp_path)
-        for short in ("start", "stop", "restart"):
+        for short in ("start", "stop"):
             r = _run(root, [short])
             assert f"FAKE-HERMES args: gateway {short}" in r.stdout, r.stdout
 
@@ -95,6 +154,92 @@ class TestForwarding:
         r = _run(root, ["model"], env={"PATH": str(bindir)})
         assert r.returncode != 0
         assert "找不到官方 hermes 程序" in (r.stdout + r.stderr), r.stdout + r.stderr
+
+
+class TestRestartRecheck:
+    """`coco restart` 的重启后复查（2026-09-27）
+
+    官方流程在「等新进程把状态写成 running/degraded」这步只等 155 秒，等不到就打一句
+    ⚠ 就返回 —— 那句话不代表服务没起来。这里自己复查一次，把结论说清楚。
+    """
+
+    def test_quiet_when_already_ready(self, tmp_path):
+        """官方已确认就绪时不额外打印（正常路径零噪音），退出码原样透出"""
+        root = _fake_install(tmp_path)
+        bindir, home = _fake_systemd(tmp_path)
+        _write_state(home, state="running", pid=4242)
+        r = _run_with_systemd(root, ["restart"], bindir, home)
+        assert "FAKE-HERMES args: gateway restart" in r.stdout, r.stdout
+        assert "等待服务就绪" not in r.stdout, r.stdout
+        assert "已重启并在运行" not in r.stdout, r.stdout
+        assert r.returncode == 0, r.stdout + r.stderr
+
+    def test_forwards_extra_args(self, tmp_path):
+        root = _fake_install(tmp_path)
+        bindir, home = _fake_systemd(tmp_path)
+        _write_state(home, state="running", pid=4242)
+        r = _run_with_systemd(root, ["restart", "--system"], bindir, home)
+        assert "FAKE-HERMES args: gateway restart --system" in r.stdout, r.stdout
+
+    def test_waits_then_reports_ready(self, tmp_path):
+        """官方没等到确认（状态还是 starting），复查等到 running 后给明确结论"""
+        root = _fake_install(tmp_path)
+        bindir, home = _fake_systemd(tmp_path)
+        _write_state(home, state="starting", pid=4242)
+        r = _run_with_systemd(
+            root, ["restart"], bindir, home,
+            {"COCO_RESTART_RECHECK_SECS": "20", "COCO_RESTART_RECHECK_INTERVAL": "1",
+             "COCO_TEST_FLIP_AFTER": "2", "COCO_TEST_FLIP_TO": "running"},
+        )
+        assert "等待服务就绪" in r.stdout, r.stdout
+        assert "✓ Coco 服务已重启并在运行（PID 4242）" in r.stdout, r.stdout
+        assert r.returncode == 0, r.stdout + r.stderr
+
+    def test_reports_still_starting_at_deadline(self, tmp_path):
+        """进程在跑但到点还没就绪：如实说明 + 给复查入口，不算失败"""
+        root = _fake_install(tmp_path)
+        bindir, home = _fake_systemd(tmp_path)
+        _write_state(home, state="starting", pid=4242)
+        r = _run_with_systemd(
+            root, ["restart"], bindir, home,
+            {"COCO_RESTART_RECHECK_SECS": "1", "COCO_RESTART_RECHECK_INTERVAL": "1"},
+        )
+        assert "等待服务就绪" in r.stdout, r.stdout
+        assert "状态还是 starting" in r.stdout, r.stdout
+        assert "coco status" in r.stdout and "coco logs 50" in r.stdout, r.stdout
+        assert r.returncode == 0, r.stdout + r.stderr
+
+    def test_stale_state_record_is_not_ready(self, tmp_path):
+        """状态文件里是上一代进程写的（pid 与主进程不一致）→ 不算就绪"""
+        root = _fake_install(tmp_path)
+        bindir, home = _fake_systemd(tmp_path)
+        _write_state(home, state="running", pid=999)   # 主进程是 4242
+        r = _run_with_systemd(
+            root, ["restart"], bindir, home,
+            {"COCO_RESTART_RECHECK_SECS": "1", "COCO_RESTART_RECHECK_INTERVAL": "1"},
+        )
+        assert "状态还是" in r.stdout, r.stdout
+        assert r.returncode == 0, r.stdout + r.stderr
+
+    def test_reports_service_not_running(self, tmp_path):
+        """服务没起来：明确报出来并返回非零（不让人猜）"""
+        root = _fake_install(tmp_path)
+        bindir, home = _fake_systemd(tmp_path)
+        r = _run_with_systemd(
+            root, ["restart"], bindir, home,
+            {"COCO_TEST_STATE": "inactive", "COCO_RESTART_RECHECK_INTERVAL": "0"},
+        )
+        assert "当前不在运行" in r.stdout, r.stdout
+        assert "coco logs 50" in r.stdout, r.stdout
+        assert r.returncode == 1, r.stdout + r.stderr
+
+    def test_official_failure_is_not_padded(self, tmp_path):
+        """官方命令自己失败时，只透出它的退出码，不追加我们的结论"""
+        root = _fake_install(tmp_path, hermes_exit=7)
+        bindir, home = _fake_systemd(tmp_path)
+        r = _run_with_systemd(root, ["restart"], bindir, home)
+        assert r.returncode == 7, r.stdout + r.stderr
+        assert "等待服务就绪" not in r.stdout, r.stdout
 
 
 class TestLocalCommands:

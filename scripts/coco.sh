@@ -68,6 +68,98 @@ confirm_yes() {   # $1=提示
   fi
 }
 
+# 非 exec 的转发：调用方要拿退出码做后处理（exec 会连进程一起替掉）
+coco_call_hermes() {
+  if [[ -x "$HERMES_BIN" ]]; then
+    "$HERMES_BIN" "$@"
+  elif command -v hermes >/dev/null 2>&1; then
+    hermes "$@"
+  else
+    echo "找不到官方 hermes 程序（期望位置：$HERMES_BIN）" >&2
+    echo "请确认 Coco 已安装：ls $REPO_ROOT/venv/bin/hermes" >&2
+    exit 1
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# 重启后的就绪复查（coco restart 用）
+#
+# 官方重启流程在「等新进程把运行状态写成 running/degraded」这一步只等 155 秒
+# （60 秒 + systemd 的 RestartSec + TimeoutStartSec）；冷启动比这更慢的机器上，
+# 它会先打一句「did not become active within …」就返回 —— 那句话只说明"没等到
+# 确认"，不代表服务没起来。官方命令返回后这里自己再确认一次，把结论说清楚：
+#   已就绪   → 不额外打印（官方那行已经说过了）
+#   还没就绪 → 等到就绪；到点了如实说不确定，并给日志入口
+#   没起来   → 明确报出来并返回非零（不让人猜）
+# 等待上限可用 COCO_RESTART_RECHECK_SECS 调整（默认 180 秒），
+# 轮询间隔可用 COCO_RESTART_RECHECK_INTERVAL（默认 3 秒；单测里调小以免等太久）。
+# ---------------------------------------------------------------------------
+COCO_RESTART_RECHECK_SECS="${COCO_RESTART_RECHECK_SECS:-180}"
+
+# 输出 "<服务名> <状态>"：用户服务 hermes-gateway 优先，兼容老实例的系统服务 hermes-agent
+coco_service_state() {
+  local u s
+  u="$(systemctl --user is-active hermes-gateway 2>/dev/null || true)"
+  case "$u" in
+    active|activating|reloading|deactivating) echo "hermes-gateway $u"; return 0 ;;
+  esac
+  s="$(systemctl is-active hermes-agent 2>/dev/null || true)"
+  case "$s" in
+    active|activating|reloading|deactivating) echo "hermes-agent $s"; return 0 ;;
+  esac
+  echo "hermes-gateway ${u:-unknown}"
+}
+
+# 主进程号（$1=服务名）
+coco_main_pid() {
+  if [[ "${1:-hermes-gateway}" == "hermes-agent" ]]; then
+    systemctl show hermes-agent -p MainPID 2>/dev/null | sed -n 's/^MainPID=\([0-9]\{1,\}\).*/\1/p'
+  else
+    systemctl --user show hermes-gateway -p MainPID 2>/dev/null | sed -n 's/^MainPID=\([0-9]\{1,\}\).*/\1/p'
+  fi
+}
+
+# 输出运行状态（running / degraded / starting / stopped / startup_failed …）
+# 状态文件里记的 pid 与当前主进程不一致时视为"未就绪" —— 那是上一代进程写的记录
+coco_gateway_state() {
+  local unit="${1:-hermes-gateway}" home f state pid main_pid
+  home="${HERMES_HOME:-$HOME/.hermes}"
+  f="$home/gateway_state.json"
+  [[ -f "$f" ]] || return 1
+  state="$(sed -n 's/.*"gateway_state"[[:space:]]*:[[:space:]]*"\([a-z_]*\)".*/\1/p' "$f" | head -n 1)"
+  [[ -n "$state" ]] || return 1
+  pid="$(sed -n 's/.*"pid"[[:space:]]*:[[:space:]]*\([0-9]\{1,\}\).*/\1/p' "$f" | head -n 1)"
+  main_pid="$(coco_main_pid "$unit")"
+  if [[ -n "$main_pid" && "$main_pid" != "0" && -n "$pid" && "$pid" != "$main_pid" ]]; then
+    return 1
+  fi
+  echo "$state"
+}
+
+# 等到就绪：0=已就绪；1=进程在跑但没报就绪；2=服务没起来
+coco_wait_gateway_ready() {
+  local budget="${1:-180}" start=$SECONDS unit="" us="" state dead=0 waited=0
+  while :; do
+    read -r unit us <<< "$(coco_service_state)"
+    if [[ "$us" == "active" ]]; then
+      dead=0
+      state="$(coco_gateway_state "$unit" || echo "unknown")"
+      case "$state" in running|degraded) return 0 ;; esac
+    else
+      case "$us" in
+        activating|reloading|deactivating) dead=0 ;;
+        *) dead=$((dead + 1)); [[ $dead -lt 3 ]] || return 2 ;;
+      esac
+    fi
+    waited=$((SECONDS - start))
+    [[ $waited -lt $budget ]] || return 1
+    if [[ $waited -gt 0 && $((waited % 30)) -eq 0 ]]; then
+      echo "⏳ 还在等就绪（已等 ${waited} 秒 / 最多 ${budget} 秒）..."
+    fi
+    sleep "${COCO_RESTART_RECHECK_INTERVAL:-3}"
+  done
+}
+
 case "${1:-version}" in
   # ---------- 日常运维 ----------
   version|--version|-v|"")
@@ -160,8 +252,49 @@ case "${1:-version}" in
     echo "本机没有 journalctl，无法读取日志。" >&2
     exit 1
     ;;
-  start|stop|restart)
+  start|stop)
     run_hermes gateway "$1"
+    ;;
+  restart)
+    # 官方重启流程走完后自己再确认一次就绪（原因见上方「重启后的就绪复查」）
+    shift
+    RC=0
+    coco_call_hermes gateway restart "$@" || RC=$?
+    if [[ $RC -ne 0 ]]; then
+      exit $RC                      # 官方已经给出失败原因，不追加
+    fi
+    if ! command -v systemctl >/dev/null 2>&1; then
+      exit $RC                      # 没有 systemd 就不做复查（不给没有依据的结论）
+    fi
+    if coco_wait_gateway_ready 0; then
+      exit 0                        # 官方那行已经确认过就绪，不重复打印
+    fi
+    echo "⏳ 等待服务就绪（最多 ${COCO_RESTART_RECHECK_SECS} 秒）..."
+    RCK=0
+    coco_wait_gateway_ready "$COCO_RESTART_RECHECK_SECS" || RCK=$?
+    read -r _ _UNIT <<< "$(coco_service_state)"
+    PID="$(coco_main_pid "$_UNIT")"
+    case "$RCK" in
+      0)
+        if [[ "$(coco_gateway_state "$_UNIT" || echo "")" == "degraded" ]]; then
+          echo "✓ Coco 服务已重启（PID ${PID:-未知}）—— 状态 degraded：有平台还没连上，详情看 coco status"
+        else
+          echo "✓ Coco 服务已重启并在运行（PID ${PID:-未知}）"
+        fi
+        exit 0
+        ;;
+      1)
+        FINAL_STATE="$(coco_gateway_state "$_UNIT" || echo "未就绪")"
+        echo "⚠ 服务进程在运行（PID ${PID:-未知}），但 ${COCO_RESTART_RECHECK_SECS} 秒内状态还是 ${FINAL_STATE}"
+        echo "  稍后用 coco status 复查；日志：coco logs 50"
+        exit 0
+        ;;
+      *)
+        echo "⚠ Coco 服务当前不在运行（机器人不会回话；客户数据不受影响）"
+        echo "  日志：coco logs 50"
+        exit 1
+        ;;
+    esac
     ;;
 
   # ---------- 安装配置（转发官方命令） ----------
