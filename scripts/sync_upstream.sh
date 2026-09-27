@@ -66,6 +66,10 @@ HOOK_FILES=(
   # 第 19 处：示例配置的种子值（2026-09-27 加；install.sh 会把它复制成新实例的 config.yaml，
   # 官方阈值 0.50 / 保留 20 会让新装实例在对齐脚本跑之前就是错的）
   "cli-config.yaml.example"
+  # 第 20 处：压缩兜底值（2026-09-27 加；官方 0.50 / 20 与出厂默认 0.8 / 40 不一致，
+  # 配置缺键或读取失败时会退回官方口径。agent/agent_init.py 上面已列出，它同时背着第 04 处）
+  "tui_gateway/session_compression.py"
+  "hermes_cli/context_switch_guard.py"
 )
 
 # Coco 刻意不跟踪的官方路径（删过就不许同步再带回来；2026-09-27 定）

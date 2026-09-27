@@ -79,7 +79,7 @@ _COMPRESSION_INT_KEYS = (
     ("proactive_prune_tokens", 0, 0),
     ("proactive_prune_min_result_chars", 8000, 0),
     ("proactive_prune_min_reclaim_tokens", 4096, 0),
-    ("protect_last_n", 20, 0),
+    ("protect_last_n", 40, 0),  # Coco: 官方 20 → 40（与 config_defaults.py 一致，勿回退）
     ("min_tail_user_messages", 1, 1),
 )
 

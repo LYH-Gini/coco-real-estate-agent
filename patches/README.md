@@ -15,7 +15,7 @@
 > **正确的做法**：读本文件下面每一处的「改什么 / 为什么 / 上游变了怎么办」，
 > 在新底座上重新实现，再用自检脚本验证结果。
 
-## 改动清单（共 19 处官方文件 + 2 个自有文档）
+## 改动清单（共 21 处官方文件 + 2 个自有文档）
 
 | 编号 | 官方文件 | 改动内容 |
 |---|---|---|
@@ -38,6 +38,8 @@
 | 17 | `tests/hermes_cli/test_destructive_slash_confirm_gate.py` | 官方两条断言「默认要弹确认框」的用例改按 Coco 口径（默认不弹），与第 05 处的默认值改动配套 |
 | 18 | `hermes_cli/config_defaults.py`、`gateway/display_config.py`、`scripts/coco_config_align.py` | 飞书默认不显示工具进展行：代码默认值、平台档默认值、更新时对齐三处都写成 `off`（官方飞书档默认 `new`，每调一个工具发一条） |
 | 19 | `hermes_cli/setup.py`、`cli-config.yaml.example` | 向导默认值补齐：删掉官方那句把压缩阈值写回 `0.50` 的、提示文案改成实写的 500 / 0.8；示例配置（新装实例的种子）阈值 `0.50`→**0.8**、`protect_last_n` `20`→**40** |
+| 20 | `agent/agent_init.py`、`tui_gateway/session_compression.py`、`hermes_cli/context_switch_guard.py` | 压缩兜底值补齐：官方 `0.50` / `20` → **0.8 / 40**，与第 05 处的出厂默认值全口径一致（配置缺键或读取失败时走的就是这些兜底） |
+| 21 | `tests/gateway/test_update_command.py`、`test_restart_notification.py`、`test_restart_notice_replay.py`、`test_planned_restart_notice_multiplex.py`、`test_unauthorized_sender_notices.py`、`tests/agent/test_system_prompt.py` | 官方测试断言改按 Coco 口径：更新完成/重启上线/配对提示里的 Hermes 字样改 Coco（第 11 处的配套）；系统提示词那条从「逐字比对」改成「关键段落相对顺序 + 静态段是前缀」 |
 
 另有 2 个**自有文档**（不属于官方代码，同步时直接保留即可）：
 `README.md`、`README.zh-CN.md`。
@@ -229,15 +231,65 @@
   **第 42 项**守示例配置，其中写回 `0.50` 的那行是反向检查：它一回来就报 FAIL）。
   同步清单里这两个文件都登记在 `scripts/sync_upstream.sh` 的 `HOOK_FILES`。
 
-## evals/ 最小必要集（保留 13 个文件，不是官方补丁）
+### 20 压缩兜底值与出厂默认对齐（三处）
+
+- **改什么**：把「配置里读不到这个键时的兜底值」从官方口径改成 Coco 口径：
+  - `agent/agent_init.py::_compression_threshold()`：`cfg.get("threshold", 0.50)` → `0.8`
+  - `agent/agent_init.py::_parse_compression_config()`：`cfg.get("protect_last_n", 20)` → `40`
+  - `tui_gateway/session_compression.py::_COMPRESSION_INT_KEYS`：`("protect_last_n", 20, 0)` → `(…, 40, 0)`
+  - `hermes_cli/context_switch_guard.py`：`getattr(cc, "protect_last_n", 20)` → `…, 40)`
+- **为什么**：第 05 处把出厂默认值改成了 0.8 / 40，但这几处兜底没跟上。它们生效的场景是
+  「实例的 config.yaml 里没写这个键」或「配置读取失败」——这时压缩阈值会悄悄退回 0.50、
+  保留条数退回 20，比 Coco 标准更早压缩、聊天上下文被更早收走。官方用例
+  `tests/agent/test_compression_config_defaults.py` 断言「兜底值必须等于出厂默认值」，因此在
+  我们没改齐之前它一直是红的（2026-09-27 扩面扫描才暴露）。
+- **上游变了怎么办**：官方只要还是 0.50 / 20 这两个兜底，同步后就要按上面的位置重改（三处文件的
+  函数/常量名基本稳定，改的是数字）。改完 `scripts/check_coco_hooks.py` 的 **43 / 44 / 45** 三项会
+  自动守住（正向守我们的值、反向守官方值不在）；回归用例
+  `tests/real_estate/test_compression_defaults_aligned.py` 会断言「兜底 == 出厂默认」。
+- **注意**：`agent/agent_init.py` 同时还有第 04 处的改动（启动建房产表），同步时两处一起重打。
+
+### 21 官方测试断言按 Coco 口径（品牌文案 + 系统提示词）
+
+- **背景**：这一批和第 14 处同类 —— 功能是对的、提示词也是 Coco 口径，红的是官方断言里写死的
+  Hermes 字样；第 21 处的系统提示词那条则是「本仓比官方多注入了段落」导致的逐字比对必然不符。
+  （2026-09-27 扩面跑 `tests/gateway` + `tests/agent` 时一次性暴露 10 条。）
+- **改什么**（只改期望值，用例名、前置条件、断言结构都不动）：
+  - `tests/gateway/test_update_command.py`：两处 `assert "Hermes update finished" in …` → `Coco update finished`。
+  - `tests/gateway/test_restart_notification.py`：两处上线提示 `…Hermes is back and ready.` → `…Coco is back and ready.`。
+  - `tests/gateway/test_restart_notice_replay.py`、`test_planned_restart_notice_multiplex.py`：
+    模块常量 `ONLINE_NOTICE` 同上改 Coco。
+  - `tests/gateway/test_unauthorized_sender_notices.py`：`` `hermes -p work pairing approve …` `` → `` `coco -p work …` ``。
+  - `tests/agent/test_system_prompt.py::test_coding_prompt_orders_shared_context_before_workspace`：
+    把 `expected = "\n\n".join((…))` + `assert prompt == expected` 换成 `ordered_markers` 元组 +
+    逐段 `prompt.index()` 的相对顺序断言，并把静态段断言改为 `prompt.startswith(_cached_system_prompt_static)`
+    （静态段是整段提示词的前缀，缓存不变这条不变量仍然被守住）。
+- **为什么不能靠「接受常红」**：这批噪声会淹掉真问题 —— 本轮的「删 evals 漏了两个脚本」「压缩兜底值
+  没改齐」就是这么被发现的，44 条红里当时只有 9 条是这两类真问题。
+- **上游变了怎么办**：同步上游会把 `tests/` 覆盖回官方断言。跑 `python3 scripts/check_coco_hooks.py`
+  的第 **46–51** 项（正向守 Coco 口径、反向守 Hermes 字样不许回来）能立刻发现，按本条改回来即可。
+- **配套的测试夹具口径**：`tests/agent/test_413_compression.py` 与 `test_in_place_preflight_rewind.py`
+  的预期按官方出厂压缩口径（0.50 / 20）书写，本轮给它们加了 `autouse` 夹具显式钉住官方值
+  （`monkeypatch.setitem(DEFAULT_CONFIG["compression"], …)`），这样它们测的是预压缩/原地回卷行为本身，
+  不会再被第 05 处的出厂默认值连带变红。
+
+## evals/ 最小必要集（保留 16 个文件，不是官方补丁）
+
 - 「用户装机用不到」而删掉的官方目录里，`evals/` 有个例外：`tests/gateway`（3 个）与 `tests/agent`（1 个）等
   共 **10 个测试模块 `from evals... import ...`**，整个删掉会让这两个区在**收集阶段就中断**
   （7278 + 7938 条一条都跑不了；2026-09-27 扩面扫描时踩到）。
-- 因此 `evals/` 只保留最小必要集 **13 个文件（约 124KB）**：`heartbeat_idle_wire.py`、
+- 因此 `evals/` 只保留最小必要集 **16 个文件（约 141KB）**：`heartbeat_idle_wire.py`、
   `providers/reasoning_shapes.py`、`compaction/{fixtures,jev_arm}.py`、`completion_backlog_probe.py`、
   `mcp_device_flow.py`、`codebase_navigability/__init__.py`、`api_delegation_http_probe.py`、
   `postmortem/forensics/{common,logcalls}.py`，以及 `evals/`、`evals/postmortem/`、
-  `evals/postmortem/forensics/` 三个空的 `__init__.py`。
+  `evals/postmortem/forensics/` 三个空的 `__init__.py`（以上 13 个是 `import` 依赖）；
+  再加 3 个**被测试按脚本路径调用**的文件：`cron_timeout_fork_race.py`、
+  `gateway_failure_ownership/probe.py`、`gateway_failure_ownership/foreign_writer.py`。
+- **删目录的验收教训（2026-09-27 一次扫描、一次补漏都是这么踩的）**：恢复时不能只扫 `import`。
+  ① 测试还会用 `Path(...) / "evals" / "x.py"` 这种**拼接写法**把脚本当子进程跑起来（`can't open file`）；
+  ② 那个脚本自己还会拉起**同目录的兄弟模块**（`probe.py` → `foreign_writer.py`），这时连报错都指不出来
+  （表现为探针跑起来了但观测不达 17/20）。可靠顺序是：按引用恢复文件 → **真跑一遍受影响的测试文件**
+  → 靠自检 **A36–A40** 守住（三个显式文件 + 引用扫描 + 「`evals/gateway_failure_ownership` 与删除前一致」）。
 - 同步时 `evals` 仍留在 `COCO_DONT_SYNC` 里（官方那 215 个文件不再带回来）：自检 **A33** 守最小集在位、
   **A35** 守「官方 evals/ 整体没被带回来」。
 

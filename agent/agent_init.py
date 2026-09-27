@@ -1422,7 +1422,9 @@ def _compression_threshold(agent, cfg: Dict[str, Any]) -> tuple[float, bool]:
     """Global threshold merged with the per-model override; stashes the autoraise notice.
     Codex gpt-5.4/5.5 raise to 85% (272K cap → 50% would compact at ~136K); the opt-out flag
     restores the global value, and the notice has its own display gate."""
-    threshold = float(cfg.get("threshold", 0.50))
+    # Coco: 官方默认 0.50 → 0.8。必须与 hermes_cli/config_defaults.py 的 compression.threshold 一致，
+    # 官方用例 tests/agent/test_compression_config_defaults.py 就盯着这条一致性，勿回退。
+    threshold = float(cfg.get("threshold", 0.8))
     autoraise = _cfg_flag(cfg, "codex_gpt55_autoraise", True)
     notice_enabled = _cfg_flag(cfg, "codex_gpt55_autoraise_notice", True)
     agent._compression_threshold_autoraised = None
@@ -1481,7 +1483,8 @@ def _parse_compression_config(agent, _agent_cfg) -> CompressionSettings:
     threshold, autoraise_notice_enabled = _compression_threshold(agent, cfg)
     # Plain int()/float() coercions raise on garbage; evaluated up front, in config order.
     target_ratio = float(cfg.get("target_ratio", 0.20))
-    protect_last = int(cfg.get("protect_last_n", 20))
+    # Coco: 官方默认 20 → 40（同样必须与 config_defaults.py 的 protect_last_n 一致，勿回退）。
+    protect_last = int(cfg.get("protect_last_n", 40))
     # max_attempts: retry rounds before "max compression attempts reached"; some sessions
     # need >3 (incompressible tool schemas). Default 3, floor 1, cap 10.
     max_attempts = _parse_config_int(cfg.get("max_attempts", 3), 3)

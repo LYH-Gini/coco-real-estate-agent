@@ -29,6 +29,7 @@ Coco 挂钩点自检 —— 同步官方 Hermes 上游代码后运行
 """
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -615,6 +616,106 @@ CONTENT_CHECKS = [
         "新装实例在对齐脚本跑之前就是错的，文档里也自相矛盾。\n"
         "处理：改回 0.8 / 40（max_turns 已是 500，见 patches/README.md 第 19 处）。",
     ),
+    (
+        "43",
+        "压缩兜底值·智能体侧（与出厂默认一致）",
+        "agent/agent_init.py",
+        [
+            r'^\s*threshold = float\(cfg\.get\("threshold", 0\.8\)\)',
+            r'^\s*protect_last = int\(cfg\.get\("protect_last_n", 40\)\)',
+            # 官方那两处兜底必须不在：配置缺键/读取失败时会退回官方口径，与出厂默认打架
+            r'!cfg\.get\("threshold", 0\.50\)',
+            r'!cfg\.get\("protect_last_n", 20\)',
+        ],
+        "配置里没写压缩参数、或配置读取失败时，走的就是这里的兜底值。官方默认 0.50 / 20 与 "
+        "hermes_cli/config_defaults.py 的 0.8 / 40 不一致，官方用例 "
+        "tests/agent/test_compression_config_defaults.py 会报红（2026-09-27 踩过）。",
+    ),
+    (
+        "44",
+        "压缩兜底值·终端/桌面界面侧",
+        "tui_gateway/session_compression.py",
+        [
+            r'\("protect_last_n", 40, 0\)',
+            r'!\("protect_last_n", 20, 0\)',
+        ],
+        "会话里把压缩配置键删掉时，界面侧按这里的兜底值恢复；官方 20 会让保留条数退回 20。",
+    ),
+    (
+        "45",
+        "压缩兜底值·上下文切换守卫",
+        "hermes_cli/context_switch_guard.py",
+        [
+            r'getattr\(cc, "protect_last_n", 40\)',
+            r'!getattr\(cc, "protect_last_n", 20\)',
+        ],
+        "压缩器对象上没这个属性时的兜底值；官方 20 与出厂默认 40 不一致。",
+    ),
+    (
+        "46",
+        "官方测试断言：更新完成提示品牌",
+        "tests/gateway/test_update_command.py",
+        [
+            r'assert "Coco update finished" in',
+            r"!Hermes update finished",
+        ],
+        "更新完成提示在 gateway/run_notifications.py 里是「✅ Coco update finished.」，官方断言写的还是\n"
+        "Hermes update finished（两条）。处理：改回 coco 口径（参考 patches/README.md 第 21 处）。",
+    ),
+    (
+        "47",
+        "官方测试断言：重启上线提示品牌（直接断言）",
+        "tests/gateway/test_restart_notification.py",
+        [
+            r'"♻️ Gateway online — Coco is back and ready\."',
+            r"!Hermes is back and ready",
+        ],
+        "网关重启后的上线提示是「♻️ Gateway online — Coco is back and ready.」，官方断言写的是 Hermes。\n"
+        "处理：改回 coco 口径（参考 patches/README.md 第 21 处）。",
+    ),
+    (
+        "48",
+        "官方测试断言：重启上线提示品牌（重放用例）",
+        "tests/gateway/test_restart_notice_replay.py",
+        [
+            r'ONLINE_NOTICE = "♻️ Gateway online — Coco is back and ready\."',
+            r"!Hermes is back and ready",
+        ],
+        "同一个上线提示常量，官方版本会让这条用例红。处理：改回 coco 口径（参考 patches/README.md 第 21 处）。",
+    ),
+    (
+        "49",
+        "官方测试断言：重启上线提示品牌（多 profile 用例）",
+        "tests/gateway/test_planned_restart_notice_multiplex.py",
+        [
+            r'ONLINE_NOTICE = "♻️ Gateway online — Coco is back and ready\."',
+            r"!Hermes is back and ready",
+        ],
+        "同上，多 profile 的重启通知用例。处理：改回 coco 口径（参考 patches/README.md 第 21 处）。",
+    ),
+    (
+        "50",
+        "官方测试断言：配对提示里的命令名",
+        "tests/gateway/test_unauthorized_sender_notices.py",
+        [
+            r"`coco -p work pairing approve discord ZZZZ9999`",
+            r"!`hermes -p work pairing approve",
+        ],
+        "陌生人私聊的配对提示由 gateway/run_inbound_unauthorized.py 生成，命令名是 coco，官方断言写的是 hermes。\n"
+        "处理：改回 coco 口径（参考 patches/README.md 第 21 处）。",
+    ),
+    (
+        "51",
+        "官方测试断言：系统提示词按段落相对顺序校验",
+        "tests/agent/test_system_prompt.py",
+        [
+            r"ordered_markers = \(",
+            r"assert positions == sorted\(positions\)",
+            r"!assert prompt == expected",
+        ],
+        "本仓在系统提示词里注入了身份与房产业务段落（第 02/03 处），逐字比对整段提示词必然不符。\n"
+        "处理：改回「关键段落相对顺序 + 静态段是前缀」的校验（参考 patches/README.md 第 21 处）。",
+    ),
 ]
 
 # 文件/目录存在性检查：编号 / 名称 / 相对路径 / 类型(file|dir|glob) / 最少数量 / 失败提示
@@ -657,6 +758,21 @@ PATH_CHECKS = [
     ("A34", "已删官方目录·前端测试", "tests-js", "absent", 0, "tests-js/ 又被同步带回来了（官方前端测试）"),
     ("A35", "已删官方目录·离线评测（整体）", "evals/acp_empty_session_wire.py", "absent", 0,
      "官方 evals/ 整个被同步带回来了 —— 只需要最小必要集那 13 个文件（见 patches/README.md）"),
+    # 2026-09-27 补：测试按「脚本路径」调用（不是 import）的 evals 文件。扫 import 扫不到它们，
+    # 而探针还会拉起同目录的兄弟脚本，光按文件名找也找不全。
+    ("A36", "evals 运行时脚本·定时任务竞态探针", "evals/cron_timeout_fork_race.py", "file", 1,
+     "缺它则 tests/agent/test_deadline_fork_race.py 报 can't open file"),
+    ("A37", "evals 运行时脚本·失败写入归属探针", "evals/gateway_failure_ownership/probe.py", "file", 1,
+     "缺它则 tests/gateway/test_failure_writer_ownership.py 报 can't open file"),
+    ("A38", "evals 运行时脚本·外来写入者（探针的兄弟模块）", "evals/gateway_failure_ownership/foreign_writer.py", "file", 1,
+     "缺它则上面的探针能跑起来但观测不达（17/20），测试红得看不出原因（2026-09-27 踩过）"),
+]
+
+
+EVAL_DIRS_MUST_BE_COMPLETE = [
+    # 这个目录里的探针脚本会拉起同目录的兄弟脚本（probe.py → foreign_writer.py），
+    # 只恢复被测试点名的那一个文件不够 —— 要求整目录与删除前一致。
+    "evals/gateway_failure_ownership",
 ]
 
 
@@ -711,6 +827,65 @@ def check_paths(repo: Path):
     return results
 
 
+def check_eval_references(repo: Path):
+    """删目录的验收：测试真正调用到的 evals 文件必须都在。
+
+    两个来源：
+      · 代码里写死的 evals 路径（`"evals/x.py"` 或 `"evals" / "x.py"` 拼接写法）；
+      · 需要整目录完整的 evals 子目录（探针脚本会拉起同目录的兄弟脚本，光按名字找不到）。
+    """
+    results = []
+
+    ref_re = re.compile(r"evals/[A-Za-z0-9_./-]+\.py")
+    split_re = re.compile(r"[\"']evals[\"']((?:\s*/\s*[\"'][^\"'\n]+[\"'])+)")
+    code_hint = re.compile(r"subprocess|sys\.executable|Path|str\(|parents\[")
+    refs = set()
+    for base in ("tests", "scripts"):
+        for src in (repo / base).rglob("*.py"):
+            try:
+                text = src.read_text(encoding="utf-8", errors="ignore")
+            except Exception:  # pragma: no cover
+                continue
+            for line in text.splitlines():
+                if "#" in line:
+                    line = line.split("#", 1)[0]
+                if "evals" not in line or not code_hint.search(line):
+                    continue
+                refs.update(ref_re.findall(line))
+                for tail in split_re.findall(line):
+                    parts = re.findall(r"[\"']([^\"'\n]+)[\"']", tail)
+                    if parts:
+                        refs.add("evals/" + "/".join(parts))
+    missing = sorted(r for r in refs if not (repo / r).exists())
+    results.append((
+        "A39", "评测引用完整（测试调用到的 evals 文件都在）", not missing,
+        f"扫到 {len(refs)} 处引用，全部在位" if not missing
+        else f"缺 {missing} —— 删目录时必须按「测试实际调用到的文件」逐个恢复，光扫 import 必然漏",
+    ))
+
+    # 这些目录要求「与删除前一致」：里面的脚本会互相拉起（probe → foreign_writer）
+    baseline = "fa1f5d7^"  # 删官方目录那次提交的上一个提交
+    for sub in EVAL_DIRS_MUST_BE_COMPLETE:
+        try:
+            out = subprocess.run(
+                ["git", "-C", str(repo), "ls-tree", "-r", "--name-only", baseline, "--", sub],
+                capture_output=True, text=True, timeout=30,
+            )
+        except Exception:  # pragma: no cover
+            out = None
+        if out is None or out.returncode != 0:
+            results.append(("A40", f"评测目录完整·{sub}", True, f"跳过（取不到基线 {baseline}，可能不是完整克隆）"))
+            continue
+        want = [ln for ln in out.stdout.splitlines() if ln.strip()]
+        gone = [p for p in want if not (repo / p).exists()]
+        results.append((
+            "A40", f"评测目录完整·{sub}", not gone,
+            f"{len(want)} 个文件都在" if not gone
+            else f"缺 {gone} —— 这个目录里的脚本会互相拉起，必须整目录恢复（见 patches/README.md 删目录一节）",
+        ))
+    return results
+
+
 def main() -> int:
     repo = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent
     print("=" * 74)
@@ -718,7 +893,7 @@ def main() -> int:
     print(f" 仓库：{repo}")
     print("=" * 74)
 
-    all_results = check_content(repo) + check_paths(repo)
+    all_results = check_content(repo) + check_paths(repo) + check_eval_references(repo)
 
     width = 34
     print(f"\n{'编号':<5}{'检查项':<{width}}{'结果':<6}说明")

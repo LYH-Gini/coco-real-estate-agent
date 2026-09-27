@@ -17,7 +17,7 @@ import gateway.run as gateway_run
 from gateway.config import GatewayConfig, HomeChannel, Platform, PlatformConfig
 from gateway.platforms.base import SendResult
 
-ONLINE_NOTICE = "♻️ Gateway online — Hermes is back and ready."
+ONLINE_NOTICE = "♻️ Gateway online — Coco is back and ready."
 
 
 def _adapter():

@@ -105,10 +105,21 @@ def _new_test_agent():
         return a
 
 
+@pytest.fixture(autouse=True)
+def _official_compression_defaults(monkeypatch):
+    """本模块的预期按官方出厂压缩口径（阈值 0.50 / 保留 20）书写。
+
+    Coco 把出厂默认改成了 0.8 / 40（见 patches/README.md 第 05 处）。这里显式钉回官方口径，
+    让这些用例测的是预压缩行为本身，而不是某个产品的出厂默认值。
+    """
+    from hermes_cli.config import DEFAULT_CONFIG
+    monkeypatch.setitem(DEFAULT_CONFIG["compression"], "threshold", 0.50)
+    monkeypatch.setitem(DEFAULT_CONFIG["compression"], "protect_last_n", 20)
+
+
 @pytest.fixture()
 def agent():
     return _new_test_agent()
-
 
 # ---------------------------------------------------------------------------
 # Tests

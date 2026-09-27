@@ -18,7 +18,7 @@ from tests.gateway.restart_test_helpers import make_restart_runner
 
 def test_pairing_reply_pins_profile_in_approve_command():
     reply = pairing_code_reply("discord", "ZZZZ9999", "-p work ")
-    assert "`hermes -p work pairing approve discord ZZZZ9999`" in reply
+    assert "`coco -p work pairing approve discord ZZZZ9999`" in reply
 
 
 

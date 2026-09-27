@@ -462,7 +462,10 @@ def test_coding_prompt_orders_shared_context_before_workspace(monkeypatch):
         "this one. Do not modify another profile's skills/plugins/cron/memories "
         "unless the user explicitly directs you to."
     )
-    expected = "\n\n".join((
+    # Coco: 本仓在系统提示词里额外注入了身份与房产业务段落（见 patches/README.md 第 02/03 处），
+    # 逐字比对整段提示词必然与官方期望不符。这条用例的本意是「共享上下文排在 workspace 之前」，
+    # 因此改为校验这些关键段落的相对顺序 —— 顺序错位照样报红。
+    ordered_markers = (
         "IDENTITY",
         "HELP",
         "STEER",
@@ -473,7 +476,7 @@ def test_coding_prompt_orders_shared_context_before_workspace(monkeypatch):
         "Operator instructions (from config):\nOPERATOR",
         expected_profile,
         "Conversation started: Friday, January 02, 2026",
-    ))
+    )
 
     with (
         patch("agent.prompt_builder.load_soul_md", return_value=""),
@@ -492,8 +495,14 @@ def test_coding_prompt_orders_shared_context_before_workspace(monkeypatch):
     ):
         prompt = build_system_prompt(agent, system_message="SYSTEM_MESSAGE")
 
-    assert prompt == expected
-    assert agent._cached_system_prompt_static == "\n\n".join(expected.split("\n\n")[:4])
+    # Coco: 按相对顺序校验（见上面的说明），不再逐字比对整段提示词
+    positions = []
+    for marker in ordered_markers:
+        assert marker in prompt, f"系统提示词缺少段落：{marker[:60]}"
+        positions.append(prompt.index(marker))
+    assert positions == sorted(positions), positions
+    # 静态段（整段对话不变、可被缓存）必须仍是整个提示词的前缀
+    assert prompt.startswith(agent._cached_system_prompt_static), agent._cached_system_prompt_static[:200]
 
 
 class TestTelegramRichMessagesHint:

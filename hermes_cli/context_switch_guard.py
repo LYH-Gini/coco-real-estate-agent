@@ -31,7 +31,8 @@ def _estimate_tokens(agent: Any, messages: Optional[List[dict]]) -> Optional[int
 
     if messages is not None:
         protect = (
-            int(getattr(cc, "protect_first_n", 3)) + int(getattr(cc, "protect_last_n", 20)) + 1)
+            # Coco: protect_last_n 兜底 官方 20 → 40（与 config_defaults.py 一致，勿回退）
+            int(getattr(cc, "protect_first_n", 3)) + int(getattr(cc, "protect_last_n", 40)) + 1)
         if len(messages) <= protect:
             return None
         try:
