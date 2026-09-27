@@ -38,6 +38,22 @@ def _fake_repo(tmp_path, db_url="postgresql://cocouser:secret@localhost:5432/rea
     return repo
 
 
+def _fake_official_hermes(repo, log_path):
+    """在假安装目录里放一个官方程序（把被调用的参数记到 log_path）。
+
+    客户机上没有 `hermes` 命令入口，卸载脚本只能靠安装目录里这一个 —— 所以测试也要这样给。
+    """
+    bin_dir = repo / "venv" / "bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    exe = bin_dir / "hermes"
+    exe.write_text(
+        "#!/usr/bin/env bash\n"
+        f"echo \"$*\" >> '{log_path}'\n"
+        "exit 0\n", encoding="utf-8")
+    exe.chmod(exe.stat().st_mode | stat.S_IEXEC)
+    return exe
+
+
 def _env(tmp_path, repo, crontab_bin, home, extra=None):
     env = dict(os.environ)
     env.update({
@@ -71,7 +87,8 @@ class TestDryRunAndModes:
         out = r.stdout
         assert r.returncode == 0, out + r.stderr
         assert "干跑" in out and "DROP DATABASE real_estate" in out, out
-        assert "hermes uninstall --dry-run" in out, out
+        assert "hermes uninstall --dry-run" not in out, out
+        assert "coco cli uninstall --dry-run" in out, out
         assert (link / "coco").is_symlink(), "干跑不应删除软链"
         assert "backup_db.py" in store.read_text(), "干跑不应改写定时任务"
 
@@ -136,6 +153,56 @@ class TestMenu:
                            stdin=subprocess.DEVNULL, timeout=60)
         assert r.returncode != 0
         assert "不是交互终端" in (r.stdout + r.stderr)
+
+
+class TestOfficialProgramLookup:
+    """卸载的两步（停服务 / 官方卸载）必须用安装目录里的官方程序。
+
+    客户机上没有 `hermes` 命令入口（install/update 会移除），只按 PATH 找会两步都静默跳过 ——
+    原来的用例全程 `COCO_UNINSTALL_SKIP_OFFICIAL=1`，所以这个缺陷测不出来（2026-09-27 修）。
+    """
+
+    def test_uses_bundled_official_program(self, tmp_path):
+        repo = _fake_repo(tmp_path)
+        crontab_bin, _ = _fake_crontab(tmp_path)
+        home = tmp_path / "home"; home.mkdir()
+        calls = tmp_path / "calls.log"
+        _fake_official_hermes(repo, calls)
+        env = _env(tmp_path, repo, crontab_bin, home,
+                   extra={"COCO_UNINSTALL_SKIP_OFFICIAL": "0"})
+        r = _run(["--mode", "1", "--yes"], env)
+        out = r.stdout + r.stderr
+        assert r.returncode == 0, out
+        logged = calls.read_text(encoding="utf-8")
+        assert "gateway stop" in logged, logged
+        assert "uninstall --yes" in logged, logged
+        assert "已停止 gateway 服务" in r.stdout, out
+        assert "官方卸载完成" in r.stdout, out
+
+    def test_mode_2_passes_full_flag(self, tmp_path):
+        repo = _fake_repo(tmp_path)
+        crontab_bin, _ = _fake_crontab(tmp_path)
+        home = tmp_path / "home"; home.mkdir()
+        calls = tmp_path / "calls.log"
+        _fake_official_hermes(repo, calls)
+        env = _env(tmp_path, repo, crontab_bin, home,
+                   extra={"COCO_UNINSTALL_SKIP_OFFICIAL": "0"})
+        r = _run(["--mode", "2", "--yes"], env)
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert "uninstall --yes --full" in calls.read_text(encoding="utf-8")
+
+    def test_missing_official_program_says_so(self, tmp_path):
+        """安装目录里没有官方程序、PATH 里也没有时，两步都要如实说明（不静默）"""
+        repo = _fake_repo(tmp_path)
+        crontab_bin, _ = _fake_crontab(tmp_path)
+        home = tmp_path / "home"; home.mkdir()
+        env = _env(tmp_path, repo, crontab_bin, home,
+                   extra={"COCO_UNINSTALL_SKIP_OFFICIAL": "0", "PATH": "/usr/bin:/bin"})
+        r = _run(["--mode", "1", "--yes"], env)
+        out = r.stdout + r.stderr
+        assert "跳过停服务" in out, out
+        assert "跳过官方卸载" in out, out
+        assert "hermes uninstall" not in out, out
 
 
 class TestSafety:

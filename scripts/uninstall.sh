@@ -60,6 +60,14 @@ REPO_DIR="${COCO_UNINSTALL_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &
 TARGET_HOME="${COCO_UNINSTALL_HOME:-$HOME}"
 CRONTAB_BIN="${COCO_UNINSTALL_CRONTAB:-crontab}"
 VENV_PY="$REPO_DIR/venv/bin/python"
+# 官方程序：优先用安装目录里的那一个 —— 客户机上没有 `hermes` 命令入口（install/update 会移除指向
+# 本安装目录的软链），只按 PATH 找会漏掉「停服务」与「官方卸载」两步（2026-09-27 修）。
+HERMES_CLI=""
+if [[ -x "$REPO_DIR/venv/bin/hermes" ]]; then
+    HERMES_CLI="$REPO_DIR/venv/bin/hermes"
+elif command -v hermes >/dev/null 2>&1; then
+    HERMES_CLI="$(command -v hermes)"
+fi
 BACKUP_DIR="$TARGET_HOME/backups/real_estate"
 
 DRY_RUN=0
@@ -204,11 +212,11 @@ info "[2/6] 停止服务"
 if [[ "$DRY_RUN" == "1" ]]; then
     echo "    [干跑] 会停止 gateway 服务（并停用老部署残留的 hermes-agent 系统服务）"
 else
-    if command -v hermes >/dev/null 2>&1; then
-        hermes gateway stop >/dev/null 2>&1 || true
+    if [[ -n "$HERMES_CLI" ]]; then
+        "$HERMES_CLI" gateway stop >/dev/null 2>&1 || true
         ok "已停止 gateway 服务"
     else
-        warn "找不到 hermes 命令，跳过（后续官方卸载会一并处理）"
+        warn "找不到官方程序（$REPO_DIR/venv/bin/hermes），跳过停服务"
     fi
     if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files 2>/dev/null | grep -q '^hermes-agent\.service'; then
         sudo systemctl stop hermes-agent 2>/dev/null || true
@@ -291,26 +299,26 @@ else
     ok "字体与渲染依赖保留（需要清理时加 --remove-fonts）"
 fi
 
-# ---- ④ 官方卸载（本体部分交给官方命令）----
-info "[4/6] 卸载 Hermes 本体（官方卸载命令）"
+# ---- ④ 官方卸载（本体部分交给官方卸载程序）----
+info "[4/6] 卸载程序本体（官方卸载程序）"
 if [[ "$DRY_RUN" == "1" ]]; then
-    echo "    [干跑] 会执行: hermes uninstall --dry-run"
+    echo "    [干跑] 会执行: coco cli uninstall --dry-run"
     if [[ "$MODE" == "1" ]]; then
-        echo "           （正式执行时为 hermes uninstall --yes，保留 ~/.hermes 状态）"
+        echo "           （正式执行时为 coco cli uninstall --yes，保留 ~/.hermes 状态）"
     else
-        echo "           （正式执行时为 hermes uninstall --yes --full，连状态一起删）"
+        echo "           （正式执行时为 coco cli uninstall --yes --full，连状态一起删）"
     fi
 elif [[ "${COCO_UNINSTALL_SKIP_OFFICIAL:-0}" == "1" ]]; then
     warn "已按环境变量跳过官方卸载（COCO_UNINSTALL_SKIP_OFFICIAL=1）"
-elif command -v hermes >/dev/null 2>&1; then
+elif [[ -n "$HERMES_CLI" ]]; then
     if [[ "$MODE" == "1" ]]; then
-        hermes uninstall --yes || fail "官方卸载命令失败 —— 请手动执行 hermes uninstall --yes 后重跑"
+        "$HERMES_CLI" uninstall --yes || fail "官方卸载失败 —— 请手动执行 coco cli uninstall --yes 后重跑"
     else
-        hermes uninstall --yes --full || fail "官方卸载命令失败 —— 请手动执行 hermes uninstall --yes --full 后重跑"
+        "$HERMES_CLI" uninstall --yes --full || fail "官方卸载失败 —— 请手动执行 coco cli uninstall --yes --full 后重跑"
     fi
-    ok "官方卸载完成（程序目录、服务、hermes 软链已清理）"
+    ok "官方卸载完成（程序目录、服务、命令行入口已清理）"
 else
-    warn "找不到 hermes 命令，跳过官方卸载；如仍残留请手动删除安装目录 $REPO_DIR"
+    warn "找不到官方程序（$REPO_DIR/venv/bin/hermes），跳过官方卸载；如仍残留请手动删除安装目录 $REPO_DIR"
 fi
 
 # ---- ⑤ 数据库 ----
