@@ -39,7 +39,10 @@ jobs:
           # 此前漏装 → 本地有它才过、CI 里相关断言失败
           # 2026-09-21 再修：croniter 是定时任务（enable_cron）的运行依赖，漏装则该
           # 用例在 CI 里注册失败、断言拿不到任务（本地有它才过）
-          pip install sqlalchemy cryptography pytest pyyaml httpx python-dateutil pillow requests qrcode croniter
+          # 2026-09-27 再修：sqlalchemy 必须锁版本。SQLAlchemy 2.1 把 postgresql:// 的默认
+          # 驱动从 psycopg2 换成 psycopg3，不锁版本的 CI 会跟着漂到 2.1（与装 psycopg2-binary
+          # 的生产安装脚本不一致），锁到与 uv.lock 相同的值，保证 CI 与用户环境同构。
+          pip install "sqlalchemy==2.0.51" cryptography pytest pyyaml httpx python-dateutil pillow requests qrcode croniter
 
       - name: Install the SVG renderer (librsvg)
         # 海报渲染走 rsvg-convert；不装它，所有 @needs_rsvg 渲染测试会被静默跳过 ——

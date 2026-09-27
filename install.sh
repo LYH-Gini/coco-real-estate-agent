@@ -451,8 +451,13 @@ install_packages() {
     
     # 安装房产专用依赖（含海报生成所需 qrcode；Pillow 为核心依赖由 -e . 安装；
     # ddgs 为 web_search 的免费搜索后端（DuckDuckGo，无需 API Key））
-    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple sqlalchemy psycopg2-binary lark-oapi apscheduler qrcode ddgs -q 2>/dev/null \
-        || pip install sqlalchemy psycopg2-binary lark-oapi apscheduler qrcode ddgs -q
+    # sqlalchemy 必须锁版本：它不在 pyproject 的直接依赖里（只由 mem0 附加项间接引入），
+    # 所以这一行是普通安装唯一的来源。2026-09-27 实测事故：SQLAlchemy 2.1 把
+    # postgresql:// 的默认驱动从 psycopg2 换成了 psycopg3，而这里装的是 psycopg2-binary，
+    # 于是全新安装的建表与迁移全部失败（ModuleNotFoundError: No module named 'psycopg'）。
+    # 锁定值必须与 uv.lock 里的 sqlalchemy 保持一致。
+    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple "sqlalchemy==2.0.51" psycopg2-binary lark-oapi apscheduler qrcode ddgs -q 2>/dev/null \
+        || pip install "sqlalchemy==2.0.51" psycopg2-binary lark-oapi apscheduler qrcode ddgs -q
     
     ok "依赖安装完成"
 }
@@ -533,7 +538,15 @@ setup_tables() {
     set -a
     source "$INSTALL_DIR/.env.db" 2>/dev/null || true
     set +a
-    "$INSTALL_DIR/venv/bin/python" -c "from agent.real_estate_db import init_real_estate_db; init_real_estate_db(); print('[Coco] 数据库表创建完成')" || warn "建表失败（首次工具调用时会自动重试）"
+    if ! "$INSTALL_DIR/venv/bin/python" -c "from agent.real_estate_db import init_real_estate_db; init_real_estate_db(); print('[Coco] 数据库表创建完成')"; then
+        echo -e "${RED}[FAIL]${NC} 数据库表创建失败 —— 机器人无法读写业务数据，此时不算安装成功。"
+        echo "       常见原因与处理："
+        echo "       · 缺 PostgreSQL 驱动（日志里报 No module named 'psycopg' / 'psycopg2'）"
+        echo "         → $INSTALL_DIR/venv/bin/pip install \"sqlalchemy==2.0.51\" psycopg2-binary"
+        echo "         → 再重跑本步：$INSTALL_DIR/venv/bin/python -c \"from agent.real_estate_db import init_real_estate_db; init_real_estate_db()\""
+        echo "       · PostgreSQL 未启动 → sudo systemctl start postgresql"
+        SETUP_ISSUES=$(( ${SETUP_ISSUES:-0} + 1 ))
+    fi
 
     # COCO-PATCH(2026-09-20)：迁移与配置对齐原先只在"标准向导"路径下触发，
     # 用户若从网页控制台或命令行配模型就会漏掉（实测：漏 8 个迁移 → 工具查不到数据、只能满盘 find）。
@@ -543,6 +556,7 @@ setup_tables() {
         ok "数据库结构已是最新（迁移幂等）"
     else
         warn "迁移未完成，可稍后重跑：$INSTALL_DIR/venv/bin/python $INSTALL_DIR/scripts/migrate.py"
+        SETUP_ISSUES=$(( ${SETUP_ISSUES:-0} + 1 ))
     fi
 
     info "对齐 Coco 标准配置（轮次 / 压缩阈值 / 时区）..."
@@ -712,16 +726,33 @@ start_service() {
         warn "首次备份未完成，可稍后重跑：cd $INSTALL_DIR && venv/bin/python scripts/backup_db.py backup --force"
     fi
     info "部署自检（coco check）..."
-    "$INSTALL_DIR/venv/bin/coco" check 2>/dev/null | tail -6 || true
+    # 自检的退出码决定最终结论：0 = 全部通过/仅警告，1 = 有 FAIL 项。
+    # 有 FAIL 时不能只 tail 尾巴（关键失败项可能正好被截掉），整段输出给用户看。
+    if CHECK_OUT="$("$INSTALL_DIR/venv/bin/coco" check 2>&1)"; then
+        echo "$CHECK_OUT" | tail -6
+    else
+        echo "$CHECK_OUT"
+        SETUP_ISSUES=$(( ${SETUP_ISSUES:-0} + 1 ))
+    fi
 }
 
 # ==================== 打印结果 ====================
 print_result() {
     echo ""
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  ✅ Coco（可可）房产智能体安装完成！${NC}"
-    echo -e "${GREEN}========================================${NC}"
-    echo ""
+    if [[ "${SETUP_ISSUES:-0}" -gt 0 ]]; then
+        # 有未通过项时不再打绿灯：装完看到"安装完成"却用不了，比装失败更害人
+        echo -e "${RED}========================================${NC}"
+        echo -e "${RED}  ⚠️  安装完成，但有 ${SETUP_ISSUES} 项未通过${NC}"
+        echo -e "${RED}========================================${NC}"
+        echo -e "${YELLOW}  上面日志里带 [FAIL] 的项必须处理，否则机器人无法正常工作。${NC}"
+        echo -e "${YELLOW}  逐项复查：coco check${NC}"
+        echo ""
+    else
+        echo -e "${GREEN}========================================${NC}"
+        echo -e "${GREEN}  ✅ Coco（可可）房产智能体安装完成！${NC}"
+        echo -e "${GREEN}========================================${NC}"
+        echo ""
+    fi
     # 版本号直接读仓库根 VERSION 文件（2026-08-29 加）：以后只改 VERSION，安装终端自动同步，无需再改这里
     COCO_VER=$(cat "$INSTALL_DIR/VERSION" 2>/dev/null | tr -d '[:space:]' || echo "未知")
     # 版本号形如 0.21.3-1：前半段是官方底座，后半段是 Coco 自己的第 N 次发行
