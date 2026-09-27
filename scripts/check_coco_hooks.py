@@ -571,6 +571,12 @@ PATH_CHECKS = [
     ("A27", "定时任务脚本", "scripts/coco_cron_*.py", "glob", 5, "定时任务脚本丢失（逾期哨兵/机会提醒/早报/收工小结/周报的数据收集都在这里）"),
     ("A28", "照片归档共用件", "agent/real_estate_media.py", "file", 1, "照片归档共用件丢失（房源照片会留在会被 24 小时清理的缓存目录里，一天后消失）"),
     ("A29", "照片存量修复脚本", "scripts/recover_property_images.py", "file", 1, "照片存量修复脚本丢失（历史房源里已丢的照片没法从备份捞回）"),
+    # 2026-09-27 按老板决定删掉的官方目录：登记为「不该存在」，同步若把它们带回来就报警
+    ("A30", "已删官方目录·桌面版", "apps", "absent", 0, "apps/ 又被同步带回来了（Coco 不做桌面版，删它是为让用户少下 39MB / 3000+ 文件）"),
+    ("A31", "已删官方目录·文档站", "website", "absent", 0, "website/ 又被同步带回来了（官方文档站，装机用不到）"),
+    ("A32", "已删官方目录·可选技能", "optional-skills", "absent", 0, "optional-skills/ 又被同步带回来了（官方可选技能，Coco 用不到）"),
+    ("A33", "已删官方目录·离线评测", "evals", "absent", 0, "evals/ 又被同步带回来了（官方内部评测）"),
+    ("A34", "已删官方目录·前端测试", "tests-js", "absent", 0, "tests-js/ 又被同步带回来了（官方前端测试）"),
                     ]
 
 
@@ -610,10 +616,17 @@ def check_paths(repo: Path):
         elif kind == "dir":
             ok = (repo / pattern).is_dir()
             found = 1 if ok else 0
+        elif kind == "absent":
+            # 反向检查：这个路径「不该存在」（删过的官方目录被同步带回来时报警）
+            ok = not (repo / pattern).exists()
+            found = 0 if ok else 1
         else:  # glob
             found = len(list(repo.glob(pattern)))
             ok = found >= min_count
-        detail = f"{pattern}" + (f"（找到 {found}，需 ≥{min_count}）" if kind == "glob" else "")
+        if kind == "absent":
+            detail = f"{pattern}" + ("（已确认不在 ✔）" if ok else "（又出现了）")
+        else:
+            detail = f"{pattern}" + (f"（找到 {found}，需 ≥{min_count}）" if kind == "glob" else "")
         results.append((cid, name, ok, detail if ok else f"{detail} —— {tip}"))
     return results
 
