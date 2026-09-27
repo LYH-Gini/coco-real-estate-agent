@@ -60,6 +60,15 @@ def _job_labels(names) -> str:
     return "、".join(job_label(n) for n in names)
 
 
+def _job_label_list(names) -> list:
+    """任务名 → 中文名列表（返回结构里也不出现内部名：`enabled`/`disabled` 用它）"""
+    try:
+        from agent.coco_cron import job_label
+    except Exception:
+        return list(names)
+    return [job_label(n) for n in names]
+
+
 def enable_cron(task_id: str = None, **kwargs) -> str:
     """开启定时任务（时间表见 _schedule_text）"""
     from agent.coco_cron import enable_coco_cron_jobs
@@ -81,7 +90,7 @@ def enable_cron(task_id: str = None, **kwargs) -> str:
     if registered:
         return json.dumps({
             "success": True,
-            "enabled": registered,
+            "enabled": _job_label_list(registered),
             "message": f"定时任务已开启：{_job_labels(registered)}（{_schedule_text()}）",
         }, ensure_ascii=False)
     if skipped:

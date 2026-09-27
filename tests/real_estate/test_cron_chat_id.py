@@ -163,3 +163,22 @@ def test_enable_tool_description_follows_the_job_table():
     for stale in ("13:00", "30 分钟", "午间"):
         assert stale not in description, f"工具说明里还有旧口径 {stale!r}：{description}"
 
+
+
+def test_enable_lists_jobs_in_plain_chinese():
+    """`enabled` 数组要给中文名，不许把内部任务名甩给模型/经纪人（2026-09-27 第十二组 F427）
+
+    实测：`message` 早已是中文标签，但同一次返回里的 `enabled` 数组装的还是
+    `coco_daily_report` / `coco_overdue_sentinel` 这些内部名 —— 模型会照念给经纪人听。
+    """
+    from agent.coco_cron import job_label
+
+    session_id = _bind_gateway_turn(CHAT_ID)
+    out = _dispatch("enable_cron", {}, session_id=session_id, task_id=session_id)
+    enabled = out.get("enabled") or []
+
+    assert out.get("success") is True, out
+    assert enabled, f"开启后应列出开了哪些任务：{out}"
+    assert all(not str(x).startswith("coco_") for x in enabled), f"数组里还有内部任务名：{enabled}"
+    assert set(enabled) == {job_label(n) for n in EXPECTED_JOBS}, enabled
+    assert len(enabled) == len(_jobs()), f"数组与真实注册的任务数不一致：{enabled}"
