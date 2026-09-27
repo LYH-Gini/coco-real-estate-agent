@@ -1,7 +1,13 @@
-name: 通道守卫（正式版/测试版）
+name: 通道守卫（正式仓/开发仓）
 
 # 目的：让"别人用原来的命令只会拿到正式版代码"这件事**机械成立**，而不是靠人记得。
-# 仓库默认分支一旦被改成 next，别人 clone/安装就会拿到未验收的测试版 —— 这里直接拦下。
+#
+# 仓库布局（2026-09-28 起）：
+#   正式仓（公开，名字不以 -dev 结尾）：只有 master —— 别人 clone/安装拿到的是正式版；
+#                                        开发线不放这里（放了就等于把未验收代码公开）。
+#   开发仓（私有，名字以 -dev 结尾）    ：只有 next  —— 测试机用密钥拉它拿开发版；
+#                                        不建 master（否则从开发仓就能装到"正式版"，两条线会互相打架）。
+# 这两条任一被破坏，本工作流直接红。
 on:
   push:
     branches: [master, next]
@@ -10,24 +16,76 @@ on:
 
 jobs:
   guard:
-    name: 默认分支与安装默认通道
+    name: 仓库通道（默认分支 + 不该存在的分支）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: 仓库默认分支必须是 master
+      - name: 默认分支必须与仓库角色一致
         run: |
+          repo="${{ github.repository }}"
           default_branch="${{ github.event.repository.default_branch }}"
-          if [ "$default_branch" != "master" ]; then
-            echo "::error::仓库默认分支是 '$default_branch'，不是 master —— 别人安装/克隆会拿到测试版代码，必须改回 master"
-            exit 1
-          fi
-          echo "默认分支 = master（别人克隆/安装拿到正式版）"
+          case "$repo" in
+            *-dev)
+              if [ "$default_branch" != "next" ]; then
+                echo "::error::开发仓的默认分支是 '$default_branch'，不是 next —— 测试机克隆拿到的不是开发版"
+                exit 1
+              fi
+              echo "开发仓默认分支 = next（测试机克隆拿开发版）"
+              ;;
+            *)
+              if [ "$default_branch" != "master" ]; then
+                echo "::error::正式仓的默认分支是 '$default_branch'，不是 master —— 别人安装/克隆会拿到未验收代码"
+                exit 1
+              fi
+              echo "正式仓默认分支 = master（别人克隆/安装拿到正式版）"
+              ;;
+          esac
 
-      - name: install.sh 默认通道必须是 master
+      - name: 不该存在的分支
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          repo="${{ github.repository }}"
+          branches="$(gh api "repos/$repo/branches" --jq '.[].name' | tr '\n' ' ')"
+          echo "现有分支：$branches"
+          case "$repo" in
+            *-dev)
+              # 开发仓只放开发线
+              if [ -n "$(gh api "repos/$repo/branches/master" --jq '.name' 2>/dev/null)" ]; then
+                echo "::error::开发仓里出现了 master 分支 —— 开发仓只放开发线（next），正式版在正式仓"
+                exit 1
+              fi
+              echo "开发仓没有 master（正式版不在开发仓）"
+              ;;
+            *)
+              # 正式仓只放正式线：出现过 next 就说明有人又把开发内容推上来了
+              if [ -n "$(gh api "repos/$repo/branches/next" --jq '.name' 2>/dev/null)" ]; then
+                echo "::error::正式仓里出现了 next 分支 —— 开发内容要推开发仓（私有），正式仓只放 master"
+                exit 1
+              fi
+              echo "正式仓没有 next（开发内容在开发仓）"
+              ;;
+          esac
+
+      - name: install.sh 默认通道（正式仓）
+        if: ${{ !endsWith(github.repository, '-dev') }}
         run: |
           if ! grep -q 'COCO_CHANNEL="${COCO_CHANNEL:-master}"' install.sh; then
-            echo "::error::install.sh 的默认通道不是 master —— 别人一条命令就会装到测试版"
+            echo "::error::install.sh 的默认通道不是 master —— 别人一条命令就会装到未验收代码"
             exit 1
           fi
           echo "install.sh 默认通道 = master（不指定通道时装正式版）"
+
+      - name: 开发仓安装入口支持私有源
+        if: ${{ endsWith(github.repository, '-dev') }}
+        run: |
+          if ! grep -q 'COCO_GIT_URL' install.sh; then
+            echo "::error::开发仓的 install.sh 没有 COCO_GIT_URL 入口 —— 测试机无法用密钥从私有源安装"
+            exit 1
+          fi
+          grep -q 'COCO_GIT_URL="\${COCO_GIT_URL:-}"' install.sh || {
+            echo "::error::COCO_GIT_URL 的默认值不是空 —— 会把所有人拽到私有源上"
+            exit 1
+          }
+          echo "开发仓 install.sh 支持 COCO_GIT_URL 私有源（默认空 = 仍走公开正式源）"

@@ -188,3 +188,66 @@ class TestPushAllNonCurrentBranch:
             got = subprocess.run(["git", "-C", str(tmp_path / remote), "rev-parse", "master"],
                                  capture_output=True, text=True).stdout.strip()
             assert got == master_sha, f"{remote} 的 master 应为本地 master（{master_sha[:7]}），实际 {got[:7]}"
+
+
+class TestPushAllTwoRepos:
+    """双仓库（2026-09-28 起）：master → 正式仓，next → 开发仓；推错仓库要能挡住。
+
+    正式仓里出现 next（= 把未验收代码公开）、开发仓里出现 master（= 两条线互相打架）都会被
+    channel-guard 工作流拦下；这里守的是**推送脚本自己的路由**：推 next 时压根不该碰正式仓的远程。
+    """
+
+    def _setup(self, tmp_path, with_dev_remotes=True):
+        work = tmp_path / "work"
+        work.mkdir()
+        subprocess.run(["git", "init", "-q", "-b", "master", str(work)], check=True)
+        for k, v in (("user.email", "t@t"), ("user.name", "t")):
+            subprocess.run(["git", "-C", str(work), "config", k, v], check=True)
+        (work / "scripts").mkdir()
+        shutil.copy(SCRIPTS / "push_all.sh", work / "scripts" / "push_all.sh")
+        (work / "VERSION").write_text("0.0.0-1\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(work), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(work), "commit", "-qm", "init"], check=True)
+        for name in ("gitee.git", "github.git", "dev-gitee.git", "dev-gh.git"):
+            subprocess.run(["git", "init", "-q", "--bare", str(tmp_path / name)], check=True)
+        subprocess.run(["git", "-C", str(work), "remote", "add", "origin", str(tmp_path / "gitee.git")], check=True)
+        subprocess.run(["git", "-C", str(work), "remote", "add", "github", str(tmp_path / "github.git")], check=True)
+        if with_dev_remotes:
+            subprocess.run(["git", "-C", str(work), "remote", "add", "dev-gitee", str(tmp_path / "dev-gitee.git")], check=True)
+            subprocess.run(["git", "-C", str(work), "remote", "add", "dev-gh", str(tmp_path / "dev-gh.git")], check=True)
+        subprocess.run(["git", "-C", str(work), "checkout", "-q", "-b", "next"], check=True)
+        (work / "dev.txt").write_text("x", encoding="utf-8")
+        subprocess.run(["git", "-C", str(work), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(work), "commit", "-qm", "dev work"], check=True)
+        return work
+
+    def _env(self):
+        return {**os.environ, "PUSH_RETRY_SLEEP": "0"}
+
+    def _remote_head(self, repo, branch):
+        # --verify --quiet：分支不存在时输出为空（直接 rev-parse <name> 会把名字回显出来，误判成"存在"）
+        return subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"],
+                              capture_output=True, text=True).stdout.strip()
+
+    def test_next_goes_to_dev_repo_only(self, tmp_path):
+        work = self._setup(tmp_path)
+        r = _run(["bash", "scripts/push_all.sh", "next"], cwd=work, env=self._env())
+        out = r.stdout + r.stderr
+        assert r.returncode == 0, out
+        assert "开发仓" in out, out
+        next_sha = subprocess.run(["git", "-C", str(work), "rev-parse", "next"],
+                                  capture_output=True, text=True).stdout.strip()
+        for remote in ("dev-gitee.git", "dev-gh.git"):
+            assert self._remote_head(tmp_path / remote, "next") == next_sha, f"{remote} 没拿到 next"
+        # 正式仓的两个远程不该出现 next 分支
+        for remote in ("gitee.git", "github.git"):
+            assert self._remote_head(tmp_path / remote, "next") == "", f"{remote} 上不该有 next"
+
+    def test_missing_dev_remote_prints_setup_commands(self, tmp_path):
+        work = self._setup(tmp_path, with_dev_remotes=False)
+        r = _run(["bash", "scripts/push_all.sh", "next"], cwd=work, env=self._env())
+        out = r.stdout + r.stderr
+        assert r.returncode != 0, out
+        assert "缺少远程" in out, out
+        assert "git remote add dev-gitee" in out, out
+
