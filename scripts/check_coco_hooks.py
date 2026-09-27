@@ -472,6 +472,45 @@ CONTENT_CHECKS = [
         "处理：把这四处提示改回 `coco gateway …`（该文件属官方层，上游同步会覆盖；\n"
         "单测 tests/hermes_cli/test_gateway_service.py 同步断言 coco 口径）。",
     ),
+    (
+        "32",
+        "官方测试断言：装服务提示命令",
+        "tests/hermes_cli/test_ensure_gateway_service.py",
+        [
+            r'assert "coco gateway" in out',
+            r'assert "coco gateway install" in out',
+            r'!"hermes gateway',
+        ],
+        "这条官方测试断言「装后台服务失败时提示用户敲哪条命令」。\n"
+        "hermes_cli/gateway.py 已按 Coco 口径打印 coco gateway / coco gateway install，\n"
+        "断言没跟着改就会红（功能本身正常）。\n"
+        "处理：把断言改回 coco 口径（参考 patches/README.md 第 14 处）。",
+    ),
+    (
+        "33",
+        "官方测试断言：命名 profile 提示",
+        "tests/hermes_cli/test_gateway_no_new_standalone_profile.py",
+        [
+            r'assert "coco gateway install" in out and "coco gateway migrate --multiplex" in out',
+            r'assert f"coco -p \{profile\} gateway install --force" in out',
+            r'!"hermes gateway',
+        ],
+        "命名 profile 被拒时的三处提示（装在哪 / 怎么合并 / --force 写法）在 hermes_cli/gateway.py 里\n"
+        "已是 coco 口径，官方断言写的还是 hermes。\n"
+        "处理：把三条断言改回 coco 口径（参考 patches/README.md 第 14 处）。",
+    ),
+    (
+        "34",
+        "官方测试断言：配置迁移提示",
+        "tests/hermes_cli/test_update_yes_flag.py",
+        [
+            r'assert "coco config migrate" in out',
+            r'!"hermes config migrate"',
+        ],
+        "更新过程中配置迁移提示跳过时，hermes_cli/update_cmd_config.py 打印的是\n"
+        "'coco config migrate'，官方断言写的还是 hermes config migrate。\n"
+        "处理：把断言改回 coco 口径（参考 patches/README.md 第 14 处）。",
+    ),
 ]
 
 # 文件/目录存在性检查：编号 / 名称 / 相对路径 / 类型(file|dir|glob) / 最少数量 / 失败提示

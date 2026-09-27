@@ -187,7 +187,7 @@ class TestUnicodeDecodeErrorInUpdatePrompts:
             cmd_update(args)  # must not raise
 
         out = capsys.readouterr().out
-        assert "hermes config migrate" in out
+        assert "coco config migrate" in out
         mock_migrate.assert_not_called()
 
     def test_stash_restore_unicode_decode_error_falls_through_to_skip(self, tmp_path, capsys):

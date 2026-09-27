@@ -15,7 +15,7 @@
 > **正确的做法**：读本文件下面每一处的「改什么 / 为什么 / 上游变了怎么办」，
 > 在新底座上重新实现，再用自检脚本验证结果。
 
-## 改动清单（共 13 处官方文件 + 2 个自有文档）
+## 改动清单（共 14 处官方文件 + 2 个自有文档）
 
 | 编号 | 官方文件 | 改动内容 |
 |---|---|---|
@@ -32,6 +32,7 @@
 | 11 | `gateway/run_notifications.py`、`gateway/run_busy.py`、`hermes_cli/setup_platforms.py`、`hermes_cli/gateway.py` | 面向用户的提示去掉 Hermes：更新完成/失败/超时、网关已上线、暂停/恢复、设置向导的 Home Channel 说明；提示里引导的命令名 `hermes update` → `coco update` |
 | 12 | `gateway/run_inbound_unauthorized.py`（官方 v0.21.5 起从 `gateway/run_inbound.py` 拆出） | 首次私聊的配对提示里命令名 `hermes {profile_arg}pairing approve` → `coco …`；房主侧提示里的 `hermes pairing approve` → `coco …` |
 | 13 | `hermes_cli/gateway_setup_wizard.py`（官方 v0.21.5 起从 `hermes_cli/gateway.py` 拆出） | Mattermost 向导的 Home Channel 帮助文本 `where Hermes delivers` → `where Coco delivers` |
+| 14 | `tests/hermes_cli/test_ensure_gateway_service.py`、`tests/hermes_cli/test_gateway_no_new_standalone_profile.py`、`tests/hermes_cli/test_update_yes_flag.py` | 官方测试里断言「提示用户敲哪条命令」的字符串改成 coco 口径（`coco gateway` / `coco gateway install` / `coco config migrate` …） |
 
 另有 2 个**自有文档**（不属于官方代码，同步时直接保留即可）：
 `README.md`、`README.zh-CN.md`。
@@ -131,6 +132,21 @@
   要改的话照本条的写法，在 `scripts/check_coco_hooks.py` 里加同款自检条目。
 - **上游变了怎么办**：这些是硬编码字符串（不在 `locales/*.yaml` 里），官方改文案后要按新文案重挂，
   自检 23–26 负责把它们报出来。
+
+### 14 tests/ 下三处官方测试断言 —— 用户可见命令的品牌口径
+- **改什么**（只改断言里那条命令串，用例名/前置条件/断言结构不动）：
+  - `tests/hermes_cli/test_ensure_gateway_service.py`：`assert "hermes gateway" in out` → `assert "coco gateway" in out`；
+    两处 `assert "hermes gateway install" in out` → `assert "coco gateway install" in out`。
+  - `tests/hermes_cli/test_gateway_no_new_standalone_profile.py`：`hermes gateway install` / `hermes gateway migrate --multiplex` /
+    `hermes -p {profile} gateway install --force` → 对应的 `coco …` 口径。
+  - `tests/hermes_cli/test_update_yes_flag.py`：`assert "hermes config migrate" in out` → `assert "coco config migrate" in out`。
+- **为什么**：这几条断言盯的是「装服务失败 / 命名 profile 被拒 / 更新时配置迁移跳过」时提示用户敲哪条命令。
+  与第 11 处的改动配套（`hermes_cli/gateway.py` 打印 `coco gateway` / `coco gateway install`、
+  `hermes_cli/update_cmd_config.py` 打印 `coco config migrate`），官方文案改了口径、官方断言没跟着改 → 测试红而功能正常。
+- **不动的**：`import hermes_cli.gateway` 这类模块名、`tmp_path / "hermes"` 这类目录名、以及 docstring 里对官方命令的引用
+  （它们不是品牌断言，改了反而会误导）。
+- **上游变了怎么办**：同步上游会把 `tests/` 覆盖回官方断言。跑 `python3 scripts/check_coco_hooks.py`
+  （第 32/33/34 项，负向匹配守着 `assert "hermes gateway…` 不许回来）能立刻发现，按本条把断言改回 coco 口径即可。
 
 ## 使用方法（同步时）
 
