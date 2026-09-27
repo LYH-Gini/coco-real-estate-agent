@@ -19,6 +19,9 @@
     12. 网关运行期日志错误（已排除"重启导致飞书长连接正常断开"的噪音）
     13. 服务器时区（应为 Asia/Shanghai，时间显示统一为北京时间）
     14. Coco 运行时配置（轮次 500 / 压缩阈值 0.8 / 保留最近 40 条 / 时区北京时间）
+    15. 命令面自检（coco 命令可用性）
+    16. 房源图片可读性
+    17. 平台适配器依赖（已配置的平台能否加载；缺失时给出补装命令）
 
 退出码: 0 = 全部通过/仅警告; 1 = 存在 FAIL 项
 """
@@ -161,11 +164,11 @@ else:
 print("\n[3] Python 依赖")
 PY = os.environ.get("COCO_PYTHON", os.path.join(INSTALL_DIR, "venv", "bin", "python"))
 missing = []
-for pkg in ("ddgs", "PIL", "qrcode", "lark_oapi", "sqlalchemy", "psycopg2", "cryptography", "apscheduler"):
+for pkg in ("ddgs", "PIL", "qrcode", "lark_oapi", "sqlalchemy", "psycopg2", "cryptography", "aiohttp", "apscheduler"):
     if importlib.util.find_spec(pkg) is None:
         missing.append(pkg)
 if not missing:
-    ok("依赖齐全（ddgs/Pillow/qrcode/lark-oapi/sqlalchemy/psycopg2 等）")
+    ok("依赖齐全（ddgs/Pillow/qrcode/lark-oapi/sqlalchemy/psycopg2/aiohttp 等）")
 else:
     bad(f"缺少依赖: {', '.join(missing)}",
         "coco update")
@@ -510,6 +513,32 @@ except Exception as ex:
         warn(f"图片可读性检查未完成: {out16[:100]}", "手动执行 python3 scripts/healthcheck.py 查看")
 else:
     warn("跳过图片可读性检查（无 DATABASE_URL）")
+
+# ---- 17. 平台适配器依赖（只查已配置的平台）----
+print("\n[17] 平台适配器依赖（已配置的平台能否加载）")
+try:
+    sys.path.insert(0, INSTALL_DIR)
+    from agent.real_estate_platform_deps import DEP_PIP_SPEC, configured_platforms, platform_dep_state
+except Exception as _deps_exc:
+    warn(f"平台依赖体检模块读不到: {type(_deps_exc).__name__}: {str(_deps_exc)[:80]}",
+         "把这一行发给技术顾问")
+else:
+    _configured = configured_platforms(os.path.join(HERMES_HOME, ".env"))
+    if _configured is None:
+        warn("读不到官方的平台清单（向导表可能改过）", "把这一行发给技术顾问")
+    elif not _configured:
+        warn("没检测到已配置的平台（.env 里没有平台主密钥）", "配平台：coco gateway setup")
+    else:
+        for _key, _label in _configured:
+            _state, _detail = platform_dep_state(_key)
+            if _state is True:
+                ok(f"{_label}（{_key}）适配器依赖齐全")
+            elif _state is False:
+                bad(f"{_label}（{_key}）缺依赖，这个通道起不来（检查函数：{_detail}）",
+                    f"补装：{PY} -m pip install {DEP_PIP_SPEC}；然后 coco gateway setup 重配一次")
+            else:
+                warn(f"{_label}（{_key}）依赖状态无法判断（{_detail}）",
+                     "用 coco gateway setup 重配一次看提示")
 
 # ---- 汇总 ----
 print("\n" + "=" * 56)

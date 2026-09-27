@@ -482,8 +482,12 @@ install_packages() {
     # postgresql:// 的默认驱动从 psycopg2 换成了 psycopg3，而这里装的是 psycopg2-binary，
     # 于是全新安装的建表与迁移全部失败（ModuleNotFoundError: No module named 'psycopg'）。
     # 锁定值必须与 uv.lock 里的 sqlalchemy 保持一致。
-    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple "sqlalchemy==2.0.51" psycopg2-binary lark-oapi apscheduler qrcode ddgs -q 2>/dev/null \
-        || pip install "sqlalchemy==2.0.51" psycopg2-binary lark-oapi apscheduler qrcode ddgs -q
+    # aiohttp / cryptography 必须显式装：它们在 pyproject 里只属于可选 extras（messaging 等），
+    # 基础依赖不含 aiohttp，而平台适配器（微信、webhook/HTTP 接口、mattermost、whatsapp 等）
+    # 加载时要它。不装的话 `coco gateway setup` 配微信会被依赖体检直接拦下（2026-09-27 现场）。
+    # 版本与 pyproject 保持一致（aiohttp 同 messaging extra；cryptography 同基础依赖钉版）。
+    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple "sqlalchemy==2.0.51" "aiohttp==3.14.3" "cryptography==50.0.0" psycopg2-binary lark-oapi apscheduler qrcode ddgs -q 2>/dev/null \
+        || pip install "sqlalchemy==2.0.51" "aiohttp==3.14.3" "cryptography==50.0.0" psycopg2-binary lark-oapi apscheduler qrcode ddgs -q
     
     ok "依赖安装完成"
 }

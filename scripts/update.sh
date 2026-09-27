@@ -170,7 +170,9 @@ info "[4/8] 安装 / 更新 Python 依赖（pip install -e .）"
 # 所以 pip install -e . 不会校正它。2026-09-27 实测事故：SQLAlchemy 2.1 把
 # postgresql:// 的默认驱动从 psycopg2 换成 psycopg3，与 psycopg2-binary 不匹配，
 # 建表与迁移全部失败。设备上已装错的版本会被这一行纠正回来。
-"$VENV_PY" -m pip install -q "sqlalchemy==2.0.51" psycopg2-binary
+"$VENV_PY" -m pip install -q "sqlalchemy==2.0.51" "aiohttp==3.14.3" "cryptography==50.0.0" psycopg2-binary
+# aiohttp/cryptography 同上：平台适配器（微信、webhook/HTTP 接口等）加载需要，基础依赖不带 aiohttp，
+# 装过一次之后老实例更新时也会被这一行补齐。版本与 pyproject 一致。
 ok "依赖已就绪"
 
 info "[5/8] 应用数据库迁移（只增不删、事务、失败回滚）"
