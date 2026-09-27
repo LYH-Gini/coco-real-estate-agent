@@ -110,8 +110,9 @@ class DatabaseBackup:
             self._extract_conn(),
         ]
         try:
-            result = subprocess.run(cmd, env=env, capture_output=True, text=True,
-                                    encoding="utf-8", errors="replace", timeout=300)
+            result = subprocess.run(cmd, env=env, capture_output=True,
+                                    text=True, encoding="utf-8", errors="replace",
+                                    timeout=300)
             if result.returncode != 0:
                 self._log(f"pg_dump 失败: {result.stderr.strip()[:500]}")
                 return False
@@ -454,8 +455,9 @@ class DatabaseBackup:
             str(backup_path),
         ]
         try:
-            result = subprocess.run(cmd, env=env, capture_output=True, text=True,
-                                    encoding="utf-8", errors="replace", timeout=600)
+            result = subprocess.run(cmd, env=env, capture_output=True,
+                                    text=True, encoding="utf-8", errors="replace",
+                                    timeout=600)
             if result.returncode != 0:
                 self._log(f"恢复失败: {result.stderr.strip()[:500]}")
                 return False

@@ -78,8 +78,9 @@ def to_beijing(ts: str) -> str:
 
 def sh(cmd, timeout=15):
     try:
-        r = subprocess.run(cmd, shell=True, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=timeout)
+        r = subprocess.run(cmd, shell=True, capture_output=True,
+                           text=True, encoding="utf-8", errors="replace",
+                           timeout=timeout)
         out = r.stdout.strip()
         if r.stderr.strip():
             out = out + "\n" + r.stderr.strip()
