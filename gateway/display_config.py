@@ -56,7 +56,9 @@ _PLATFORM_DEFAULTS: dict[str, dict[str, Any]] = {
     "slack": {**_TIER_MEDIUM, "tool_progress": "off", "long_running_notifications": False, "busy_ack_detail": False},
     "mattermost": _TIER_MEDIUM,
     "matrix": _TIER_MEDIUM,
-    "feishu": _TIER_MEDIUM,
+    # COCO-PATCH 2026-09-27: tool-progress lines off — one line per tool call is noise
+    # in a broker-facing inbox. Per-instance opt-in still wins.
+    "feishu": {**_TIER_MEDIUM, "tool_progress": "off"},
     "buzz": _TIER_MEDIUM,  # Nostr: edits in place but channels are shared community spaces
     "signal": _TIER_LOW,
     "whatsapp": _TIER_MEDIUM,  # Baileys bridge supports /edit

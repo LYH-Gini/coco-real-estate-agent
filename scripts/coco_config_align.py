@@ -45,6 +45,9 @@ STANDARD: "dict[str, object]" = {
     # 对话清空类命令（/new、/clear、/reset、/undo）不再弹确认框：经纪人不会输入 /always，
     # 三选一反而卡住「开新会话」；关掉后直接执行（业务数据都在库里，不受影响）。
     "approvals.destructive_slash_confirm": False,
+    # 飞书默认不显示工具进展行（2026-09-27 拍板）：官方飞书这一档默认 "new"，每调一个工具
+    # 就发一条，对经纪人是噪音；要看的实例自行改回 new / all。
+    "display.platforms.feishu.tool_progress": "off",
     # 会话记录保留期（2026-09-26 拍板 3650 天）：官方默认 90 天，网关启动时会**真删**
     # 「已结束且 90 天没动静」的会话正文与磁盘转录（hermes_state_maintenance.prune_sessions）。
     # Coco 是单人/少人用，state.db 增长极慢，没必要为了省几 MB 丢掉历史对话。
@@ -66,6 +69,7 @@ OFFICIAL_DEFAULTS: "dict[str, tuple]" = {
     "timezone": ("", None),
     "display.language": ("en",),                      # 官方默认 en（不设或向导写回时都当官方默认）
     "approvals.destructive_slash_confirm": (True,),   # 官方默认 True（弹确认框）
+    "display.platforms.feishu.tool_progress": ("new",),  # 官方飞书档默认 new（每工具一条）
     "cron.catch_up_missed": (True,),                  # 官方默认 True（错过会补发一次）
     "sessions.retention_days": (90,),                 # 官方默认 90 天（到期真删会话正文）
 }
@@ -82,6 +86,7 @@ LABELS: "dict[str, str]" = {
     "display.language": "界面语言",
     "approvals.destructive_slash_confirm": "清空对话类命令的确认框",
     "sessions.retention_days": "会话记录保留天数",
+    "display.platforms.feishu.tool_progress": "飞书工具进展显示",
 }
 
 

@@ -33,6 +33,7 @@ _SHORT = {
     "slash_confirm": "approvals.destructive_slash_confirm",
     "language": "display.language",
     "catch_up": "cron.catch_up_missed",
+    "feishu_progress": "display.platforms.feishu.tool_progress",
 }
 
 
@@ -107,6 +108,31 @@ class TestDestructiveSlashConfirmDefault:
         from hermes_cli.config_defaults import DEFAULT_CONFIG
 
         assert DEFAULT_CONFIG["approvals"]["destructive_slash_confirm"] is False
+
+
+class TestFeishuToolProgressDefault:
+    """飞书聊天窗不被工具进展刷屏：Coco 默认关（2026-09-27 要求）"""
+
+    def test_standard_and_official_cover_the_key(self):
+        from coco_config_align import OFFICIAL_DEFAULTS
+
+        assert STANDARD["display.platforms.feishu.tool_progress"] == "off"
+        assert "new" in OFFICIAL_DEFAULTS["display.platforms.feishu.tool_progress"]
+
+    def test_official_new_is_reclaimed(self):
+        """服务器上是官方档默认 new（每工具一条）→ 应被拉回 off"""
+        _a, reclaimable, custom = classify(eff(feishu_progress="new"), st())
+        assert {k: r for k, _v, r in reclaimable}.get("display.platforms.feishu.tool_progress") == "official-default"
+        assert not custom
+
+    def test_aligned_when_off(self):
+        aligned, _r, _c = classify(eff(feishu_progress="off"), st())
+        assert ("display.platforms.feishu.tool_progress", "off") in aligned
+
+    def test_code_default_is_off(self):
+        from hermes_cli.config_defaults import DEFAULT_CONFIG
+
+        assert DEFAULT_CONFIG["display"]["platforms"]["feishu"]["tool_progress"] == "off"
 
 
 class TestPlanAndSummary:

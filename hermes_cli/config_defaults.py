@@ -937,6 +937,10 @@ DEFAULT_CONFIG = {
             "slack": {"streaming": False},
             # WeCom native streaming (msgtype "stream" via aibot_respond_msg).
             "wecom": {"streaming": True},
+            # COCO-PATCH 2026-09-27：飞书默认不显示工具进展行（官方飞书这一档默认 "new"，
+            # 每调一个工具发一条，对经纪人是噪音）。要看的人可显式开回：
+            # coco config set display.platforms.feishu.tool_progress new
+            "feishu": {"tool_progress": "off"},
         },
         # Gateway runtime footer on the FINAL message, e.g. `model · 68% · ~/projects/hermes`.
         # Per-platform: display.platforms.<platform>.runtime_footer.
