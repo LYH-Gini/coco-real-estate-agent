@@ -82,7 +82,9 @@ def test_message_wording(wired):
 
 
 def test_description_mentions_same_slot_as_card():
-    src = open("/root/coco-real-estate/tools/real_estate_settings.py", encoding="utf-8").read()
+    from pathlib import Path
+    repo_root = Path(__file__).resolve().parents[2]
+    src = (repo_root / "tools" / "real_estate_settings.py").read_text(encoding="utf-8")
     idx = src.find('name="save_agent_brand"')
     seg = src[idx:src.find("\nregistry.register(", idx)]
     assert "同一个位置" in seg, f"描述要说清与名片的公司名同源：{seg[:240]}"
