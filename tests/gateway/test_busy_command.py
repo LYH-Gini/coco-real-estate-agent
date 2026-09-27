@@ -91,5 +91,6 @@ class TestBusyCommandPersistence:
         )
         event = _make_event("/busy queue")
         result = await runner._handle_busy_command(event)
-        assert "unchanged" in str(result).lower()
+        # Coco: 回复已改中文（原 assert "unchanged" in str(result).lower()）
+        assert "未改动" in str(result)
         assert runner._busy_input_mode == "steer"

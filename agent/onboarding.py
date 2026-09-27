@@ -23,26 +23,24 @@ PROFILE_BUILD_FLAG = "profile_build_offered"
 
 # Busy-input hints are keyed by the effective busy_input_mode that was just
 # applied so the message matches reality; "interrupt" is the default branch.
+# Coco: 官方这几句是英文，会直接发到经纪人的飞书会话里，改成中文短句（仅网关版；CLI 版经纪人用不到，保持官方英文）。
 _BUSY_INPUT_HINTS_GATEWAY = {
     "queue": (
-        "💡 First-time tip — I queued your message instead of interrupting. Send `/busy interrupt` to make new messages "
-        "stop the current task immediately, or `/busy status` to check. This notice won't appear again."
+        "💡 提示：你这条已排队，等当前任务做完就处理。想让新消息立刻改用当前任务，发 `/busy interrupt`；"
+        "看当前模式发 `/busy status`。仅提示一次。"
     ),
     "steer": (
-        "💡 First-time tip — I steered your message into the current run; it will arrive after the next tool "
-        "call instead of interrupting. Send `/busy interrupt` or `/busy queue` to change this, or `/busy "
-        "status` to check. This notice won't appear again."
+        "💡 提示：你这条会在下一步动作时带上。想改成打断或排队，发 `/busy interrupt` 或 `/busy queue`；"
+        "看当前模式发 `/busy status`。仅提示一次。"
     ),
     "redirect": (
-        "💡 First-time tip — I redirected the current run using your message. Completed work stays in "
-        "context, and `/stop` still cancels the task. Send `/busy queue` to wait for a separate turn, or "
-        "`/busy status` to check. This notice won't appear again."
+        "💡 提示：新消息会改用当前任务继续做，前面做的不会丢。想让它先做完手头的再处理，发 `/busy queue`。"
+        "仅提示一次。"
     ),
 }
 _BUSY_INPUT_HINT_GATEWAY_DEFAULT = (
-    "💡 First-time tip — I just interrupted my current task to answer you. Send `/busy queue` to queue "
-    "follow-ups for after the current task instead, `/busy steer` to inject them mid-run without "
-    "interrupting, or `/busy status` to check. This notice won't appear again."
+    "💡 提示：我停下了手头的任务先回你。想让新消息排队等做完，发 `/busy queue`；想中途插话不改道，"
+    "发 `/busy steer`。仅提示一次。"
 )
 
 _BUSY_INPUT_HINTS_CLI = {
@@ -76,8 +74,9 @@ def busy_input_hint_cli(mode: str) -> str:
 
 
 def tool_progress_hint_gateway() -> str:
-    return ("💡 First-time tip — that tool took a while and I'm streaming every step. If the progress messages "
-            "feel noisy, send `/verbose` to cycle modes (all → new → off). This notice won't appear again.")
+    # Coco: 官方这句是英文，会发到经纪人飞书会话里，改中文
+    return ("💡 提示：刚才那个步骤跑得比较久，我把过程都发出来了。嫌吵可以发 `/verbose` 切换显示方式"
+            "（全部 → 仅新步骤 → 关闭）。仅提示一次。")
 
 
 def tool_progress_hint_cli() -> str:

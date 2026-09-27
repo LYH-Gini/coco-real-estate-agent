@@ -15,7 +15,7 @@ import json
 import os
 import time
 from agent.i18n import t
-from agent.session_activity import format_iteration_progress
+from agent.session_activity import format_iteration_progress  # noqa: F401  # Coco: 状态行改中文后本文件已不用
 from gateway.config import Platform
 from gateway.platforms.base import EphemeralReply
 from gateway.platforms.event import MessageEvent, MessageType
@@ -489,11 +489,13 @@ class GatewayBusySessionMixin:
         adapter = self._delivery_adapter_for(event.source)
         if not adapter:
             return
+        # Coco: 官方这两句是英文（restarting / shutting down），会直接发到经纪人飞书会话里，改中文
+        _coco_action = "重启" if getattr(self, "_restart_requested", False) else "关闭"
         if self._queue_during_drain_enabled(effective_mode):
             self._queue_or_replace_pending_event(session_key, event)
-            message = f"⏳ Gateway {self._status_action_gerund()} — queued for the next turn after it comes back."
+            message = f"⏳ Coco 正在{_coco_action}，你这条已排队，恢复后马上处理。"
         else:
-            message = f"⏳ Gateway is {self._status_action_gerund()} and is not accepting another turn right now."
+            message = f"⏳ Coco 正在{_coco_action}，暂时不能开新任务。"
         await self._send_busy_reply(event, adapter, message)
 
     # Bare-word approval replies → (verb, args) for the synthesized slash command.
@@ -683,8 +685,9 @@ class GatewayBusySessionMixin:
             logger.debug("Busy steer ack suppressed for session %s", session_key)
         return steer_ack_enabled
 
+    # Coco: 官方英文 " — your message is queued for when it finishes (use /stop to cancel everything)."
     _BUSY_DEMOTED_TAIL = (
-        " — your message is queued for when it finishes (use /stop to cancel everything)."
+        " —— 你这条已排队，当前任务做完就处理（要全停发 `/stop`）。"
     )
 
     def _compose_busy_ack_message(
@@ -711,35 +714,31 @@ class GatewayBusySessionMixin:
                 elapsed_min = 0
                 if _busy_state and _busy_state.turn.started_ts:
                     elapsed_min = int((now - _busy_state.turn.started_ts) / 60)
+                # Coco: 官方这里拼的是英文（"{n} min elapsed" / "iteration 3/500" / "running: terminal"），
+                # 经纪人看不懂；改成中文，并且不再展示内部英文工具名。
                 if elapsed_min > 0:
-                    status_parts.append(f"{elapsed_min} min elapsed")
+                    status_parts.append(f"已跑 {elapsed_min} 分钟")
                 if summary.get("max_iterations", 0):
-                    status_parts.append(
-                        format_iteration_progress(
-                            summary.get("api_call_count", 0), summary.get("max_iterations", 0)
-                        )
-                    )
-                if summary.get("current_tool"):
-                    status_parts.append(f"running: {summary.get('current_tool')}")
+                    status_parts.append(f"第 {summary.get('api_call_count', 0)} 步")
             except Exception:
                 pass
-        status_detail = f" ({', '.join(status_parts)})" if status_parts else ""
+        status_detail = f"（{' · '.join(status_parts)}）" if status_parts else ""
         if is_steer_mode and self._agent_has_active_subagents(running_agent):
-            head = "⏩ Steered into current run and its active subagent(s)"
-            tail = ". Your message arrives after their next tool call."
+            head = "⏩ 已收到，会同时带给在跑的子任务"
+            tail = "，下一步动作时带上你这句话。"
         elif is_steer_mode:
-            head, tail = "⏩ Steered into current run", ". Your message arrives after the next tool call."
+            head, tail = "⏩ 已收到", "，下一步动作就带上你这句话。"
         elif is_redirect_mode:
-            head, tail = "↪ Redirected current run", ". I'll adjust using your correction."
+            head, tail = "↪ 已改用你刚发的话继续", "，前面做的没丢。"
         elif is_queue_mode and demoted_for_subagents:
             # Explain the demotion: the follow-up didn't kill the subagent; /stop is the escape hatch.
-            head, tail = "⏳ Subagent working", self._BUSY_DEMOTED_TAIL
+            head, tail = "⏳ 子任务还在跑", self._BUSY_DEMOTED_TAIL
         elif is_queue_mode and demoted_for_compression:
-            head, tail = "⏳ Compressing context", self._BUSY_DEMOTED_TAIL
+            head, tail = "⏳ 正在整理上下文", self._BUSY_DEMOTED_TAIL
         elif is_queue_mode:
-            head, tail = "⏳ Queued for the next turn", ". I'll respond once the current task finishes."
+            head, tail = "⏳ 已排队", "，手头这个做完就处理你这条。"
         else:
-            head, tail = "⚡ Interrupting current task", ". I'll respond to your message shortly."
+            head, tail = "⚡ 已打断手头任务", "，马上回你。"
         message = f"{head}{status_detail}{tail}"
 
         # One-time onboarding hint about the queue/interrupt knob (flag persisted to config.yaml).

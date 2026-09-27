@@ -209,7 +209,9 @@ class TestBusyHandlerDemotesInterruptForSubagents:
         content = adapter._send_with_retry.call_args.kwargs.get("content", "")
         # The vanilla queue copy — NOT the #30170 "Subagent working" copy,
         # because the user explicitly asked for queue mode.
-        assert "Subagent working" not in content
+        # Coco: 状态行已改中文（原 assert "Subagent working" not in content）
+        assert "已排队" in content
+        assert "子任务还在跑" not in content
 
     @pytest.mark.asyncio
     async def test_steer_mode_still_routes_through_running_agent_steer(

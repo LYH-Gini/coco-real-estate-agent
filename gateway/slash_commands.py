@@ -49,6 +49,17 @@ _BUSY_MODE_BEHAVIOR = {
     "interrupt": ("interrupts current run", "Messages will interrupt the current run while Hermes is busy."),
 }
 
+# Coco: /busy 命令的回复里不能出现英文（经纪人是照着一次性提示来发这条命令的）——
+# 官方 _BUSY_MODE_BEHAVIOR 的文案是英文，这里另附一份中文口径，只用于 /busy 的回复文案。
+_BUSY_MODE_BEHAVIOR_ZH = {
+    "queue": ("已排队，等当前任务做完再逐条处理",
+              "连发消息时，新消息会排队，等当前任务做完再逐条处理。"),
+    "steer": ("插话到当前任务（下一步动作时带上）",
+              "连发消息时，新消息会插进当前任务，在下一步动作时带上。"),
+    "interrupt": ("打断当前任务",
+                  "连发消息时，新消息会打断当前任务，我马上按新消息来做。"),
+}
+
 # /diff argument -> diff mode (unknown args leave the mode unchanged).
 _DIFF_MODE_BY_ARG = {**dict.fromkeys(("staged", "--staged", "cached", "--cached"), "staged"),
                      **dict.fromkeys(("all", "--all", "head"), "all"), "session": "session"}
@@ -990,18 +1001,19 @@ class GatewaySlashCommandsMixin(
         arg = event.get_command_args().strip().lower()
         if not arg or arg == "status":
             mode = self._effective_busy_input_mode(event.source)
-            behavior = _BUSY_MODE_BEHAVIOR.get(mode, _BUSY_MODE_BEHAVIOR["interrupt"])[0]
+            behavior = _BUSY_MODE_BEHAVIOR_ZH.get(
+                mode, _BUSY_MODE_BEHAVIOR_ZH["interrupt"])[0]  # Coco: 中文口径
             return EphemeralReply(
-                f"**Busy input mode: `{mode}`\nMessages while busy: _{behavior}_\n"
-                f"Change with `/busy queue`, `/busy steer`, or `/busy interrupt`.")
+                f"**当前连发消息模式：`{mode}`\n连发消息时：_{behavior}_\n"
+                f"可用 `/busy queue`、`/busy steer`、`/busy interrupt` 切换。")
         if arg not in _BUSY_MODE_BEHAVIOR:
             return EphemeralReply(
-                f"Unknown mode `{arg}`. Use `/busy queue`, `/busy steer`, or `/busy interrupt`.")
+                f"不认识模式 `{arg}`。可用：`/busy queue`、`/busy steer`、`/busy interrupt`。")
 
         # Persist before mutate
         from cli import save_config_value
         if not save_config_value("display.busy_input_mode", arg):
-            return EphemeralReply("Busy input mode could not be saved to config. Mode unchanged.")
+            return EphemeralReply("连发消息模式没保存成功，模式未改动。")
         profile_name = self._busy_profile_name_for_source(event.source)
         if profile_name:
             from gateway.run import _load_gateway_config
@@ -1016,7 +1028,7 @@ class GatewaySlashCommandsMixin(
         if adapter is not None:
             adapter._busy_text_mode = self._effective_busy_text_mode(event.source)
         return EphemeralReply(
-            f"Busy input mode set to **`{arg}`** (saved).\n_{_BUSY_MODE_BEHAVIOR[arg][1]}_")
+            f"连发消息模式已设为 **`{arg}`**（已保存）。\n_{_BUSY_MODE_BEHAVIOR_ZH.get(arg, _BUSY_MODE_BEHAVIOR_ZH['interrupt'])[1]}_")
 
     async def _handle_footer_command(self, event: MessageEvent) -> str:
         """Handle /footer command — toggle the runtime-metadata footer."""

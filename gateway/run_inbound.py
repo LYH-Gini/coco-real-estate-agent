@@ -699,10 +699,12 @@ class GatewayInboundMixin:
             queue_during_drain = self._queue_during_drain_enabled(effective_busy_input_mode)
             if queue_during_drain:
                 self._queue_or_replace_pending_event(_quick_key, event)
+            # Coco: 官方这两句是英文，会发到经纪人飞书会话里，改中文
+            _coco_action = "重启" if getattr(self, "_restart_requested", False) else "关闭"
             return (
-                f"⏳ Gateway {self._status_action_gerund()} — queued for the next turn after it comes back."
+                f"⏳ Coco 正在{_coco_action}，你这条已排队，恢复后马上处理。"
                 if queue_during_drain
-                else f"⏳ Gateway is {self._status_action_gerund()} and is not accepting another turn right now."
+                else f"⏳ Coco 正在{_coco_action}，暂时不能开新任务。"
             )
         if effective_busy_input_mode == "queue":
             logger.debug("PRIORITY queue follow-up for session %s", _quick_key)
@@ -1027,7 +1029,9 @@ class GatewayInboundMixin:
         """Drain gate, user-defined quick commands (exec/alias) and plugin slash commands →
         ``(handled, result, command)``; an alias quick command rewrites ``command``."""
         if self._draining:
-            return True, f"⏳ Gateway is {self._status_action_gerund()} and is not accepting new work right now.", command
+            # Coco: 官方这句是英文，改中文（与 run_busy.py / 上面的 drain 提示同一口径）
+            _coco_action = "重启" if getattr(self, "_restart_requested", False) else "关闭"
+            return True, f"⏳ Coco 正在{_coco_action}，暂时不能开新任务。", command
 
         # User-defined quick commands (bypass agent loop, no LLM call)
         qcmd = self._hm_quick_commands().get(command) if command else None
