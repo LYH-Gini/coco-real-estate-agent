@@ -63,6 +63,9 @@ HOOK_FILES=(
   # 第 9、10 处：设置向导的默认值（2026-09-19 加；官方写 max_turns=150，会冲掉 Coco 的 500）
   "hermes_cli/setup.py"
   "hermes_cli/setup_quick.py"
+  # 第 19 处：示例配置的种子值（2026-09-27 加；install.sh 会把它复制成新实例的 config.yaml，
+  # 官方阈值 0.50 / 保留 20 会让新装实例在对齐脚本跑之前就是错的）
+  "cli-config.yaml.example"
 )
 
 # Coco 刻意不跟踪的官方路径（删过就不许同步再带回来；2026-09-27 定）

@@ -15,7 +15,7 @@
 > **正确的做法**：读本文件下面每一处的「改什么 / 为什么 / 上游变了怎么办」，
 > 在新底座上重新实现，再用自检脚本验证结果。
 
-## 改动清单（共 18 处官方文件 + 2 个自有文档）
+## 改动清单（共 19 处官方文件 + 2 个自有文档）
 
 | 编号 | 官方文件 | 改动内容 |
 |---|---|---|
@@ -37,6 +37,7 @@
 | 16 | `gateway/run_busy.py` | 清空对话类命令（/new、/reset、/undo）的确认框兜底：官方缺键即弹框，Coco 缺键即直接执行 |
 | 17 | `tests/hermes_cli/test_destructive_slash_confirm_gate.py` | 官方两条断言「默认要弹确认框」的用例改按 Coco 口径（默认不弹），与第 05 处的默认值改动配套 |
 | 18 | `hermes_cli/config_defaults.py`、`gateway/display_config.py`、`scripts/coco_config_align.py` | 飞书默认不显示工具进展行：代码默认值、平台档默认值、更新时对齐三处都写成 `off`（官方飞书档默认 `new`，每调一个工具发一条） |
+| 19 | `hermes_cli/setup.py`、`cli-config.yaml.example` | 向导默认值补齐：删掉官方那句把压缩阈值写回 `0.50` 的、提示文案改成实写的 500 / 0.8；示例配置（新装实例的种子）阈值 `0.50`→**0.8**、`protect_last_n` `20`→**40** |
 
 另有 2 个**自有文档**（不属于官方代码，同步时直接保留即可）：
 `README.md`、`README.zh-CN.md`。
@@ -207,6 +208,26 @@
 - **要开回来的实例**：`coco config set display.platforms.feishu.tool_progress new`（或 `all`），
   显式值优先于这三处默认。
 - **上游变了怎么办**：跑 `python3 scripts/check_coco_hooks.py`（第 38/39/40 项分别守这三处）。
+
+### 19 设置向导的默认值与示例配置种子值
+
+- **改什么**：
+  - `hermes_cli/setup.py` 的 `_apply_default_agent_settings()`：**删掉官方那句
+    `config["compression"]["threshold"] = 0.50`** —— 它紧跟在我们的 `= 0.8` 后面，
+    会把刚写好的值覆盖回 `0.5`；终端提示 `_info("  Max iterations: 150", … "Compression
+    threshold: 0.50")` 与实际写入值不符，改成 `500` / `0.8`。
+  - `cli-config.yaml.example`：`threshold` `0.50` → `0.8`、`protect_last_n` `20` → `40`
+    （`max_turns` 已是 `500`）。
+- **为什么**：这个函数被 `hermes setup` 与快速向导两条路径调用（`setup.py` 第 624 行、
+  `setup_quick.py` 第 114 行），谁重跑一次向导，实例的压缩阈值就回到 0.5（压缩更早触发、
+  每次多烧 token），终端还会告诉用户「150 轮 / 阈值 0.50」。
+  示例配置是 `install.sh` 复制给新实例的第一份 `config.yaml`：种子值退回官方时，
+  新装实例在对齐脚本跑之前就是错的。
+- **不动的**：`compression.hygiene_hard_message_limit` 不写死在向导里 —— 官方默认就是
+  `5000`，运行时自然生效；`coco_config_align.py` 的 `STANDARD` 已显式对齐它。
+- **上游变了怎么办**：跑 `python3 scripts/check_coco_hooks.py`（**第 14 项**守向导、
+  **第 42 项**守示例配置，其中写回 `0.50` 的那行是反向检查：它一回来就报 FAIL）。
+  同步清单里这两个文件都登记在 `scripts/sync_upstream.sh` 的 `HOOK_FILES`。
 
 ## evals/ 最小必要集（保留 13 个文件，不是官方补丁）
 - 「用户装机用不到」而删掉的官方目录里，`evals/` 有个例外：`tests/gateway`（3 个）与 `tests/agent`（1 个）等

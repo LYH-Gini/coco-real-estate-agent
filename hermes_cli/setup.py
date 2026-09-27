@@ -414,10 +414,12 @@ def _apply_default_agent_settings(config: dict):
     # COCO-PATCH: Coco 标准压缩配置（官方默认 threshold 0.50 / protect_last_n 20）
     config.setdefault("compression", {})["threshold"] = 0.8
     config.setdefault("compression", {})["protect_last_n"] = 40
-    config["compression"]["threshold"] = 0.50
+    # COCO-PATCH: 官方原本还有一句 config["compression"]["threshold"] = 0.50，会把上面刚写的
+    # 0.8 覆盖回 0.5（同步上游时若它回来，删掉即可）。运行时的标准值另由
+    # scripts/coco_config_align.py 对齐，此处只需保证向导不写坏。
     save_config(config)
     print_success("Applied recommended defaults:")
-    _info("  Max iterations: 150", "  Tool progress: all", "  Compression threshold: 0.50",
+    _info("  Max iterations: 500", "  Tool progress: all", "  Compression threshold: 0.8",
           "  Run `hermes setup agent` later to customize.")
 
 

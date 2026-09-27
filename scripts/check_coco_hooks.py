@@ -5,7 +5,7 @@ Coco 挂钩点自检 —— 同步官方 Hermes 上游代码后运行
 
 用途
     每次把 Coco 的底座同步到官方新版本后，跑这个脚本确认两件事：
-      ① Coco 对官方文件的 7 处改动都还在
+      ① Coco 对官方文件的每一处改动都还在（当前清单见 patches/README.md）
       ② Coco 自建的文件（房产模块 / 部署体系 / 文档 / CI）都还在
 
 为什么需要它
@@ -18,7 +18,7 @@ Coco 挂钩点自检 —— 同步官方 Hermes 上游代码后运行
       · 配置阈值回退   → 上下文压缩行为回到官方默认（爆上下文风险）
       · 飞书欢迎语丢了 → 经纪人首次对话没有引导，以为机器人是哑的
       · 网关开场白丢了 → 首次对话自我介绍错误
-    这个脚本把 7 处改动 + 文件完整性一次扫完，30 秒内给出结论。
+    这个脚本把改动集 + 文件完整性一次扫完，30 秒内给出结论。
 
 用法
     python3 scripts/check_coco_hooks.py                 # 自动定位仓库根
@@ -154,11 +154,20 @@ CONTENT_CHECKS = [
     ),
     (
         "14",
-        "设置向导的轮次上限",
+        "设置向导的默认值（轮次 / 压缩阈值 / 保留条数）",
         "hermes_cli/setup.py",
-        [r'max_turns"\]\s*=\s*500'],
-        "官方向导写 max_turns=150，重跑向导会把 Coco 的 500 冲掉。\n"
-        "处理：恢复 COCO-PATCH（向导写 500 + 压缩阈值 0.8 / 保留 40 条）。",
+        [
+            r'^\s*config\.setdefault\("agent", \{\}\)\["max_turns"\]\s*=\s*500',
+            r'^\s*config\.setdefault\("compression", \{\}\)\["threshold"\]\s*=\s*0\.8',
+            r'^\s*config\.setdefault\("compression", \{\}\)\["protect_last_n"\]\s*=\s*40',
+            r"Max iterations: 500",
+            r"Compression threshold: 0\.8",
+            # 官方那句把阈值写回 0.50 的赋值必须不在（行首锚定，避免命中注释里提到的数字）
+            r'!^\s*config\["compression"\]\["threshold"\]\s*=\s*0\.50',
+        ],
+        "官方向导写 max_turns=150、并在后面把压缩阈值写回 0.50（会覆盖我们刚写的 0.8），\n"
+        "重跑向导就把 Coco 的设定冲掉，终端提示也会显示错的数字。\n"
+        "处理：恢复 COCO-PATCH（向导写 500 / 阈值 0.8 / 保留 40 条，删掉写回 0.50 那句，提示文案同步改对）。",
     ),
     (
         "15",
@@ -590,6 +599,21 @@ CONTENT_CHECKS = [
         ],
         "官方这两条用例断言「默认要弹确认框」（upstream 默认 True），与 Coco 的口径相反，"
         "改回去就必红。处理：断言保持 False（参考 patches/README.md 第 17 处）。",
+    ),
+    (
+        "42",
+        "示例配置的种子值（新装实例第一份 config.yaml）",
+        "cli-config.yaml.example",
+        [
+            r"^\s*threshold:\s*0\.8",
+            r"^\s*protect_last_n:\s*40",
+            r"^\s*max_turns:\s*500",
+            r"!^\s*threshold:\s*0\.50",
+            r"!^\s*protect_last_n:\s*20",
+        ],
+        "install.sh 会把这份示例复制成新实例的 config.yaml：值退回官方（0.50 / 20）时，"
+        "新装实例在对齐脚本跑之前就是错的，文档里也自相矛盾。\n"
+        "处理：改回 0.8 / 40（max_turns 已是 500，见 patches/README.md 第 19 处）。",
     ),
 ]
 
