@@ -20,10 +20,17 @@ class TestCocoVersion:
         assert data["hermes_base"] == ver.split("-")[0]
 
     def test_message_is_user_facing_wording(self):
-        """对外措辞为「Coco vX-Y · 提交 … · 通道」，并附提交号（便于对上"哪一次提交"）"""
+        """对外措辞（2026-09-27 定）：版本号 + 可执行的更新指引；不带提交号/分支/通道
+
+        正式版点明"（正式版）"；测试版**不对外**说通道（老板自用），只给版本号与更新指引。
+        """
         import tools.real_estate_version as vmod
         data = json.loads(vmod.get_coco_version())
-        assert re.match(r"^Coco v[\d.]+-\d+ · 提交 [0-9a-f]{6,} · \S+通道( · 测试号 .+)?$", data["message"]), data["message"]
+        msg = data["message"]
+        assert re.match(r"^Coco v[\d.]+-\d+(?:（正式版）)?。", msg), msg
+        assert "coco update" in msg, msg
+        for word in ("提交", "通道", "测试版"):
+            assert word not in msg, f"message 里不该有「{word}」：{msg}"
 
     def test_upstream_tag_reported(self):
         """同时回报所基于的官方 tag（供排查用）"""

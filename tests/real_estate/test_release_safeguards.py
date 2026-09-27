@@ -50,8 +50,9 @@ class TestCommitHashVisible:
 
         data = json.loads(get_coco_version())
         head = _run(["git", "rev-parse", "--short", "HEAD"]).stdout.strip()
+        # 2026-09-27 改：提交号只留在 commit 字段（排查用），不再出现在给经纪人看的 message 里
         assert data["commit"] == head
-        assert head in data["message"]
+        assert head not in data["message"], data["message"]
 
 
 class TestUpdateLock:
