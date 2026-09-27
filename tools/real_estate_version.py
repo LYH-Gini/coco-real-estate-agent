@@ -32,12 +32,17 @@ def _git_branch() -> str:
 
 
 def _channel_label() -> str:
+    """通道：正式版 / 测试版 / 未知（2026-09-27 定：只用普通话词，且**不进 message**）
+
+    测试版是我自己用的，不对外说（老板 2026-09-27）；
+    非 master/next 的分支（自定义开发分支）与拿不到分支都算「未知」，具体分支名留在 branch 字段里备查。
+    """
     branch = _git_branch()
     if branch == "master":
-        return "稳定通道"
+        return "正式版"
     if branch == "next":
-        return "测试通道"
-    return "自定义通道" if branch else "未知通道"
+        return "测试版"
+    return "未知"
 
 
 def _test_tag() -> str:
@@ -77,10 +82,15 @@ def get_coco_version(task_id: str = None) -> str:
     upstream = _read_first_line(REPO_ROOT / "UPSTREAM_VERSION").splitlines()
     commit = _git_short_commit()
     channel = _channel_label()
-    test_tag = _test_tag() if channel == "测试通道" else ""
-    version_line = f"Coco v{ver} · 提交 {commit} · {channel}"
-    if test_tag:
-        version_line += f" · 测试号 {test_tag}"
+    test_tag = _test_tag() if channel == "测试版" else ""
+    if ver == "未知":
+        # 版本号文件都没有 → 不猜、不编，直接说清（老板 2026-09-27 定文案）
+        version_line = "说不准：这台机器上没找到版本号文件。"
+    else:
+        # 给经纪人的一句话：只有正式版才点明"正式版"，测试版不对外说通道（他自己用的）
+        label = "（正式版）" if channel == "正式版" else ""
+        version_line = (f"Coco v{ver}{label}。"
+                        f"想知道有没有新版：在服务器上执行 coco update（会检查并更新）。")
     return json.dumps({
         "success": True,
         "coco_version": ver,

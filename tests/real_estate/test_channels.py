@@ -139,8 +139,9 @@ class TestChannelVisible:
         from tools.real_estate_version import get_coco_version
 
         data = json.loads(get_coco_version())
-        assert data["channel"] in ("稳定通道", "测试通道", "自定义通道", "未知通道")
-        assert data["channel"] in data["message"]
+        assert data["channel"] in ("正式版", "测试版", "未知")
+        # 2026-09-27：通道只在结构字段里（内部排查用），message 不对外说通道（测试版是老板自用）
+        assert "测试版" not in data["message"] and "测试通道" not in data["message"], data["message"]
 
     def test_update_script_prints_channel_and_supports_switch(self):
         text = (SCRIPTS / "update.sh").read_text(encoding="utf-8")
