@@ -511,6 +511,33 @@ CONTENT_CHECKS = [
         "'coco config migrate'，官方断言写的还是 hermes config migrate。\n"
         "处理：把断言改回 coco 口径（参考 patches/README.md 第 14 处）。",
     ),
+    (
+        "35",
+        "官方测试断言：终端层网关生命周期守卫（两层守卫分组）",
+        "tests/hermes_cli/test_gateway_restart_loop.py",
+        [
+            r'_COCO_GUARDED_CMDS',
+            r'_GATEWAY_GUARDED_CMDS',
+            r'test_blocks_update_commands_via_coco_guard',
+            r'test_coco_guard_ignores_force_flag',
+        ],
+        "这组用例里，更新类命令（systemctl restart hermes-gateway、hermes gateway restart 等）会被 Coco 的更新守卫先拦下，"
+        "返回自有形状（error/status + 中文话术）；官方那组断言要的是 exit_code=1 + 英文 Blocked，混在一起必红"
+        "（KeyError: 'exit_code'）。"
+        "处理：保持「Coco 守卫组 / 官方网关守卫组」的拆分与各自断言（参考 patches/README.md 第 15 处）。",
+    ),
+    (
+        "36",
+        "官方测试断言：CLI 会话不因继承环境变量被拦",
+        "tests/hermes_cli/test_gateway_restart_loop.py",
+        [
+            r'command="pkill -f hermes.*gateway"',
+            r'!command="hermes gateway restart"',
+        ],
+        "这条官方用例验的是「CLI 会话继承了 _HERMES_GATEWAY=1 也不该被官方闸门拦」。更新类命令会被 Coco 更新守卫一律拦下"
+        "（不看会话），与本用例无关，所以换用只由官方守卫处理的命令。"
+        "处理：保持用 pkill 那条命令（参考 patches/README.md 第 15 处）。",
+    ),
 ]
 
 # 文件/目录存在性检查：编号 / 名称 / 相对路径 / 类型(file|dir|glob) / 最少数量 / 失败提示

@@ -15,7 +15,7 @@
 > **正确的做法**：读本文件下面每一处的「改什么 / 为什么 / 上游变了怎么办」，
 > 在新底座上重新实现，再用自检脚本验证结果。
 
-## 改动清单（共 14 处官方文件 + 2 个自有文档）
+## 改动清单（共 15 处官方文件 + 2 个自有文档）
 
 | 编号 | 官方文件 | 改动内容 |
 |---|---|---|
@@ -33,6 +33,7 @@
 | 12 | `gateway/run_inbound_unauthorized.py`（官方 v0.21.5 起从 `gateway/run_inbound.py` 拆出） | 首次私聊的配对提示里命令名 `hermes {profile_arg}pairing approve` → `coco …`；房主侧提示里的 `hermes pairing approve` → `coco …` |
 | 13 | `hermes_cli/gateway_setup_wizard.py`（官方 v0.21.5 起从 `hermes_cli/gateway.py` 拆出） | Mattermost 向导的 Home Channel 帮助文本 `where Hermes delivers` → `where Coco delivers` |
 | 14 | `tests/hermes_cli/test_ensure_gateway_service.py`、`tests/hermes_cli/test_gateway_no_new_standalone_profile.py`、`tests/hermes_cli/test_update_yes_flag.py` | 官方测试里断言「提示用户敲哪条命令」的字符串改成 coco 口径（`coco gateway` / `coco gateway install` / `coco config migrate` …） |
+| 15 | `tests/hermes_cli/test_gateway_restart_loop.py` | 终端层网关生命周期守卫那组：官方一条参数化用例按「谁拦的」拆成两组（更新类命令由 Coco 更新守卫先拦、按自有形状断言；其余由官方网关守卫拦）；「CLI 会话不该被拦」那条改用只由官方守卫处理的命令 |
 
 另有 2 个**自有文档**（不属于官方代码，同步时直接保留即可）：
 `README.md`、`README.zh-CN.md`。
@@ -147,6 +148,21 @@
   （它们不是品牌断言，改了反而会误导）。
 - **上游变了怎么办**：同步上游会把 `tests/` 覆盖回官方断言。跑 `python3 scripts/check_coco_hooks.py`
   （第 32/33/34 项，负向匹配守着 `assert "hermes gateway…` 不许回来）能立刻发现，按本条把断言改回 coco 口径即可。
+
+### 15 tests/hermes_cli/test_gateway_restart_loop.py —— 两层守卫的返回形状不同
+- **背景**：终端工具里有两层守卫，先 Coco 的更新守卫（`tools/real_estate_update_guard.py`，自有功能），再官方的网关生命周期守卫。
+- **改什么**（只动这一组用例，生产代码不改）：
+  - 官方那条参数化用例拆成两组列表：`_COCO_GUARDED_CMDS`（`systemctl restart hermes-gateway`、
+    `systemctl --user restart hermes-gateway`、`systemctl stop hermes-gateway.service`、
+    `hermes gateway restart`、`hermes gateway uninstall`）与 `_GATEWAY_GUARDED_CMDS`（`launchctl …`、`pkill -f hermes.*gateway`）。
+  - 新增 `test_blocks_update_commands_via_coco_guard`：断言更新类命令被拦且话术是我们那句（含「服务器」「coco update」）。
+  - 原 `test_force_true_cannot_bypass_block` 改名为 `test_coco_guard_ignores_force_flag`（Coco 守卫不看 force，强制也拦）。
+  - `test_cli_agent_session_not_blocked_by_inherited_env` 的命令换成 `pkill -f hermes.*gateway`，保留它原本要验的「环境变量误触发」。
+- **为什么**：Coco 的更新守卫**不看会话、不看 force**，一律拦下更新类命令，返回自有形状
+  `{"error": <中文话术>, "status": …}`；而官方断言要的是 `exit_code=1` + 英文 `Blocked`。两者形状不同，
+  混在一条参数化用例里必然假红（`KeyError: 'exit_code'`）。
+- **上游变了怎么办**：同步会把该测试文件覆盖回官方版本。跑 `python3 scripts/check_coco_hooks.py`
+  （第 35/36 项守着两组拆分与那条 `pkill` 命令）能立刻发现，按本条重新拆分即可。
 
 ## 使用方法（同步时）
 

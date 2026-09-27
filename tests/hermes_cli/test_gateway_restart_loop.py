@@ -528,12 +528,18 @@ class TestTerminalToolGatewayLifecycleGuard:
             lambda: inside_gateway,
         )
 
-    @pytest.mark.parametrize("cmd", [
+    # 这两组分开验（Coco 改动，见 patches/README.md 第 15 处）：
+    # · 前一组由 Coco 的更新守卫拦下，返回自有形状（error/status，中文话术）；
+    # · 后一组只有官方网关守卫会拦，返回官方形状（exit_code=1 + Blocked）。
+    # 混在一起会因为两者形状不同而假红。
+    _COCO_GUARDED_CMDS = [
         "systemctl restart hermes-gateway",
         "systemctl --user restart hermes-gateway",
         "systemctl stop hermes-gateway.service",
         "hermes gateway restart",
         "hermes gateway uninstall",
+    ]
+    _GATEWAY_GUARDED_CMDS = [
         "launchctl kickstart gui/501/ai.hermes.gateway",
         "launchctl bootout gui/501/ai.hermes.gateway",
         # #62891 exact reported shape and its bootstrap sibling.
@@ -541,7 +547,9 @@ class TestTerminalToolGatewayLifecycleGuard:
         "launchctl submit -l com.foo -- /path/gateway",
         "launchctl bootstrap gui/501 ~/Library/LaunchAgents/ai.hermes.gateway.restart-once.plist",
         "pkill -f hermes.*gateway",
-    ])
+    ]
+
+    @pytest.mark.parametrize("cmd", _GATEWAY_GUARDED_CMDS)
     def test_blocks_lifecycle_commands_inside_gateway(self, monkeypatch, cmd):
         import tools.terminal_tool as tt
         self._patch_env(monkeypatch, self._make_fake_env(), inside_gateway=True)
@@ -551,7 +559,20 @@ class TestTerminalToolGatewayLifecycleGuard:
         assert result["exit_code"] == 1
         assert "Blocked" in result["error"]
 
-    def test_force_true_cannot_bypass_block(self, monkeypatch):
+    @pytest.mark.parametrize("cmd", _COCO_GUARDED_CMDS)
+    def test_blocks_update_commands_via_coco_guard(self, monkeypatch, cmd):
+        """Coco 更新守卫：这类命令一律拦下（不看会话），返回自有形状 error/status。"""
+        import tools.terminal_tool as tt
+        self._patch_env(monkeypatch, self._make_fake_env(), inside_gateway=True)
+
+        result = json.loads(tt.terminal_tool(command=cmd))
+
+        assert result.get("status"), result
+        assert "服务器" in result["error"], result
+        assert "coco update" in result["error"], result
+
+    def test_coco_guard_ignores_force_flag(self, monkeypatch):
+        """Coco 更新守卫不看 force：强制也一样拦。"""
         import tools.terminal_tool as tt
         self._patch_env(monkeypatch, self._make_fake_env(), inside_gateway=True)
 
@@ -559,8 +580,7 @@ class TestTerminalToolGatewayLifecycleGuard:
             command="systemctl restart hermes-gateway", force=True
         ))
 
-        assert result["exit_code"] == 1
-        assert "Blocked" in result["error"]
+        assert "服务器" in result["error"], result
 
     def test_blocks_lifecycle_command_hidden_in_referenced_script(
         self, monkeypatch, tmp_path
@@ -677,10 +697,12 @@ class TestTerminalToolGatewayLifecycleGuard:
             tt, "_check_all_guards", lambda cmd, env, **kwargs: {"approved": True}
         )
 
-        result = json.loads(tt.terminal_tool(command="hermes gateway restart"))
+        # 这里换一条只由官方网关守卫处理的命令：更新类命令（如 hermes gateway restart）
+        # 会被 Coco 更新守卫一律拦下，与本用例要验的官方闸门无关（patches/README.md 第 15 处）。
+        result = json.loads(tt.terminal_tool(command="pkill -f hermes.*gateway"))
 
         assert result["exit_code"] == 0
-        assert calls == ["hermes gateway restart"]
+        assert calls == ["pkill -f hermes.*gateway"]
 
     def test_blocks_launchctl_submit_hidden_in_referenced_script(
         self, monkeypatch, tmp_path
