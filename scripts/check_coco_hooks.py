@@ -781,6 +781,40 @@ CONTENT_CHECKS = [
         "处理：两处都改成 `⏳ Coco 正在重启/关闭，…`；"
         "单测 tests/gateway/test_multiplex_busy_input_mode.py 断言已同步中文。",
     ),
+    (
+        "56",
+        "推送脚本按仓库路由（正式仓/开发仓）",
+        "scripts/push_all.sh",
+        [
+            r"RELEASE_REMOTES=\(\"origin\" \"github\"\)",
+            r"DEV_REMOTES=\(\"dev-gitee\" \"dev-gh\"\)",
+            r"开发线（\$BRANCH → 开发仓）",
+            r"git remote add dev-gitee",
+            r"!REMOTES=\(\"origin\" \"github\"\)\s*# origin = Gitee，github = GitHub",
+        ],
+        "Coco 分了两个仓库（2026-09-28）：正式仓（公开，只有 master，别人照文档装）+ "
+        "开发仓（私有，只有 next，测试机用密钥拉）。推送脚本若不分仓，`push_all.sh next` 会把"
+        "开发内容推到公开仓 —— 等于把未验收代码公开出去（而且正式仓的 next 会被通道守卫判红）。"
+        "处理：按 patches/README.md 的口径恢复按分支选仓库的路由（master→origin/github，"
+        "其余→dev-gitee/dev-gh），缺远程时打印该敲的 `git remote add` 命令。"
+        "单测：tests/real_estate/test_release_safeguards.py::TestPushAllTwoRepos。",
+    ),
+    (
+        "57",
+        "通道守卫守两个仓库的分支形态",
+        ".github/workflows/channel-guard.yml",
+        [
+            r"endsWith\(github\.repository, '-dev'\)",
+            r"开发仓只放开发线",
+            r"正式仓没有 next（开发内容在开发仓）",
+            r"COCO_GIT_URL",
+        ],
+        "通道守卫原来是单仓时代写的（只断言\"默认分支必须是 master\"）—— 分仓后开发仓的默认分支"
+        "按设计就是 next，守卫会在开发仓里永远红，真正该拦的两件事（正式仓出现 next、"
+        "开发仓出现 master）反而没人守。"
+        "处理：按仓库角色分别断言（正式仓默认 master + 无 next；开发仓默认 next + 无 master；"
+        "正式仓的 install.sh 默认通道 = master；开发仓的 install.sh 有 COCO_GIT_URL 私有源入口）。",
+    ),
 ]
 
 # 文件/目录存在性检查：编号 / 名称 / 相对路径 / 类型(file|dir|glob) / 最少数量 / 失败提示
