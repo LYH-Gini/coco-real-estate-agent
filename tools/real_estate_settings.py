@@ -3,7 +3,18 @@ Coco 房产工具 - 经纪人配置（品牌/公司名）
 2026-08-12 加：海报品牌必须来自经纪人真实告知的公司名，禁止用默认值硬凑。
 """
 import json
+import re
+
+from agent.real_estate_input import clean_text, clip_text, norm_phone
 from tools.registry import registry
+
+_CARD_LABELS = {"name": "姓名", "phone": "电话", "wechat": "微信", "company": "公司/门店名"}
+# 海报排版的容量上限（超出截断并说明，绝不静默丢字）
+_CARD_LIMITS = {"name": 10, "phone": 20, "wechat": 30, "company": 30}
+_CARD_SETTINGS = {"name": "agent_name", "phone": "agent_phone",
+                  "wechat": "agent_wechat", "company": "brand_name"}
+_WECHAT_PREFIX = re.compile(r"^(微信号|微信|vx|VX|wx|WX)\s*[:：]?\s*")
+_PHONE_LIKE = re.compile(r"[\d\-]{7,20}")
 
 
 def _get_db():
@@ -50,34 +61,57 @@ def save_agent_card(name: str = None, phone: str = None, wechat: str = None,
     海报用：公司名做品牌栏，姓名/电话/微信做底部名片区。
     没提供的字段保持原值不动；绝不写默认值或占位符。
     """
+    provided = {"name": name, "phone": phone, "wechat": wechat, "company": company}
+    for key, value in provided.items():
+        if value is None:
+            continue
+        if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+            got = "是/否" if isinstance(value, bool) else "非文字内容"
+            return json.dumps({"success": False,
+                               "error": f"{_CARD_LABELS[key]}要填文字，收到的是「{got}」这类值。"},
+                              ensure_ascii=False)
     db = _get_db()
     saved = {}
-    if name and name.strip():
-        db.set_setting('agent_name', name.strip())
-        saved['name'] = name.strip()
-    if phone and phone.strip():
-        db.set_setting('agent_phone', phone.strip())
-        saved['phone'] = phone.strip()
-    if wechat and wechat.strip():
-        db.set_setting('agent_wechat', wechat.strip())
-        saved['wechat'] = wechat.strip()
-    if company and company.strip():
-        db.set_setting('brand_name', company.strip())   # 兼容旧字段：品牌名 = 公司名
-        saved['company'] = company.strip()
+    notes = []
+    for key in ("name", "phone", "wechat", "company"):
+        text = clean_text(provided[key])
+        if not text:
+            continue                      # 没提供 / 纯空白：保持原值不动
+        if key == "phone":
+            normalized = norm_phone(text) or text
+            if normalized != text:
+                notes.append(f"电话已按 {normalized} 记下。")
+            text = normalized
+            if not _PHONE_LIKE.fullmatch(text):
+                notes.append(f"电话「{text}」看着不像完整手机号，已按原样记下（要改就说一声）。")
+        if key == "wechat":
+            text = _WECHAT_PREFIX.sub("", text).strip()
+        text, clip_note = clip_text(text, _CARD_LIMITS[key])
+        if clip_note:
+            notes.append(f"{_CARD_LABELS[key]}太长，已按前 {_CARD_LIMITS[key]} 字记下：「{text}」。")
+        db.set_setting(_CARD_SETTINGS[key], text)
+        saved[key] = text
     if not saved:
         return json.dumps({"success": False, "error": "没有可保存的内容（姓名/电话/微信/公司名 至少给一项）"},
                           ensure_ascii=False)
     card = get_agent_card_or_empty()
     missing = [label for key, label in (('name', '姓名'), ('phone', '电话'),
                                         ('wechat', '微信'), ('company', '公司/门店名')) if not card.get(key)]
-    return json.dumps({
+    message = "经纪人名片已更新。海报底部会显示姓名/电话/微信，品牌栏显示公司名。"
+    if missing:
+        message += f"还差：{'、'.join(missing)}（想起来的时候发我就行）。"
+    message += "".join(notes)
+    payload = {
         "success": True,
         "saved": saved,
         "card": card,
         "still_missing": missing,
-        "message": ("经纪人名片已更新。海报底部将显示姓名/电话/微信，品牌栏显示公司名。"
-                    + (f"还缺：{'、'.join(missing)}（需要时问经纪人要，不要编）" if missing else "")),
-    }, ensure_ascii=False)
+        "message": message,
+    }
+    if missing:
+        # 「不要编」是给模型的口径，不能混进给经纪人看的那句话
+        payload["note_for_model"] = f"还缺：{'、'.join(missing)} —— 需要时问经纪人要，不要编。"
+    return json.dumps(payload, ensure_ascii=False)
 
 
 def get_agent_card_or_empty() -> dict:
