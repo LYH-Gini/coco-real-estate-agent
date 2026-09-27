@@ -166,6 +166,11 @@ fi
 
 info "[4/8] 安装 / 更新 Python 依赖（pip install -e .）"
 "$VENV_PY" -m pip install -e . -q
+# sqlalchemy 必须显式锁版本：它不在 pyproject 的直接依赖里（只由 mem0 附加项间接引入），
+# 所以 pip install -e . 不会校正它。2026-09-27 实测事故：SQLAlchemy 2.1 把
+# postgresql:// 的默认驱动从 psycopg2 换成 psycopg3，与 psycopg2-binary 不匹配，
+# 建表与迁移全部失败。设备上已装错的版本会被这一行纠正回来。
+"$VENV_PY" -m pip install -q "sqlalchemy==2.0.51" psycopg2-binary
 ok "依赖已就绪"
 
 info "[5/8] 应用数据库迁移（只增不删、事务、失败回滚）"
