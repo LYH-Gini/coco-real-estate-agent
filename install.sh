@@ -4,13 +4,15 @@
 # 用法(国内): curl -fsSL https://gitee.com/LYH-Gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh
 # 用法(海外): curl -fsSL https://raw.githubusercontent.com/LYH-Gini/coco-real-estate-agent/master/install.sh -o install.sh && bash install.sh
 # 强制指定源: COCO_SOURCE=github bash install.sh   （不指定则并行探测，谁快用谁）
+# 私有源安装: COCO_GIT_URL=git@gitee.com:账号/仓库.git bash install.sh
+#   （用于仓库不可公开访问的场景，只走指定地址；本机需先配好凭据：SSH 部署公钥或访问令牌）
 # 脚本自动探测网络：Gitee 不通时自动切换 GitHub 源
 #
 set -euo pipefail
 
 # ==================== 配置 ====================
 # 双源配置：Gitee（国内快）+ GitHub（海外稳定），自动切换
-# 通道：默认装稳定版(master)；装测试版用 COCO_CHANNEL=next bash install.sh
+# 通道：默认装稳定版(master)；开发版不对外发布，装开发版需指定私有源（见下方"私有源安装"说明）
 COCO_CHANNEL="${COCO_CHANNEL:-master}"
 GITEE_RAW_URL="https://gitee.com/LYH-Gini/coco-real-estate-agent/raw/master/install.sh"
 GITEE_REPO_URL="https://gitee.com/LYH-Gini/coco-real-estate-agent.git"
@@ -18,6 +20,10 @@ GITEE_ZIP_URL="https://gitee.com/LYH-Gini/coco-real-estate-agent/repository/arch
 GITHUB_REPO_URL="https://github.com/LYH-Gini/coco-real-estate-agent.git"
 GITHUB_ZIP_URL="https://github.com/LYH-Gini/coco-real-estate-agent/archive/refs/heads/${COCO_CHANNEL}.zip"
 INSTALL_DIR="${COCO_INSTALL_DIR:-$HOME/coco}"   # 安装目录（2026-09-21 起为 ~/coco，可用 COCO_INSTALL_DIR 自定义）
+# 私有源（可选）：指定后只从该地址下载，不再探测双源。
+# 用于仓库不可公开访问的场景，本机需先配好凭据（SSH 部署公钥最省事，或 HTTPS 访问令牌）。
+#   例：COCO_GIT_URL=git@gitee.com:账号/仓库.git COCO_CHANNEL=next bash install.sh
+COCO_GIT_URL="${COCO_GIT_URL:-}"
 SERVICE_NAME="hermes-agent"   # 旧版自建系统服务的名字，仅用于安装时清理残留；现统一用官方用户服务 hermes-gateway
 
 RED='\033[0;31m'
@@ -406,6 +412,26 @@ clone_project() {
         rm -rf "$INSTALL_DIR"
     fi
     local src
+
+    # 私有源：地址由 COCO_GIT_URL 指定，只走这一个地址（凭据由本机的部署公钥或令牌提供）
+    if [[ -n "$COCO_GIT_URL" ]]; then
+        case "$COCO_GIT_URL" in
+            *gitee*) COCO_CHOSEN_SOURCE="gitee" ;;
+            *)       COCO_CHOSEN_SOURCE="github" ;;
+        esac
+        local clog; clog="$(mktemp)"
+        # GIT_TERMINAL_PROMPT=0：没配好凭据时立刻失败并说清原因，不要卡在等待输入密码
+        if GIT_TERMINAL_PROMPT=0 git clone --branch "$COCO_CHANNEL" "$COCO_GIT_URL" "$INSTALL_DIR" >"$clog" 2>&1; then
+            rm -f "$clog"
+            cd "$INSTALL_DIR"
+            ok "代码下载完成（来源: 指定私有源）"
+            return 0
+        fi
+        warn "下载失败，git 提示：$(tail -n 3 "$clog" | sed -E 's#//[^@/]*@#//***@#g' | tr '\n' ' ')"
+        rm -f "$clog"
+        error "从指定的私有源下载失败：请确认本机已配好该仓库的凭据（SSH 部署公钥或访问令牌），且分支 $COCO_CHANNEL 存在"
+    fi
+
     src=$(probe_source)
     COCO_CHOSEN_SOURCE="$src"   # 供后面判断国内外（国内→Python 下载走国内镜像）
     case "$src" in
