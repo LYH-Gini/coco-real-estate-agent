@@ -538,6 +538,18 @@ CONTENT_CHECKS = [
         "（不看会话），与本用例无关，所以换用只由官方守卫处理的命令。"
         "处理：保持用 pkill 那条命令（参考 patches/README.md 第 15 处）。",
     ),
+    (
+        "37",
+        "清空对话确认框兜底口径",
+        "gateway/run_busy.py",
+        [
+            r"confirm_required\s*=\s*False",
+            r'destructive_slash_confirm"\s*,\s*False',
+        ],
+        "清空对话类命令（/new、/reset、/undo）的确认框兜底被改回官方口径（缺键或读配置失败都要弹框）。"
+        "经纪人不会输入 /always，弹一次就把「开新会话」卡住。"
+        "处理：把 _maybe_confirm_destructive_slash 里两处兜底改回 False（参考 patches/README.md 第 16 处）。",
+    ),
 ]
 
 # 文件/目录存在性检查：编号 / 名称 / 相对路径 / 类型(file|dir|glob) / 最少数量 / 失败提示

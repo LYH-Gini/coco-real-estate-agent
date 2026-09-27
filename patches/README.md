@@ -15,7 +15,7 @@
 > **正确的做法**：读本文件下面每一处的「改什么 / 为什么 / 上游变了怎么办」，
 > 在新底座上重新实现，再用自检脚本验证结果。
 
-## 改动清单（共 15 处官方文件 + 2 个自有文档）
+## 改动清单（共 16 处官方文件 + 2 个自有文档）
 
 | 编号 | 官方文件 | 改动内容 |
 |---|---|---|
@@ -34,6 +34,7 @@
 | 13 | `hermes_cli/gateway_setup_wizard.py`（官方 v0.21.5 起从 `hermes_cli/gateway.py` 拆出） | Mattermost 向导的 Home Channel 帮助文本 `where Hermes delivers` → `where Coco delivers` |
 | 14 | `tests/hermes_cli/test_ensure_gateway_service.py`、`tests/hermes_cli/test_gateway_no_new_standalone_profile.py`、`tests/hermes_cli/test_update_yes_flag.py` | 官方测试里断言「提示用户敲哪条命令」的字符串改成 coco 口径（`coco gateway` / `coco gateway install` / `coco config migrate` …） |
 | 15 | `tests/hermes_cli/test_gateway_restart_loop.py` | 终端层网关生命周期守卫那组：官方一条参数化用例按「谁拦的」拆成两组（更新类命令由 Coco 更新守卫先拦、按自有形状断言；其余由官方网关守卫拦）；「CLI 会话不该被拦」那条改用只由官方守卫处理的命令 |
+| 16 | `gateway/run_busy.py` | 清空对话类命令（/new、/reset、/undo）的确认框兜底：官方缺键即弹框，Coco 缺键即直接执行 |
 
 另有 2 个**自有文档**（不属于官方代码，同步时直接保留即可）：
 `README.md`、`README.zh-CN.md`。
@@ -163,6 +164,21 @@
   混在一条参数化用例里必然假红（`KeyError: 'exit_code'`）。
 - **上游变了怎么办**：同步会把该测试文件覆盖回官方版本。跑 `python3 scripts/check_coco_hooks.py`
   （第 35/36 项守着两组拆分与那条 `pkill` 命令）能立刻发现，按本条重新拆分即可。
+
+### 16 gateway/run_busy.py —— 清空对话类命令的确认框兜底
+- **背景**：网关判定「要不要先弹确认框」读的是 `approvals.destructive_slash_confirm`，
+  官方的兜底是 `True`——**配置里没这个键、或者读配置报错时，也会弹框**。
+- **改什么**（只改 `_maybe_confirm_destructive_slash` 里的两处兜底）：
+  - `confirm_required` 初值 `True` → `False`；
+  - `approvals.get("destructive_slash_confirm", True)` → `False`。
+  - 新语义：**缺键、读配置失败都按「不弹框」处理**；只有把该键显式写成 `true` 时才弹。
+- **为什么**：经纪人不会输入 `/always`，官方兜底一旦生效就会把「开新会话」卡住。
+  配套另有两处（不属于本项）：`hermes_cli/config_defaults.py` 的新装默认值（自检第 05 项守着）、
+  `scripts/coco_config_align.py` 的更新时对齐（会把被显式写成 `true` 的拉回 `false`）。
+  本次之前的问题正是「代码默认值与更新时对齐都是关的，但网关这一层兜底仍是官方的开」——
+  配置里没有该键的实例仍会被弹框拦住。
+- **上游变了怎么办**：同步会把该文件覆盖回官方口径。跑 `python3 scripts/check_coco_hooks.py`
+  （第 37 项守着这两处兜底）能立刻发现，按本条改回 `False` 即可。
 
 ## 使用方法（同步时）
 

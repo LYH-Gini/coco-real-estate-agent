@@ -1261,11 +1261,13 @@ class GatewayBusySessionMixin:
         ``approvals.destructive_slash_confirm`` is off; otherwise via ``_request_slash_confirm``:
         ``once`` runs it, ``always`` persists the opt-out then runs it, ``cancel`` skips it.
         """
-        confirm_required = True
+        # 缺键或读配置失败都按「不确认」处理：经纪人不会输入 /always，
+        # 只有把 approvals.destructive_slash_confirm 显式写成 true 时才弹确认框。
+        confirm_required = False
         try:
             approvals = self._read_user_config().get("approvals")
             if isinstance(approvals, dict):
-                confirm_required = bool(approvals.get("destructive_slash_confirm", True))
+                confirm_required = bool(approvals.get("destructive_slash_confirm", False))
         except Exception:
             pass
         if not confirm_required:
