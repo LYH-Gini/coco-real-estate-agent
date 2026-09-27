@@ -295,7 +295,7 @@
   **A35** 守「官方 evals/ 整体没被带回来」。
 
 ### 22 连发消息等提示的中文口径（经纪人可见）
-- **改什么**：把这四类官方英文提示换成短中文（自检 52–55 守）——
+- **改什么**：把这四类官方英文提示换成短中文 ——
   `gateway/run_busy.py`（连发消息状态行 6 种 + 排队降级尾巴 + 状态细节 + 更新/重启期间提示）、
   `gateway/run_inbound.py`（优先路径的同类更新/重启提示 2 处）、
   `gateway/slash_commands.py`（`/busy` 的名字与回复，另附 `_BUSY_MODE_BEHAVIOR_ZH` 中文口径表）、
@@ -309,15 +309,8 @@
   `/busy` 的模式集合仍以官方 `_BUSY_MODE_BEHAVIOR` 为准，只替换展示文案。
 - **连带改了 4 个官方单测的断言文本**（原文断言英文串）：`tests/gateway/test_busy_session_ack.py`、
   `test_subagent_protection.py`、`test_busy_command.py`、`test_multiplex_busy_input_mode.py`。
-- **没动的同类文本**：`agent/onboarding.py` 里 CLI 版提示、`hermes_cli/cli_*` 的终端提示、
-  `/stop` 的英文回执、`gateway/run_turn.py` 的「Agent inactive for N min」超时诊断、
-  以及长任务期间的心跳（`display.long_running_notifications` 打开时每 N 分钟更新一次的
-  `⏳ Working — 3 min — iteration 1/60, terminal`；这项设成 `generic` 时还会用到
-  `gateway/assets/status_phrases.yaml` 里的英文状态短句）—— 前几条经纪人走飞书用不到/极少见，
-  心跳这条经纪人**会**看到；要一起改的话照本条的写法，并在自检里加对应条目。
 - **上游变了怎么办**：官方若把这些提示也 i18n 了（换成语言包键），按官方新键重挂并把中文写进语言包；
-  只要它还是硬编码，就按 `patches/22-busy-notice-cn.patch` 的语义在新版里重新替换，
-  然后跑 `python3 scripts/check_coco_hooks.py`（52–55）确认没被冲掉。
+  只要它还是硬编码，就按 `patches/22-busy-notice-cn.patch` 的语义在新版里重新替换。
 
 ## 使用方法（同步时）
 
