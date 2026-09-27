@@ -93,12 +93,22 @@ class TestPurgePreview:
         assert entry['related']['price_history'] == 1 and entry['related_total'] == 1
 
     def test_bad_before_format_raises(self, db):
+        """日期认不出要直接报错（2026-09-27 第十二组：改前「9月23日」这类写法会崩、文案是格式要求）
+
+        现在「9月23日」按"最近一次已经过去的那天"算（清理是过去截止点），认不出的才报错，
+        错误文案给的是"怎么改写"而不是格式说明。
+        """
+        from datetime import datetime
+        parsed, problem = db.parse_purge_before("9月23日")
+        assert problem is None and parsed is not None
+        assert parsed.month == 9 and parsed.day == 23
+
         try:
-            db.purge_preview(kind="customer", before="9月23日")
+            db.purge_preview(kind="customer", before="不是日期")
         except ValueError as exc:
-            assert 'YYYY-MM-DD' in str(exc)
+            assert '日期没认出来' in str(exc) and '昨天' in str(exc)
         else:
-            raise AssertionError('时间格式错误应当直接报错')
+            raise AssertionError('日期认不出应当直接报错')
 
 
 # ==================== 单条彻底删除 ====================
@@ -255,8 +265,13 @@ class TestPurgeData:
         assert _row(db, 'Property', rental['id']).status == 'rented'
 
     def test_bad_mode_refused(self, db):
+        """模式错值：给中文可选项，别把内部错误码（bad_mode）丢给模型"""
         result = db.purge_data(kind="customer", mode='delete-everything')
-        assert result['success'] is False and result['error'] == 'bad_mode'
+        msg = result.get('message') or result.get('error') or ''
+        assert result['success'] is False
+        assert '彻底删除' in msg and '只改状态' in msg, msg
+        assert result.get('error') != 'bad_mode', msg
+        assert 'mode 只能是' not in msg, f"别再给格式说明式文案：{msg}"
 
     def test_restore_status_brings_records_back(self, db):
         c = make_customer(db, name="误标的客户", status="closed")

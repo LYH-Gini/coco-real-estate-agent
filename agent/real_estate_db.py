@@ -2945,20 +2945,75 @@ class RealEstateDB:
         'changes': '需求变更', 'referrals': '转介绍', 'price_history': '调价记录',
     }
 
-    def _purge_boundary(self, before):
-        """把 YYYY-MM-DD / datetime 统一成"创建时间早于它"的比较值（None = 不限）"""
+    @classmethod
+    def parse_purge_before(cls, before):
+        """清理用的"某个时间点之前"解析 → (datetime 或 None, 中文提示或 None)
+
+        与共用件 `norm_date` 的分工：`norm_date` 面向"未来的到期/提醒日"（裸月日按未来那天算），
+        而清理的 before 是"过去的截止点"——裸月日要按**最近一次已经过去的那天**算（今天 9-27 写
+        「9月23日」= 今年 9-23）。所以这里单独一套解析，不去动共用件的语义（免得影响到期日类工具）。
+        支持：2026-01-01 / 2026/1/1 / 2026年1月1日 / 9月23日（最近一次）/ 今天·昨天·前天·大前天 /
+        上周 / 上个月 / 3天前 / 2周前 / 3个月前 / 带时间的 2026-09-27 10:00。
+        """
         if before in (None, ''):
-            return None
+            return None, None
         if isinstance(before, datetime):
-            return before
-        text = str(before).strip()
-        for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+            return before, None
+        raw = str(before).strip()
+        for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M'):
             try:
-                dt = datetime.strptime(text, fmt)
+                return datetime.strptime(raw, fmt), None
             except ValueError:
                 continue
-            return dt if fmt.endswith('%H:%M:%S') else datetime.combine(dt.date(), datetime.min.time())
-        raise ValueError(f'时间格式不对：{before}（请用 YYYY-MM-DD）')
+        text = re.sub(r'[\s\u3000]+', '', raw)
+        today = datetime.now()
+        day0 = datetime.combine(today.date(), datetime.min.time())
+        past_words = {'今天': 0, '昨天': 1, '前天': 2, '大前天': 3}
+        if text in past_words:
+            return day0 - timedelta(days=past_words[text]), None
+        if text in ('上周', '上星期', '上个星期'):
+            return day0 - timedelta(days=7), None
+        if text in ('上个月', '上月'):
+            month_index = today.year * 12 + (today.month - 1) - 1
+            year, month = divmod(month_index, 12)
+            return datetime(year, month + 1, min(today.day, 28)), None
+        m = re.fullmatch(r'(\d+)(天|日|周|个星期|星期|个月|月)前', text)
+        if m:
+            n = int(m.group(1))
+            unit = m.group(2)
+            if unit in ('天', '日'):
+                return day0 - timedelta(days=n), None
+            if unit in ('周', '个星期', '星期'):
+                return day0 - timedelta(weeks=n), None
+            month_index = today.year * 12 + (today.month - 1) - n
+            year, month = divmod(month_index, 12)
+            return datetime(year, month + 1, min(today.day, 28)), None
+        normalized = (text.replace('年', '-').replace('月', '-').replace('日', '')
+                          .replace('/', '-').replace('.', '-'))
+        parts = [p for p in normalized.split('-') if p != '']
+        try:
+            if len(parts) == 3:
+                return datetime(int(parts[0]), int(parts[1]), int(parts[2])), None
+            if len(parts) == 2:                     # 只有月日 → 最近一次（今年已过就算今年）
+                candidate = datetime(today.year, int(parts[0]), int(parts[1]))
+                if candidate > day0:
+                    candidate = datetime(today.year - 1, int(parts[0]), int(parts[1]))
+                return candidate, None
+        except ValueError:
+            return None, f'日期没认出来：{before}'
+        return None, f'日期没认出来：{before}'
+
+    def _purge_boundary(self, before):
+        """把日期写法统一成"创建时间早于它"的比较值（None = 不限）
+
+        2026-09-27（第十二组 F433）：此前只认 `YYYY-MM-DD`，写「昨天」这类相对说法会抛异常逃出工具层。
+        现在走 `parse_purge_before`（过去截止点口径）；工具层会先用它做校验并给中文提示，
+        这里的抛错只兜底（脚本直接调库时）。
+        """
+        parsed, problem = self.parse_purge_before(before)
+        if problem:
+            raise ValueError(f'{problem}（可以写 2026-01-01，也可以说「昨天」「上个月」）')
+        return parsed
 
     def _purge_related_counts(self, s, kind, oid):
         """一条记录挂了多少关联历史（决定物理删除是否安全）"""
@@ -2993,8 +3048,13 @@ class RealEstateDB:
         return None
 
     def _purge_targets(self, s, kind, statuses=None, before=None):
-        """按状态 + 创建时间挑出候选记录（只读）"""
+        """按状态 + 创建时间挑出候选记录（只读）
+
+        2026-09-27（第十二组 F432）：状态参数先归一 —— 此前传中文「已售」匹配不到任何记录、
+        还静默返回 0 条，经纪人会以为清干净了。现在中文别名与英文值等价（认不出的由工具层报出来）。
+        """
         cutoff = self._purge_boundary(before)
+        statuses, _bad = self.norm_purge_statuses(statuses)
         targets = []
         if kind in ('property', 'all'):
             q = s.query(Property).filter(Property.status.in_(statuses or ['sold', 'rented']))
@@ -3011,14 +3071,15 @@ class RealEstateDB:
     def _purge_entry(self, s, kind, obj):
         """把一条候选记录整理成"给经纪人看的清单条目"（含关联条数与不能删的原因）"""
         related = self._purge_related_counts(s, kind, obj.id)
+        status_word = self.purge_status_label(kind, obj.status)
         if kind == 'property':
-            entry = {'kind': 'property', 'id': obj.id, 'title': obj.title,
-                     'status': obj.status, 'district': obj.district,
+            entry = {'kind': '房源', 'id': obj.id, 'title': obj.title,
+                     'status': status_word, 'district': obj.district,
                      'price': float(obj.price) if obj.price is not None else None,
                      'area': obj.area}
         else:
-            entry = {'kind': 'customer', 'id': obj.id, 'name': obj.name,
-                     'status': obj.status, 'tier': obj.tier, 'source': obj.source}
+            entry = {'kind': '客户', 'id': obj.id, 'name': obj.name,
+                     'status': status_word, 'tier': obj.tier, 'source': obj.source}
         entry['related'] = related
         entry['related_total'] = sum(related.values())
         entry['skip_reason'] = self._purge_skip_reason(related, kind)
@@ -3070,9 +3131,13 @@ class RealEstateDB:
                        ('changes', '需求变更'), ('referrals', '转介绍'), ('price_history', '调价'))
 
     @staticmethod
-    def _delete_target_text(entry) -> str:
-        """回执里点名删的是哪一条（编号 + 名字，便于经纪人核对）"""
-        if entry['kind'] == 'property':
+    def _delete_target_text(kind, entry) -> str:
+        """回执里点名删的是哪一条（编号 + 名字，便于经纪人核对）
+
+        注意 kind 必须显式传：清单条目里的 kind 值从 2026-09-27 起是中文（房源/客户），
+        不能再拿它当内部码判断（否则会读 entry["name"] 报 KeyError）。
+        """
+        if kind == 'property':
             return f'「{entry["title"]}」（房源编号 {entry["id"]}）'
         return f'「{entry["name"]}」（客户编号 {entry["id"]}）'
 
@@ -3093,6 +3158,69 @@ class RealEstateDB:
     @staticmethod
     def _where_text(kind) -> str:
         return '房源列表、报表、匹配' if kind == 'property' else '客户列表、跟进提醒、报表'
+
+    # ---- 批量清理（purge_data）的口径件（2026-09-27 第十二组）----
+    # 参数认中文别名（经纪人嘴里的说法），回执与清单里的值一律中文，不外露英文枚举。
+    PURGE_KIND_ALIASES = {
+        'property': 'property', 'properties': 'property', 'house': 'property',
+        '房源': 'property', '房子': 'property', '房': 'property',
+        'customer': 'customer', 'customers': 'customer', 'client': 'customer',
+        '客户': 'customer', '客': 'customer',
+        'all': 'all', 'both': 'all', '两者': 'all', '全部': 'all', '都要': 'all',
+        '房源和客户': 'all', '客户和房源': 'all', '所有': 'all',
+    }
+    PURGE_MODE_ALIASES = {
+        'delete': 'delete', 'purge': 'delete', 'remove': 'delete',
+        '彻底删除': 'delete', '删除': 'delete', '真删': 'delete', '清掉': 'delete',
+        'archive': 'archive', 'mark': 'archive', 'archive_only': 'archive',
+        '只改状态': 'archive', '归档': 'archive', '改状态': 'archive', '标记': 'archive',
+    }
+    PROPERTY_STATUS_LABELS = {'available': '在售', 'sold': '已售', 'rented': '已租'}
+    CUSTOMER_STATUS_LABELS = {'active': '在跟', 'paused': '暂缓', 'closed': '已关闭',
+                              'potential': '潜在', 'lost': '已流失'}
+    PURGE_STATUS_ALIASES = {
+        'available': 'available', 'available_for_sale': 'available', '在售': 'available', '待售': 'available',
+        'sold': 'sold', '已售': 'sold', '已成交': 'sold', '卖掉': 'sold',
+        'rented': 'rented', '已租': 'rented', '已出租': 'rented',
+        'active': 'active', '在跟': 'active', '活跃': 'active',
+        'paused': 'paused', '暂缓': 'paused',
+        'closed': 'closed', '已关闭': 'closed', '流失': 'closed', '已流失': 'closed',
+        'potential': 'potential', '潜在': 'potential',
+    }
+
+    @classmethod
+    def purge_kind_word(cls, kind) -> str:
+        return '房源' if kind == 'property' else '客户'
+
+    @classmethod
+    def purge_status_label(cls, kind, status):
+        table = cls.PROPERTY_STATUS_LABELS if kind == 'property' else cls.CUSTOMER_STATUS_LABELS
+        return table.get(status, status)
+
+    @classmethod
+    def norm_purge_kind(cls, value):
+        return cls.PURGE_KIND_ALIASES.get(str(value).strip().lower()) if value not in (None, '') else None
+
+    @classmethod
+    def norm_purge_mode(cls, value):
+        return cls.PURGE_MODE_ALIASES.get(str(value).strip().lower()) if value not in (None, '') else None
+
+    @classmethod
+    def norm_purge_statuses(cls, statuses):
+        """状态参数归一 → (规范值列表或 None, 认不出的原文列表)"""
+        if statuses in (None, '', []):
+            return None, []
+        if isinstance(statuses, str):
+            statuses = [p for p in re.split(r'[,，、/\\s]+', statuses) if p.strip()]
+        good, bad = [], []
+        for item in statuses:
+            key = str(item).strip().lower()
+            mapped = cls.PURGE_STATUS_ALIASES.get(key)
+            if mapped:
+                good.append(mapped)
+            else:
+                bad.append(str(item).strip())
+        return (good or None), bad
 
     def _delete_one(self, kind, property_id=None, title=None, customer_id=None,
                     name=None, phone=None, force=False, dry_run=False):
@@ -3124,7 +3252,7 @@ class RealEstateDB:
                 row = rows[0]
             entry = self._purge_entry(s, kind, row)
             entry['dry_run'] = dry_run
-            target = self._delete_target_text(entry)
+            target = self._delete_target_text(kind, entry)
             related_text = self._purge_related_text(entry)
             if entry['skip_reason'] and not force:
                 entry.update(success=False, error='has_history', message=(
@@ -3157,14 +3285,40 @@ class RealEstateDB:
         return self._delete_one('customer', customer_id=customer_id, name=name, phone=phone,
                                 force=force, dry_run=dry_run)
 
+    _PURGE_LIST_LIMIT = 20      # 清单里最多列几条（上万条时别把明细撑进对话）
+
+    def _purge_where_text(self, kind) -> str:
+        """删完之后"哪里都不会再出现"（按清理对象说）"""
+        if kind == 'property':
+            return '房源列表、报表、匹配'
+        if kind == 'customer':
+            return '客户列表、跟进提醒、报表'
+        return '房源列表、客户列表、报表'
+
+    @staticmethod
+    def _purge_count_text(entries) -> str:
+        """回执里说清删掉的是几套房 / 几位客户"""
+        house = sum(1 for e in entries if e['kind'] == '房源')
+        people = sum(1 for e in entries if e['kind'] == '客户')
+        if house and people:
+            return f'{house} 套房源、{people} 位客户'
+        if house:
+            return f'{house} 套房源'
+        if people:
+            return f'{people} 位客户'
+        return '0 条记录'
+
     def purge_data(self, kind='all', statuses=None, before=None, mode='delete',
                    dry_run=True, force=False):
         """批量清理：默认只删"没有关联历史"的，有历史的跳过并列出原因
 
         mode='delete' 彻底删除；mode='archive' 只改状态（房源→已售/已租，客户→已关闭）。
+        2026-09-27（第十二组 F430–F437）：模式/状态认中文别名、清单封顶 20 条并标明截断、
+        回执一律中文（删掉的用中文说清"取不回来"，归档的用中文说清"记录都还在"）。
         """
         if mode not in ('delete', 'archive'):
-            return {'success': False, 'error': 'bad_mode', 'message': 'mode 只能是 delete 或 archive'}
+            return {'success': False,
+                    'message': f'处理方式只支持：彻底删除（默认）、只改状态。收到的是「{mode}」。'}
         with self.get_session() as s:
             targets = self._purge_targets(s, kind, statuses, before)
             if mode == 'archive':
@@ -3180,11 +3334,18 @@ class RealEstateDB:
                     archived.append({**entry, 'new_status': new_status})
                 if not dry_run:
                     s.commit()
-                return {'success': True, 'mode': 'archive', 'dry_run': dry_run,
+                limit = self._PURGE_LIST_LIMIT
+                truncated = len(archived) > limit
+                head = ('预演：将把' if dry_run else '已把')
+                tail = '这一步不动数据。' if dry_run else '这只是改状态，记录都还在，随时能改回来。'
+                return {'success': True, 'mode': '只改状态', 'dry_run': dry_run,
                         'matched': len(targets), 'archived': len(archived),
-                        'already_marked': len(already), 'entries': archived,
-                        'message': f'{"预演：" if dry_run else ""}将把 {len(archived)} 条标记为已成交/已关闭'
-                                   f'（另有 {len(already)} 条已经是该状态）'}
+                        'already_marked': len(already), 'entries': archived[:limit],
+                        'truncated': truncated,
+                        'message': (f'{head} {len(archived)} 条标记为已售/已租（客户标为已关闭）'
+                                    f'（另有 {len(already)} 条已经是该状态）。{tail}'
+                                    + (f'列表只列了前 {limit} 条，完整清单没放进对话'
+                                       f'（要逐条看我可以分页列）。' if truncated else ''))}
             done, skipped = [], []
             entries = [self._purge_entry(s, k, o) for k, o in targets]
             for (k, obj), entry in zip(targets, entries):
@@ -3196,13 +3357,24 @@ class RealEstateDB:
                 done.append(entry)
             if not dry_run:
                 s.commit()
-            return {'success': True, 'mode': 'delete', 'dry_run': dry_run,
+            limit = self._PURGE_LIST_LIMIT
+            related_total = sum(e['related_total'] for e in done)
+            count_text = self._purge_count_text(done)
+            if dry_run:
+                message = f'预演：将彻底删除 {count_text}（连同 {related_total} 条关联记录）。这一步不动数据。'
+            else:
+                message = (f'已彻底删除 {count_text}（连同 {related_total} 条关联记录）。'
+                           f'删除后取不回来，之后在{self._purge_where_text(kind)}里都不会再出现。')
+            if skipped:
+                message += f'另有 {len(skipped)} 条因有关联历史被跳过（要连历史一起删，请单独跟我说）。'
+            truncated = len(done) > limit or len(skipped) > limit
+            if truncated:
+                message += f'列表只列了前 {limit} 条，完整清单没放进对话（要逐条看我可以分页列）。'
+            return {'success': True, 'mode': '彻底删除', 'dry_run': dry_run,
                     'matched': len(targets), 'deleted': len(done), 'skipped_count': len(skipped),
-                    'deleted_entries': done, 'skipped_entries': skipped,
-                    'deleted_related': sum(e['related_total'] for e in done),
-                    'message': (f'{"预演：" if dry_run else ""}将彻底删除 {len(done)} 条'
-                                f'（连同 {sum(e["related_total"] for e in done)} 条关联记录），'
-                                f'跳过 {len(skipped)} 条（有关联历史，需明确要求连历史一起删）')}
+                    'deleted_entries': done[:limit], 'skipped_entries': skipped[:limit],
+                    'truncated': truncated,
+                    'deleted_related': related_total, 'message': message}
 
     def restore_status(self, kind='all', statuses=None, before=None, dry_run=True):
         """撤销"为了清空而误标"的状态：房源已售/已租 → 在售，客户已关闭 → 在跟

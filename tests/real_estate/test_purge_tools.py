@@ -101,7 +101,9 @@ class TestPurgeDataTool:
     def test_rejects_unknown_kind(self, purge_tools):
         result = _call("purge_data", {"kind": "everything"})
         assert result["success"] is False
-        assert "property" in result["error"]
+        msg = result.get("message") or result.get("error") or ""
+        assert "房源" in msg and "客户" in msg, msg
+        assert "property" not in msg, f"文案里不该有英文枚举：{msg}"
 
     def test_executes_and_reports_skipped(self, purge_tools):
         _, db = purge_tools
@@ -112,7 +114,7 @@ class TestPurgeDataTool:
         assert result["deleted"] == 1 and result["skipped_count"] == 1
         assert db.get_customer(clean["id"]) is None
         assert db.get_customer(protected["id"]) is not None
-        assert "跳过 1 条" in result["message"]
+        assert "另有 1 条因有关联历史被跳过" in result["message"], result["message"]
 
     def test_archive_mode_marks_status_only(self, purge_tools):
         _, db = purge_tools

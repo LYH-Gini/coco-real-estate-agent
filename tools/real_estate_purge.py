@@ -60,14 +60,33 @@ def purge_data(kind: str = 'all', statuses: list = None, before: str = None,
                task_id: str = None) -> str:
     """批量清理：按状态（已售/已租、已关闭）与录入时间批量删除或标记
 
-    kind: property / customer / all；before: 只清理 YYYY-MM-DD 之前录入的；
-    mode='delete' 彻底删除（默认），mode='archive' 只把状态标成已成交/已关闭；
-    dry_run 默认 True（只列清单不动手），经纪人确认后才用 dry_run=False。
+    kind：房源 / 客户 / 两者（也认 property / customer / all）；
+    statuses：认中文（房源 已售/已租/在售，客户 已关闭/在跟）；认不出的当场报出来，不静默漏删；
+    before：只清理该日期之前录入的（支持 2026-01-01 与"昨天""上个月"这类说法）；
+    mode：彻底删除（默认）/ 只改状态（归档）；dry_run 默认 True（只列清单不动手）。
     """
-    if kind not in ('property', 'customer', 'all'):
-        return _dump({"success": False, "error": "kind 只能是 property / customer / all"})
-    return _dump(_get_db().purge_data(kind=kind, statuses=statuses, before=before,
-                                      mode=mode, force=force, dry_run=dry_run))
+    db = _get_db()
+    real_kind = db.norm_purge_kind(kind)
+    if real_kind is None:
+        return _dump({"success": False,
+                      "message": f"清理对象只支持：房源、客户、两者（默认两者）。收到的是「{kind}」。"})
+    real_mode = db.norm_purge_mode(mode)
+    if real_mode is None:
+        return _dump({"success": False,
+                      "message": f"处理方式只支持：彻底删除（默认）、只改状态。收到的是「{mode}」。"})
+    real_statuses, unknown = db.norm_purge_statuses(statuses)
+    if unknown:
+        return _dump({"success": False,
+                      "message": f"没认出要清理的状态「{'、'.join(unknown)}」："
+                                 f"房源可以写 已售、已租，客户可以写 已关闭。"})
+    if before not in (None, ''):
+        _parsed, problem = db.parse_purge_before(before)
+        if problem:
+            return _dump({"success": False,
+                          "message": f"日期没认出来：收到的是「{before}」。可以写 2026-01-01，"
+                                     f"也可以说「昨天」「上个月」。"})
+    return _dump(db.purge_data(kind=real_kind, statuses=real_statuses, before=before,
+                               mode=real_mode, force=force, dry_run=dry_run))
 
 
 registry.register(
@@ -120,12 +139,12 @@ registry.register(
         "type": "object",
         "properties": {
             "kind": {"type": "string", "enum": ["property", "customer", "all"],
-                     "description": "清理对象：房源 / 客户 / 两者（默认 all）"},
+                     "description": "清理对象：房源 / 客户 / 两者（默认 all，也认中文「房源」「客户」「两者」）"},
             "statuses": {"type": "array", "items": {"type": "string"},
-                         "description": "要清理的状态，默认房源=sold,rented、客户=closed"},
-            "before": {"type": "string", "description": "只清理该日期（YYYY-MM-DD）之前录入的"},
+                         "description": "要清理的状态，默认房源=已售/已租、客户=已关闭（中文英文都认）"},
+            "before": {"type": "string", "description": "只清理该日期之前录入的（2026-01-01，或「昨天」「上个月」）"},
             "mode": {"type": "string", "enum": ["delete", "archive"],
-                     "description": "delete 彻底删除（默认）/ archive 只改状态"},
+                     "description": "彻底删除（默认）/ 只改状态（归档）（也认中文）"},
             "force": {"type": "boolean", "description": "连关联历史一起删（默认 false）"},
             "dry_run": {"type": "boolean", "description": "只列清单不动手（默认 true）"},
         },
