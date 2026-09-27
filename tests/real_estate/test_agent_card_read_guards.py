@@ -38,10 +38,15 @@ def test_empty_card_explains_itself(wired):
 
 
 def test_empty_card_wording_matches_brand_tool(wired):
-    """与 get_agent_brand 的"未配置"说辞不打架（两边都明确说未配置）。"""
+    """与 get_agent_brand 的"未配置"说辞不打架。
+
+    2026-09-27（第十二组第 8 项 F424–F426）：品牌读工具也改成 success=true + 中文 message
+    + note_for_model（与名片读工具同形状），所以这里按新口径核 —— 两边都明确说"还没配置"。
+    """
     card_msg = _card(wired).get("message") or ""
     brand = json.loads(wired.get_agent_brand())
-    assert "未配置" in (brand.get("error") or ""), brand
+    assert brand["success"] is True and brand.get("configured") is False, brand
+    assert "还没配置" in (brand.get("message") or ""), brand
     assert "还没配置" in card_msg, card_msg
 
 

@@ -61,12 +61,20 @@ def save_agent_brand(brand_name: str, task_id: str = None) -> str:
 
 
 def get_agent_brand(task_id: str = None) -> str:
-    """获取经纪人已保存的品牌名；未配置返回 None"""
+    """查看已保存的公司/门店品牌名（海报品牌栏用）"""
     db = _get_db()
-    brand = db.get_setting('brand_name')
+    brand = (db.get_setting('brand_name') or '').strip()
+    payload = {"success": True, "brand_name": brand or None, "configured": bool(brand)}
     if not brand:
-        return json.dumps({"success": False, "error": "品牌未配置，需要先询问经纪人公司名称"}, ensure_ascii=False)
-    return json.dumps({"success": True, "brand_name": brand}, ensure_ascii=False)
+        payload["message"] = "还没配置公司/门店名，海报品牌栏会空着。把公司名发我就能存下来。"
+        payload["note_for_model"] = "品牌未配置：需要时问经纪人要公司/门店名，不要编。"
+        return json.dumps(payload, ensure_ascii=False)
+    payload["message"] = f"品牌名：{brand}（海报品牌栏会显示它）。"
+    if len(brand) > _BRAND_LIMIT:
+        payload["warnings"] = [
+            f"品牌名有 {len(brand)} 字，超过海报栏位（{_BRAND_LIMIT} 字），"
+            "出图时可能显示不全；重新发我一次会自动截断。"]
+    return json.dumps(payload, ensure_ascii=False)
 
 
 def get_brand_or_none() -> str:
@@ -192,7 +200,9 @@ registry.register(
 registry.register(
     name="get_agent_brand",
     toolset="real_estate",
-    schema={"name": "get_agent_brand", "description": "获取经纪人已保存的品牌名（生成海报前确认品牌是否已配置）", "parameters": {
+    schema={"name": "get_agent_brand", "description": (
+        "查看已保存的公司/门店品牌名（生成海报前确认品牌栏有没有值）。"
+        "没有就如实说还没配置，并向经纪人要，不要编。"), "parameters": {
         "type": "object",
         "properties": {},
     }},
