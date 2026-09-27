@@ -47,12 +47,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           repo="${{ github.repository }}"
-          branches="$(gh api "repos/$repo/branches" --jq '.[].name' | tr '\n' ' ')"
-          echo "现有分支：$branches"
+          branches="$(gh api "repos/$repo/branches" --paginate --jq '.[].name')"
+          echo "现有分支：$(echo "$branches" | tr '\n' ' ')"
+          # 判定必须基于"分支清单"，不能靠 GET /branches/<名> 是否 404：
+          # GitHub 会把"改名前的旧名字"解析到改后的分支上（实测开发仓里 GET /branches/master 返回 name=next），
+          # 用 404 判存在会把没建的分支判成存在（2026-09-28 真踩，守卫在开发仓误报）。
+          has() { echo "$branches" | grep -qx "$1"; }
           case "$repo" in
             *-dev)
               # 开发仓只放开发线
-              if [ -n "$(gh api "repos/$repo/branches/master" --jq '.name' 2>/dev/null)" ]; then
+              if has master; then
                 echo "::error::开发仓里出现了 master 分支 —— 开发仓只放开发线（next），正式版在正式仓"
                 exit 1
               fi
@@ -60,7 +64,7 @@ jobs:
               ;;
             *)
               # 正式仓只放正式线：出现过 next 就说明有人又把开发内容推上来了
-              if [ -n "$(gh api "repos/$repo/branches/next" --jq '.name' 2>/dev/null)" ]; then
+              if has next; then
                 echo "::error::正式仓里出现了 next 分支 —— 开发内容要推开发仓（私有），正式仓只放 master"
                 exit 1
               fi
