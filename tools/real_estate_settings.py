@@ -132,7 +132,29 @@ def get_agent_card(task_id: str = None) -> str:
     card = get_agent_card_or_empty()
     missing = [label for key, label in (('name', '姓名'), ('phone', '电话'),
                                         ('wechat', '微信'), ('company', '公司/门店名')) if not card.get(key)]
-    return json.dumps({"success": True, "card": card, "missing": missing}, ensure_ascii=False)
+    payload = {"success": True, "card": card, "missing": missing}
+    if not any(card.values()):
+        payload["message"] = ("还没配置经纪人名片，海报底部会空着。"
+                              "把姓名、电话、微信号、公司门店名发我，我存下来海报就能用。")
+        payload["note_for_model"] = "名片未配置：需要时问经纪人要姓名/电话/微信/公司名，不要编。"
+    elif missing:
+        payload["message"] = (f"经纪人名片还差：{'、'.join(missing)}。"
+                              "海报相应位置会空着，想起来发我一下就行。")
+        payload["note_for_model"] = f"还缺：{'、'.join(missing)} —— 需要时问经纪人要，不要编。"
+    else:
+        parts = [card.get("name"), card.get("phone"),
+                 f"微信 {card.get('wechat')}" if card.get("wechat") else "", card.get("company")]
+        payload["message"] = f"经纪人名片已齐全：{' · '.join(p for p in parts if p)}。海报可以直接出图。"
+    # 老库里可能还留着写侧加截断之前的超长值：读侧不截断（读=写，不悄悄改展示），但要提示
+    overlong = [(label, len(card[key]), _CARD_LIMITS[key])
+                for key, label in _CARD_LABELS.items()
+                if card.get(key) and len(card[key]) > _CARD_LIMITS[key]]
+    if overlong:
+        label, size, cap = overlong[0]
+        payload["warnings"] = [
+            f"{label}有 {size} 字，超过海报栏位（{cap} 字），出图时可能显示不全；"
+            f"重新发我一次{label}会自动截断。"]
+    return json.dumps(payload, ensure_ascii=False)
 
 
 registry.register(
@@ -177,7 +199,9 @@ registry.register(
 registry.register(
     name="get_agent_card",
     toolset="real_estate",
-    schema={"name": "get_agent_card", "description": "查看已保存的经纪人名片与还缺哪些字段（海报信息齐全校验用）", "parameters": {
+    schema={"name": "get_agent_card", "description": (
+        "查看已保存的经纪人名片与还缺哪些字段（海报出图前核对信息齐不齐）。"
+        "缺项要如实告诉经纪人，不要编。"), "parameters": {
         "type": "object", "properties": {},}},
     handler=lambda args, **kw: get_agent_card(**args),
 )
