@@ -207,7 +207,10 @@ except Exception as ex:
     if rc and out.startswith("OK"):
         ok(f"数据库连接正常（房源 {out.split('props=')[1].split()[0]} 条，客户 {out.split('custs=')[1]} 条）")
     else:
-        bad(f"数据库连接失败: {out[:120]}", "检查 PostgreSQL 是否运行: sudo systemctl status postgresql")
+        bad(f"数据库连接失败: {out[:120]}",
+            "检查 PostgreSQL 是否运行: sudo systemctl status postgresql；"
+            "若报 No module named 'psycopg'/'psycopg2' 则是驱动缺失或版本错配 → "
+            "venv/bin/pip install \"sqlalchemy==2.0.51\" psycopg2-binary")
 else:
     warn("未读取到 DATABASE_URL（.env.db 缺失或未配置）",
          "重跑 install.sh 或检查 $INSTALL_DIR/.env.db")
