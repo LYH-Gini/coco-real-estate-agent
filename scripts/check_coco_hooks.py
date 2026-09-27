@@ -550,6 +550,47 @@ CONTENT_CHECKS = [
         "经纪人不会输入 /always，弹一次就把「开新会话」卡住。"
         "处理：把 _maybe_confirm_destructive_slash 里两处兜底改回 False（参考 patches/README.md 第 16 处）。",
     ),
+    (
+        "38",
+        "飞书工具进展默认关（平台档）",
+        "gateway/display_config.py",
+        [
+            r'"feishu":\s*\{\*\*_TIER_MEDIUM,\s*"tool_progress":\s*"off"\}',
+        ],
+        "飞书这一档的工具进展默认值被改回官方 new（每调一个工具发一条），经纪人的聊天窗会被这些行刷屏。"
+        "处理：改回 {**_TIER_MEDIUM, \"tool_progress\": \"off\"}（参考 patches/README.md 第 18 处）。",
+    ),
+    (
+        "39",
+        "飞书工具进展默认关（代码默认值）",
+        "hermes_cli/config_defaults.py",
+        [
+            r'"feishu":\s*\{"tool_progress":\s*"off"\}',
+        ],
+        "新装默认值里飞书的工具进展又变成显示（官方默认 new）。"
+        "处理：改回 \"feishu\": {\"tool_progress\": \"off\"}（参考 patches/README.md 第 18 处）。",
+    ),
+    (
+        "40",
+        "飞书工具进展默认关（更新时对齐）",
+        "scripts/coco_config_align.py",
+        [
+            r'"display\.platforms\.feishu\.tool_progress":\s*"off"',
+        ],
+        "对齐脚本缺了这一项，已装实例跑更新也拉不回「工具进展关」，体检也会一直 WARN。"
+        "处理：恢复 STANDARD 里的 display.platforms.feishu.tool_progress = off（参考 patches/README.md 第 18 处）。",
+    ),
+    (
+        "41",
+        "官方测试断言：确认框默认值按 Coco 口径",
+        "tests/hermes_cli/test_destructive_slash_confirm_gate.py",
+        [
+            r"def test_default_is_false",
+            r'destructive_slash_confirm"\]\s*is False',
+        ],
+        "官方这两条用例断言「默认要弹确认框」（upstream 默认 True），与 Coco 的口径相反，"
+        "改回去就必红。处理：断言保持 False（参考 patches/README.md 第 17 处）。",
+    ),
 ]
 
 # 文件/目录存在性检查：编号 / 名称 / 相对路径 / 类型(file|dir|glob) / 最少数量 / 失败提示

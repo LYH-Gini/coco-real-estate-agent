@@ -15,7 +15,7 @@
 > **正确的做法**：读本文件下面每一处的「改什么 / 为什么 / 上游变了怎么办」，
 > 在新底座上重新实现，再用自检脚本验证结果。
 
-## 改动清单（共 16 处官方文件 + 2 个自有文档）
+## 改动清单（共 18 处官方文件 + 2 个自有文档）
 
 | 编号 | 官方文件 | 改动内容 |
 |---|---|---|
@@ -35,6 +35,8 @@
 | 14 | `tests/hermes_cli/test_ensure_gateway_service.py`、`tests/hermes_cli/test_gateway_no_new_standalone_profile.py`、`tests/hermes_cli/test_update_yes_flag.py` | 官方测试里断言「提示用户敲哪条命令」的字符串改成 coco 口径（`coco gateway` / `coco gateway install` / `coco config migrate` …） |
 | 15 | `tests/hermes_cli/test_gateway_restart_loop.py` | 终端层网关生命周期守卫那组：官方一条参数化用例按「谁拦的」拆成两组（更新类命令由 Coco 更新守卫先拦、按自有形状断言；其余由官方网关守卫拦）；「CLI 会话不该被拦」那条改用只由官方守卫处理的命令 |
 | 16 | `gateway/run_busy.py` | 清空对话类命令（/new、/reset、/undo）的确认框兜底：官方缺键即弹框，Coco 缺键即直接执行 |
+| 17 | `tests/hermes_cli/test_destructive_slash_confirm_gate.py` | 官方两条断言「默认要弹确认框」的用例改按 Coco 口径（默认不弹），与第 05 处的默认值改动配套 |
+| 18 | `hermes_cli/config_defaults.py`、`gateway/display_config.py`、`scripts/coco_config_align.py` | 飞书默认不显示工具进展行：代码默认值、平台档默认值、更新时对齐三处都写成 `off`（官方飞书档默认 `new`，每调一个工具发一条） |
 
 另有 2 个**自有文档**（不属于官方代码，同步时直接保留即可）：
 `README.md`、`README.zh-CN.md`。
@@ -179,6 +181,32 @@
   配置里没有该键的实例仍会被弹框拦住。
 - **上游变了怎么办**：同步会把该文件覆盖回官方口径。跑 `python3 scripts/check_coco_hooks.py`
   （第 37 项守着这两处兜底）能立刻发现，按本条改回 `False` 即可。
+
+### 17 tests/hermes_cli/test_destructive_slash_confirm_gate.py —— 官方断言随默认值口径
+- **背景**：官方这两条用例断言 `DEFAULT_CONFIG` 里的确认框默认值是 `True`（新装要弹框）。
+- **改什么**：`test_default_is_true` 改名 `test_default_is_false` 并断言 `False`；
+  `test_existing_user_config_without_key_gets_default` 的期望值同样改成 `False`
+  （它验的是「用户配置缺键时由 `DEFAULT_CONFIG` 补齐」，语义不变，只是补的值按 Coco 口径）。
+- **为什么**：第 05 处把默认值改成 `False` 之后，这两条从 2026-09-21 起一直是红的。
+  它们断言的正是那个被我们改掉的默认值，属于「官方断言随口径调整」的老做法（同第 14 处）。
+- **上游变了怎么办**：同步会覆盖回官方版本。跑 `python3 scripts/check_coco_hooks.py`
+  （第 41 项守着这两条断言）能立刻发现，按本条改回 Coco 口径即可。
+
+### 18 飞书默认不显示工具进展行（三处）
+- **改什么**：
+  - `hermes_cli/config_defaults.py` 的 `display.platforms` 增加 `"feishu": {"tool_progress": "off"}`；
+  - `gateway/display_config.py` 的 `_PLATFORM_DEFAULTS["feishu"]` 改成
+    `{**_TIER_MEDIUM, "tool_progress": "off"}`（**不要直接改 `_TIER_MEDIUM`**，
+    它被 mattermost / matrix / buzz / whatsapp 共用）；
+  - `scripts/coco_config_align.py` 的 `STANDARD` 加 `display.platforms.feishu.tool_progress = "off"`、
+    `OFFICIAL_DEFAULTS` 加 `("new",)`（官方飞书档默认）、`LABELS` 加人话名，
+    这样已装实例跑更新时会被对齐回关。
+- **为什么**：飞书是经纪人/客户侧的收件箱，官方档默认 `new`（每调一个工具发一条进展），
+  实际就是刷屏。关掉只影响「工具进展行」，不影响忙碌提示、中间状态话术与最终回复
+  （那些是 `busy_ack_detail` / `interim_assistant_messages` 等另外的键）。
+- **要开回来的实例**：`coco config set display.platforms.feishu.tool_progress new`（或 `all`），
+  显式值优先于这三处默认。
+- **上游变了怎么办**：跑 `python3 scripts/check_coco_hooks.py`（第 38/39/40 项分别守这三处）。
 
 ## 使用方法（同步时）
 
