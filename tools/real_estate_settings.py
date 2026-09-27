@@ -5,7 +5,7 @@ Coco 房产工具 - 经纪人配置（品牌/公司名）
 import json
 import re
 
-from agent.real_estate_input import clean_text, clip_text, norm_phone
+from agent.real_estate_input import clip_text, norm_phone
 from tools.registry import registry
 
 _CARD_LABELS = {"name": "姓名", "phone": "电话", "wechat": "微信", "company": "公司/门店名"}
@@ -22,18 +22,42 @@ def _get_db():
     return get_real_estate_db()
 
 
+_WHITESPACE = re.compile(r"\s+")
+_BRAND_LIMIT = 30          # 海报品牌栏能放下的字数（与名片里的公司名同一上限）
+
+
+def _prep_text(value, label, limit):
+    """文本参数整理（品牌名与名片里的公司名共用）→ (值, 错误说明, 截断说明)
+
+    一处规则：非文本给中文提示（`True` 这类值不能让它崩在 `.strip()` 上）、去首尾空白、
+    **折叠内部空白与换行**（海报排版与回执都会被换行带歪）、按栏位字数截断。
+    """
+    if value is None:
+        return None, None, None
+    if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+        got = "是/否" if isinstance(value, bool) else "非文字内容"
+        return None, f"{label}要填文字，收到的是「{got}」这类值。", None
+    text = _WHITESPACE.sub(" ", str(value)).strip()
+    if not text:
+        return None, None, None
+    text, clip_note = clip_text(text, limit)
+    return text, None, clip_note
+
+
 def save_agent_brand(brand_name: str, task_id: str = None) -> str:
-    """保存经纪人公司/门店品牌名（海报展示用），返回保存结果"""
-    brand_name = (brand_name or '').strip()
-    if not brand_name:
-        return json.dumps({"success": False, "error": "品牌名称不能为空"}, ensure_ascii=False)
+    """保存经纪人公司/门店品牌名（海报品牌栏用）"""
+    text, problem, clip_note = _prep_text(brand_name, "品牌名", _BRAND_LIMIT)
+    if problem:
+        return json.dumps({"success": False, "error": problem}, ensure_ascii=False)
+    if not text:
+        return json.dumps({"success": False, "error": "品牌名没填。可以这样发我：宇恒房产。"},
+                          ensure_ascii=False)
     db = _get_db()
-    db.set_setting('brand_name', brand_name)
-    return json.dumps({
-        "success": True,
-        "brand_name": brand_name,
-        "message": f"品牌名称已保存：{brand_name}（海报将展示该名称）",
-    }, ensure_ascii=False)
+    db.set_setting('brand_name', text)      # 与名片里的公司名是同一个键
+    message = f"品牌名已保存：{text}（海报品牌栏会显示它）。"
+    if clip_note:
+        message += f"品牌名太长，已按前 {_BRAND_LIMIT} 字记下：「{text}」。"
+    return json.dumps({"success": True, "brand_name": text, "message": message}, ensure_ascii=False)
 
 
 def get_agent_brand(task_id: str = None) -> str:
@@ -62,19 +86,13 @@ def save_agent_card(name: str = None, phone: str = None, wechat: str = None,
     没提供的字段保持原值不动；绝不写默认值或占位符。
     """
     provided = {"name": name, "phone": phone, "wechat": wechat, "company": company}
-    for key, value in provided.items():
-        if value is None:
-            continue
-        if isinstance(value, bool) or not isinstance(value, (str, int, float)):
-            got = "是/否" if isinstance(value, bool) else "非文字内容"
-            return json.dumps({"success": False,
-                               "error": f"{_CARD_LABELS[key]}要填文字，收到的是「{got}」这类值。"},
-                              ensure_ascii=False)
     db = _get_db()
     saved = {}
     notes = []
     for key in ("name", "phone", "wechat", "company"):
-        text = clean_text(provided[key])
+        text, problem, clip_note = _prep_text(provided[key], _CARD_LABELS[key], _CARD_LIMITS[key])
+        if problem:
+            return json.dumps({"success": False, "error": problem}, ensure_ascii=False)
         if not text:
             continue                      # 没提供 / 纯空白：保持原值不动
         if key == "phone":
@@ -86,7 +104,6 @@ def save_agent_card(name: str = None, phone: str = None, wechat: str = None,
                 notes.append(f"电话「{text}」看着不像完整手机号，已按原样记下（要改就说一声）。")
         if key == "wechat":
             text = _WECHAT_PREFIX.sub("", text).strip()
-        text, clip_note = clip_text(text, _CARD_LIMITS[key])
         if clip_note:
             notes.append(f"{_CARD_LABELS[key]}太长，已按前 {_CARD_LIMITS[key]} 字记下：「{text}」。")
         db.set_setting(_CARD_SETTINGS[key], text)
@@ -160,7 +177,9 @@ def get_agent_card(task_id: str = None) -> str:
 registry.register(
     name="save_agent_brand",
     toolset="real_estate",
-    schema={"name": "save_agent_brand", "description": "保存经纪人公司/门店品牌名（用于海报等展示），经纪人明确告知公司名称后调用", "parameters": {
+    schema={"name": "save_agent_brand", "description": (
+        "保存经纪人公司/门店品牌名（海报品牌栏用；与名片里的公司名是同一个位置，改一处两边都变）。"
+        "经纪人明确告知公司名称后调用。"), "parameters": {
         "type": "object",
         "properties": {
             "brand_name": {"type": "string", "description": "公司/门店品牌名，如 宇恒房产"},
