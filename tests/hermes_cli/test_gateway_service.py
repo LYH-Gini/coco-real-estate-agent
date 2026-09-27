@@ -97,7 +97,8 @@ class TestSystemdServiceRefresh:
 
         output = capsys.readouterr().out
         assert "still restarting after 90s" in output
-        assert "hermes gateway status" in output
+        # Coco 口径（2026-09-27）：提示里印 coco 命令（Coco 实例上没有 hermes 命令入口）。
+        assert "coco gateway status" in output
 
     def test_refresh_refuses_to_bake_pytest_tmpdir_into_real_user_unit(
         self, tmp_path, monkeypatch

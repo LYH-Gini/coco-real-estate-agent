@@ -454,6 +454,24 @@ CONTENT_CHECKS = [
         "toolsets.py 是「模型能看见哪些工具」的清单：注册表里删了、清单里还留着，"
         "会出现清单数与冒烟静态清单数不一致（tests/real_estate/test_tool_visibility.py 会红）。",
     ),
+    (
+        "31",
+        "网关服务提示里的命令口径（重启/停止超时、会话内改服务）",
+        # 官方层文件：上游同步会整批覆盖，故登记为挂钩点。
+        "hermes_cli/gateway.py",
+        [
+            r"Check status: \{sudo\}coco gateway status",
+            r"check `coco gateway status` or logs for final shutdown state",
+            r"check `coco gateway status` or logs for final state",
+            r"Use `coco gateway \{verb\}` from a shell outside the running gateway",
+            r"!Check status: \{sudo\}hermes gateway status",
+        ],
+        "网关重启/停止超时、以及会话内尝试改动服务时，提示里印的是官方 `hermes gateway …`；\n"
+        "Coco 实例上没有 hermes 命令入口（install/update 会移除指向本安装目录的软链），\n"
+        "用户照着敲会 command not found。\n"
+        "处理：把这四处提示改回 `coco gateway …`（该文件属官方层，上游同步会覆盖；\n"
+        "单测 tests/hermes_cli/test_gateway_service.py 同步断言 coco 口径）。",
+    ),
 ]
 
 # 文件/目录存在性检查：编号 / 名称 / 相对路径 / 类型(file|dir|glob) / 最少数量 / 失败提示

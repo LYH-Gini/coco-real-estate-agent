@@ -1306,7 +1306,7 @@ def _wait_for_systemd_service_restart(
     sudo, _, user_flag = _systemd_cli_bits(system)
     print(
         f"⚠ {scope_label} service did not become active within {int(timeout)}s.\n"
-        f"  Check status: {sudo}hermes gateway status\n"
+        f"  Check status: {sudo}coco gateway status\n"
         f"  Check logs:   journalctl {user_flag}-u {svc} -l --since '2 min ago'"
     )
     return False
@@ -3266,7 +3266,7 @@ def systemd_stop(system: bool = False):
     except subprocess.TimeoutExpired:
         print(
             f"Gateway {_service_scope_label(system)} service is still stopping after 90s; "
-            "check `hermes gateway status` or logs for final shutdown state."
+            "check `coco gateway status` or logs for final shutdown state."
         )
         return
     print(f"✓ {_service_scope_label(system).capitalize()} service stopped")
@@ -3375,7 +3375,7 @@ def _systemd_reset_and_run(action: str, *, system: bool, previous_pid) -> None:
     except subprocess.TimeoutExpired:
         print(
             f"Gateway {_service_scope_label(system)} service is still restarting after 90s; "
-            "check `hermes gateway status` or logs for final state."
+            "check `coco gateway status` or logs for final state."
         )
         return
     _wait_for_systemd_service_restart(system=system, previous_pid=previous_pid)
@@ -4536,7 +4536,7 @@ def _refuse_from_inside_gateway(verb: str, reason: str) -> None:
         print_error(
             f"Refusing to {verb} the gateway from inside the gateway process.\n"
             f"This command was blocked to prevent {reason}.\n"
-            f"Use `hermes gateway {verb}` from a shell outside the running gateway."
+            f"Use `coco gateway {verb}` from a shell outside the running gateway."
         )
         sys.exit(1)
 

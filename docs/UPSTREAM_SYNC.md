@@ -72,6 +72,7 @@ Coco 自有文件、挂钩点文件、我们的业务目录（`agent/real_estate
 | 18 | `gateway/run_inbound.py` | 配对码提示必须是 `coco pairing approve`（官方版是 `hermes pairing approve`） |
 | 19 | `hermes_cli/update_cmd_config.py` | 配置迁移提示必须是 `coco config migrate` |
 | 12 | `pyproject.toml` | `requires-python` 必须是 `>=3.11,<3.15`（Coco 已放行 3.14：依赖全有 cp314 轮子、单测全绿）；官方版是 `<3.14`，被同步冲回就会出现「install.sh 放行、pip 拒绝」的错配 |
+| 31 | `hermes_cli/gateway.py` | 服务重启/停止超时、以及会话内尝试改动服务的提示里必须是 `coco gateway …`（官方版是 `hermes gateway …`；Coco 实例上没有 hermes 命令入口，用户照着敲会 command not found）。另外 13-16、20-30 号挂钩点见 `scripts/check_coco_hooks.py`（那张表以脚本为准） |
 
 ### 第 4 步｜自检 + 处理部署体系
 ```bash
