@@ -202,7 +202,7 @@ fi
 # ---- ② 停服务 ----
 info "[2/6] 停止服务"
 if [[ "$DRY_RUN" == "1" ]]; then
-    echo "    [干跑] 会执行: hermes gateway stop（并停用老部署残留的 hermes-agent 系统服务）"
+    echo "    [干跑] 会停止 gateway 服务（并停用老部署残留的 hermes-agent 系统服务）"
 else
     if command -v hermes >/dev/null 2>&1; then
         hermes gateway stop >/dev/null 2>&1 || true

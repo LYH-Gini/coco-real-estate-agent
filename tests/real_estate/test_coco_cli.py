@@ -342,3 +342,19 @@ class TestDocsUseCocoPrefix:
             t = (REPO_ROOT / rel).read_text(encoding="utf-8")
             for cmd in ("coco update", "coco check", "coco backup", "coco restore", "coco data-clean", "coco uninstall"):
                 assert cmd in t, f"{rel} 未统一到 {cmd}"
+
+    def test_our_hints_give_coco_commands(self):
+        """我们自己的提示里不给客户 hermes 命令（Coco 实例上没有 hermes 命令入口，照着敲会 command not found）"""
+        expect = {
+            "install.sh": [
+                "可稍后手动执行 coco gateway install",
+                "可稍后手动执行: coco gateway install",
+            ],
+            "scripts/update.sh": ["可执行 coco config set 手动设置，或用 coco config 查看当前值"],
+            "scripts/healthcheck.py": ["重启 gateway 服务后会自动同步（coco restart）"],
+            "scripts/uninstall.sh": ["[干跑] 会停止 gateway 服务"],
+        }
+        for rel, phrases in expect.items():
+            t = (REPO_ROOT / rel).read_text(encoding="utf-8")
+            for phrase in phrases:
+                assert phrase in t, f"{rel} 的提示未统一到 coco 口径：{phrase}"

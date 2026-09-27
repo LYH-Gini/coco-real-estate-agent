@@ -270,7 +270,7 @@ skill = os.path.join(HERMES_HOME, "skills", "real_estate", "SKILL.md")
 if os.path.isfile(skill):
     ok("Coco 操作手册技能已同步")
 else:
-    warn("技能未同步", "重启 gateway 服务后会自动同步（hermes gateway restart）")
+    warn("技能未同步", "重启 gateway 服务后会自动同步（coco restart）")
 
 # ---- 11. 磁盘空间 ----
 print("\n[11] 磁盘空间")

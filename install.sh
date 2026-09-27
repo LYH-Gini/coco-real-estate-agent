@@ -595,14 +595,14 @@ setup_service() {
 
     local HERMES_CLI="$INSTALL_DIR/venv/bin/hermes"
     if [[ ! -x "$HERMES_CLI" ]]; then
-        warn "未找到 $HERMES_CLI，跳过服务安装（可稍后手动执行 hermes gateway install）"
+        warn "未找到 $HERMES_CLI，跳过服务安装（可稍后手动执行 coco gateway install）"
         return
     fi
     # 装用户服务 + 立即启动 + 启用开机自启；失败不阻断安装
     if "$HERMES_CLI" gateway install --start-now --start-on-login 2>&1 | tail -6; then
         ok "gateway 用户服务已安装并启动（开机自启已启用）"
     else
-        warn "服务安装异常，可稍后手动执行: hermes gateway install"
+        warn "服务安装异常，可稍后手动执行: coco gateway install"
     fi
 }
 
