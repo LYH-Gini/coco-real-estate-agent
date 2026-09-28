@@ -6,10 +6,20 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class TestCocoVersion:
+    @pytest.fixture(autouse=True)
+    def _no_network(self, monkeypatch):
+        """用例里不联网：把"有没有新版"的只读检查固定成"没连上网"这一支（联网行为另有专测）"""
+        import tools.real_estate_version as vmod
+        monkeypatch.setattr(vmod, "check_update",
+                            lambda use_cache=True: {"available": None, "remote_head": None,
+                                                    "local_head": None})
+
     def test_returns_repo_version(self):
         """返回值与仓库根 VERSION 一致，并推导出底座版本"""
         import tools.real_estate_version as vmod
@@ -20,16 +30,18 @@ class TestCocoVersion:
         assert data["hermes_base"] == ver.split("-")[0]
 
     def test_message_is_user_facing_wording(self):
-        """对外措辞（2026-09-27 定）：版本号 + 可执行的更新指引；不带提交号/分支/通道
+        """对外措辞（2026-09-27 定、2026-09-28 扩）：版本号 + 是不是最新版 + 可执行的下一步
 
-        正式版点明"（正式版）"；测试版**不对外**说通道（老板自用），只给版本号与更新指引。
+        正式版点明"（正式版）"；测试版**不对外**说通道（老板自用）；
+        查不到有没有新版时如实说"没连上网"，不许说"已经是最新版"。
         """
         import tools.real_estate_version as vmod
         data = json.loads(vmod.get_coco_version())
         msg = data["message"]
         assert re.match(r"^Coco v[\d.]+-\d+(?:（正式版）)?。", msg), msg
         assert "coco update" in msg, msg
-        for word in ("提交", "通道", "测试版"):
+        assert "没连上网" in msg, msg
+        for word in ("提交", "通道", "测试版", "底座", "测试号", "已经是最新版"):
             assert word not in msg, f"message 里不该有「{word}」：{msg}"
 
     def test_upstream_tag_reported(self):
