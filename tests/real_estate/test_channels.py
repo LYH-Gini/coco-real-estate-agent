@@ -464,7 +464,34 @@ class TestApprovalGate:
         work = self._setup(tmp_path)
         r = _run(["bash", "scripts/mark_verified.sh", "--list"], cwd=work)
         assert r.returncode == 0, r.stderr
-        assert "verified/" in r.stdout and "验收通过" in r.stdout, r.stdout
+        # 说明里的「验收通过：」前缀会被脚本归一掉（只保留一份前缀），所以这里断言说明内容本身
+        assert "verified/" in r.stdout and "某功能" in r.stdout, r.stdout
+
+    def test_mark_verified_note_prefix_is_not_repeated(self, tmp_path):
+        """说明里自带「已验收 / 验收通过 / v<版本> 已验收」前缀时，标签说明只保留一份前缀。
+
+        历史事故（2026-09-28）：说明里已经写了「v0.21.5-3 已验收：…」，脚本又补一遍，
+        公网上的标签说明变成「v0.21.5-3 已验收：v0.21.5-3 已验收：…」。
+        标签说明是公网可见元数据，重复的前缀既是噪音也把内部话带出去。
+        """
+        work = self._setup(tmp_path, mark=False)
+        ver = (work / "VERSION").read_text(encoding="utf-8").strip()
+        with_note = f"v{ver} 已验收：体检通过"
+        cases = [
+            ("体检通过", with_note),
+            (with_note, with_note),
+            ("已验收：体检通过", with_note),
+            ("验收通过：体检通过", with_note),
+            ("已验收", f"v{ver} 已验收"),
+        ]
+        for i, (note, want) in enumerate(cases):
+            (work / f"note{i}.txt").write_text(note, encoding="utf-8")
+            sha = _commit_all(work, f"note {i}")
+            r = _run(["bash", "scripts/mark_verified.sh", "--note", note, "--no-push"], cwd=work)
+            assert r.returncode == 0, r.stdout + r.stderr
+            got = _git(work, "for-each-ref", f"refs/tags/verified/v{ver}-{sha[:7]}",
+                       "--format=%(contents:subject)").stdout.strip()
+            assert got == want, f"说明 {note!r} 得到 {got!r}，应为 {want!r}"
 
 
 class TestTestVersionTags:

@@ -140,7 +140,7 @@ if [[ ${#ONLY_COMMITS[@]} -gt 0 ]]; then
         fail "被点名的提交没有被验收登记覆盖 —— 只推指定提交也不能绕过验收闸门。
   要求：存在一个 verified/* 标签，且被点名的提交都在它之下（这批内容确实经过实测）。
   做法：验收通过之后，先在测试通道上登记：
-        bash scripts/mark_verified.sh --note \"验收通过：<测了什么>\"
+        bash scripts/mark_verified.sh --note \"<测了什么>\"
   然后再跑本模式。"
     fi
     info "验收登记：$(git tag --points-at "$APPROVED_V" | grep '^verified/' | head -1)（已覆盖本次点名的提交）"
@@ -238,7 +238,7 @@ if [[ -z "$APPROVED_TAG" ]]; then
     fail "本次晋升的提交没有验收登记（提交 ${FROM_SHA:0:7}）
   规则：没经过实测的功能不能进正式版。
   做法：验收通过之后，在测试通道上运行
-        bash scripts/mark_verified.sh --note \"验收通过：<测了什么>\"
+        bash scripts/mark_verified.sh --note \"<测了什么>\"
   然后在测试通道**不再新增提交**的前提下再次执行本脚本。"
 fi
 info "验收登记：${BLUE}${APPROVED_TAG}${NC} —— $(git tag -l --format='%(contents:subject)' "$APPROVED_TAG")"

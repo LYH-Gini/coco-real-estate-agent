@@ -13,7 +13,7 @@
 # 那个新提交上没有验收标签 → 晋升会被拒绝（不会出现"验收的是 A、发布的是 B"）。
 #
 # 用法：
-#   bash scripts/mark_verified.sh --note "验收通过：<测了什么>"     # 登记验收
+#   bash scripts/mark_verified.sh --note "<测了什么>"                # 登记验收（说明里不用带「已验收」前缀，脚本会补）
 #   bash scripts/mark_verified.sh --list                              # 查看已登记的验收
 #   bash scripts/mark_verified.sh --note "..." --no-push              # 只打本地标签，不推远程
 # =============================================================================
@@ -23,6 +23,20 @@ GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; BLUE='\033[1;34m'; NC
 info() { echo -e "${YELLOW}[INFO]${NC} $*"; }
 ok()   { echo -e "${GREEN}[OK]${NC} $*"; }
 fail() { echo -e "${RED}[FAIL]${NC} $*" >&2; exit 1; }
+
+# 验收标签说明统一成「v<版本> 已验收（：<测了什么>）」（标签说明是公网可见元数据）。
+# 说明里若已经带了「v<版本> 已验收 / 已验收 / 验收通过」这类前缀，先去重再补，
+# 免得出现「v0.21.5-3 已验收：v0.21.5-3 已验收：…」这种重复前缀。
+verified_message() {
+    local ver="$1" note="${2:-}"
+    case "$note" in
+        "v${ver} 已验收"*) printf '%s' "$note"; return ;;
+    esac
+    note="${note#已验收}"; note="${note#验收通过}"
+    note="${note#：}"; note="${note#:}"
+    if [[ -n "$note" ]]; then printf 'v%s 已验收：%s' "$ver" "$note"
+    else printf 'v%s 已验收' "$ver"; fi
+}
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR"
@@ -73,15 +87,16 @@ SHA="$(git rev-parse HEAD)"
 VER="$(tr -d '[:space:]' < VERSION)"
 TAG="verified/v${VER}-${SHA:0:7}"
 
+MSG="$(verified_message "$VER" "$NOTE")"
 if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null 2>&1; then
     ok "该提交已有验收登记：$TAG（无需重复）"
 else
-    git tag -a "$TAG" -m "v${VER} 已验收${NOTE:+：$NOTE}" "$SHA" || fail "打标签失败"
+    git tag -a "$TAG" -m "$MSG" "$SHA" || fail "打标签失败"
     ok "已登记验收：$TAG（提交 ${SHA:0:7}，版本 v$VER）"
 fi
 echo "  版本: v$VER"
 echo "  提交: ${SHA:0:7}"
-echo "  说明: $NOTE"
+echo "  说明: $MSG"
 echo "  时间: $(date '+%Y-%m-%d %H:%M:%S %Z')"
 
 if [[ "$DO_PUSH" == "1" ]]; then
