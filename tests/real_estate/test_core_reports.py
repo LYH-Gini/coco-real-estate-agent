@@ -95,7 +95,11 @@ class TestPolicyAndCron:
         assert "「海口」" in text, "问的是哪个城市要回显出来"
         cities = _dispatch(db, monkeypatch, "list_policy_cities", {})
         assert cities.get("success") is False, cities
-        assert "停用" in cities.get("error", ""), cities
+        cities_text = cities.get("error", "")
+        assert "联网" in cities_text, cities
+        assert "停用" not in cities_text, "对外文案不解释系统怎么收录（2026-09-28 口径）"
+        # 给模型的那句话（怎么做）单独一个字段，不混进对外文案
+        assert "禁止凭记忆" in cities.get("note_for_model", ""), cities
 
     def test_cron_toggle_reports_json(self, db, monkeypatch):
         """定时任务开关：无论能否注册（依赖 croniter）都必须返回结构化结果，不抛异常"""

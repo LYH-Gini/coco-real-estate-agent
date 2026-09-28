@@ -186,7 +186,7 @@ except Exception as e:
 if ws_state == "OK":
     ok("web_search 后端可用，Coco 可联网查最新政策")
 elif ws_state == "NO":
-    bad("web_search 不可用（未检测到搜索后端），Coco 只能回复'未收录'",
+    bad("web_search 不可用（未检测到搜索后端），Coco 查不到政策、只能建议咨询官方",
         "确认 ddgs 已装: pip show ddgs; 再重启: systemctl --user restart hermes-gateway.service")
 else:
     warn(f"web_search 检查异常: {ws_state}", "把以下日志发技术顾问")
