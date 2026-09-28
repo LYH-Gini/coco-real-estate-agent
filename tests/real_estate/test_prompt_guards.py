@@ -132,3 +132,29 @@ class TestOutwardWordingGuard:
         assert "不向他解释系统怎么运作" in MANUAL
         assert "note_for_model" in MANUAL
 
+
+class TestNoAbsolutePromiseGuard:
+    """不做绝对承诺（2026-09-28 加）
+
+    真实教训：Coco 说过「更新过程是安全的」「保证后续匹配不报错」「图片永远不会丢」——
+    替系统打包票，出事就是产品背锅。规则里要求改说"查到的事实 + 他自己能做的动作"。
+    """
+
+    def test_prompt_has_the_rule(self):
+        assert "【不做绝对承诺】" in PROMPT
+        assert "保证、一定、绝对、永远、100%" in PROMPT
+        assert "查到的事实" in PROMPT
+
+    def test_security_answer_has_no_absolute_claim(self):
+        """对客户的加密口径里不许再出现"不会泄露 / 不外传"这类承诺
+
+        注意判据只看**对客户的那几条**（开头的问法示例里有「会不会泄漏」字样，别误伤）。
+        """
+        section = PROMPT.split("对客户（对外口径）")[1].split("对老板")[0]
+        for bad in ("不会泄露", "不外传", "绝不会", "保证"):
+            assert bad not in section, f"数据安全应答里还有绝对承诺「{bad}」"
+
+    def test_manual_has_the_rule(self):
+        assert "不做绝对承诺" in MANUAL
+        assert "绝不会泄露" in MANUAL
+
