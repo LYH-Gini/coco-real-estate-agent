@@ -29,15 +29,13 @@ import re
 from typing import Optional
 
 # 给经纪人看的话术（连同正确的更新命令一起给出）
+# 口径（2026-09-28 老板定）：**只给 coco update 这一条** —— 不给等价写法、不列别的命令、不解释
+# 为什么别的做法不行（经纪人只需要知道敲哪一条）。
 REFUSAL_MESSAGE = (
-    "【更新需要你在服务器终端执行】为了不打断我们当前的对话、并确保数据库迁移完整跑完，"
-    "更新命令请你自己在服务器上执行：\n"
+    "【更新要你在服务器终端执行】\n"
     "  coco update\n"
-    "（等价写法：git -C ~/coco pull && bash ~/coco/scripts/update.sh）\n"
-    "（我这边执行会重启网关服务，把我们的对话一起中断；官方 `hermes update` 也不要使用："
-    "它不会跑 Coco 的数据库迁移，还可能覆盖你手改过的代码。）\n"
+    "我这边执行会重启服务、把我们的对话一起中断，所以这条必须你自己敲。更新只认这一条命令。\n"
     "【服务类命令】只给这几条：coco status（看服务状态）/ coco restart（重启服务）/ coco logs（看日志）。"
-    "不要给 sudo systemctl restart hermes、systemctl restart hermes-gateway、hermes gateway restart 这类旧口径——本机没有那个服务名。"
 )
 
 # 命中即拦截的更新类命令；均为「更新/重装/重启本机 Coco」语义，避免误伤普通命令

@@ -69,8 +69,11 @@ def test_update_commands_are_blocked():
         assert result, f"应返回拦截信息：{command}"
         payload = json.loads(result)
         assert payload["status"] == "blocked"
-        assert "update.sh" in payload["error"]
+        # 口径（2026-09-28）：只给 coco update 这一条，不给等价写法、不解释别的做法
+        assert "coco update" in payload["error"]
         assert "服务器" in payload["error"]
+        assert "update.sh" not in payload["error"]
+        assert "hermes update" not in payload["error"]
 
 
 def test_normal_commands_pass_through():
@@ -129,6 +132,8 @@ class TestCocoWriteCommandsBlocked:
         from tools.real_estate_update_guard import REFUSAL_MESSAGE
 
         assert "coco update" in REFUSAL_MESSAGE, REFUSAL_MESSAGE
-        # 服务类命令口径（2026-09-22）：给出正确命令，并明确不要给旧口径
+        # 服务类命令口径（2026-09-22）：给出正确命令
         assert "coco restart" in REFUSAL_MESSAGE, REFUSAL_MESSAGE
-        assert "systemctl restart hermes" in REFUSAL_MESSAGE, REFUSAL_MESSAGE
+        # 2026-09-28 收口：只给 coco update 这一条 —— 不给等价写法、不列旧口径命令、不解释别的做法
+        for forbidden in ("update.sh", "hermes update", "systemctl restart hermes", "等价写法"):
+            assert forbidden not in REFUSAL_MESSAGE, f"话术里不该出现「{forbidden}」：{REFUSAL_MESSAGE}"

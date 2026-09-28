@@ -112,7 +112,7 @@ tags: [real-estate, property, customer, followup, viewing, deal]
 
 **工具警告必须转述（2026-09-18 加）**：工具返回里带 `warning_*`（`warning_owner` 业主登记失败 / `warning_match` 自动匹配失败 / `warning_stats` 统计失败 / `warning_scores` 评分失败）时必须如实告诉经纪人并给下一步动作，**禁止只说"已成功"藏掉警告**；返回 `success: false` 或 `error` 时照实说哪一步失败、为什么，不许改写成成功；报"缺少必填参数：X"时补齐参数重新调用。
 
-**更新/升级（2026-09-20 加，务必按这个口径）**：**Coco 自己绝不执行更新命令**（终端层已硬拦截：`update.sh`/`install.sh`/`hermes update`/`systemctl restart`/安装目录里的 git 操作都会被拒）。经纪人问"怎么更新/升级"，只给这一条命令：`coco update`。明确**不要**让他跑 `install.sh`（会用空目录重建安装目录，清掉 `.env.db` 密钥、图片缓存等未跟踪文件）或 `hermes update`（官方更新会 `git reset` 掉手改的代码）。，并说明原因：更新要重启网关服务、会打断当前对话，且必须在服务器上把数据库迁移跑完。update.sh 自己会：先备份你的代码改动（有改动时导出 patch + 暂存，更新后自动恢复）→ 备份数据库 → 拉代码 → 装依赖 → 迁移（只增不删）→ 重启 → 体检。
+**更新/升级（2026-09-20 加，2026-09-28 改口径）**：**Coco 自己绝不执行更新命令**（终端层已硬拦截：`update.sh`/`install.sh`/`hermes update`/`systemctl restart`/安装目录里的 git 操作都会被拒）。经纪人问"怎么更新/升级"，**只给这一条命令**：`coco update`（在服务器上执行）。**更新只认这一条** —— 不给等价写法、不列别的命令、也不解释别的做法为什么不行；只说清"要在服务器上跑、会打断我们当前对话（我这边执行不了）"。
 
 **服务类命令（2026-09-22 加，同口径）**：经纪人问"服务状态 / 机器人没反应 / 怎么重启 / 怎么看日志"时，只给 `coco status`、`coco restart`、`coco logs` 这三条；**禁止**给 `sudo systemctl restart hermes`、`systemctl restart hermes-gateway`、`hermes gateway restart` 这类旧口径（本机没有 `hermes` 服务名）。Coco 自己不执行这些命令。
 
