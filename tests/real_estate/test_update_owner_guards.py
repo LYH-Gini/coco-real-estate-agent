@@ -3,7 +3,7 @@
 背景：`re_owners` 有姓名/手机/微信/脱敏身份证/信任度备注/备注六个字段，而**整个工具集里没有任何
 "改房东"的入口** —— 录错只能删了重建（会把名下房源的关联断掉）。本工具按客户侧 `update_customer`
 的既定口径实现：改联系方式先查重（**排除自己**）、每次改动写留痕（**加密字段只留掩码**）、
-身份证只存脱敏、房源关联不受影响。
+身份证与手机号同一套口径（加密存储全号）、房源关联不受影响。
 """
 import json
 from datetime import datetime, timedelta
@@ -56,7 +56,7 @@ class TestFields:
         assert out["success"] is True, out
         row = _row(wired, oid)
         assert row[0] == "房东乙" and row[1] == "13900002222" and row[2] == "wx_b"
-        assert row[3] == "4600**********1234"        # 身份证只存脱敏
+        assert row[3] == "4600**********1234"        # 掩码列照旧生成（全号在 id_number 加密列里）
         assert row[4] == "价格坚挺" and row[5] == "两套房"
 
     def test_message_lists_changed_fields(self, wired):
@@ -225,7 +225,7 @@ class TestSchema:
         from tools.registry import registry
 
         desc = registry.get_entry("update_owner").schema["description"]
-        for word in ("修改房东", "身份证（只存脱敏）", "先查重", "不会悄悄改", "字段清单"):
+        for word in ("修改房东", "身份证", "先查重", "不会悄悄改", "字段清单"):
             assert word in desc, (word, desc)
 
     def test_required_is_only_owner_id(self):

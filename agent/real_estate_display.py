@@ -30,8 +30,8 @@ PERSON_KEY_MISMATCH_WARNING = (
     "（常见于换了机器、或恢复备份时没带上密钥文件）。先用备份里的密钥文件恢复，"
     "在此之前不要把这条联系方式给客户。")
 
-# 展示防御覆盖的字段：全是 EncryptedString 列
-_CONTACT_FIELDS = ("phone", "wechat")
+# 展示防御覆盖的字段：全是 EncryptedString 列（身份证号 2026-09-29 起与手机号同一套口径）
+_CONTACT_FIELDS = ("phone", "wechat", "id_number")
 
 
 def safe_contact(value):

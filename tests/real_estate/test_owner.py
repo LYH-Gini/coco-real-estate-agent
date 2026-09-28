@@ -22,7 +22,7 @@ class TestOwnerCRUD:
         assert db.get_owner(99999) is None
 
     def test_id_masking(self, db):
-        """身份证只存脱敏版本（脱敏在工具层 _mask_id 完成）"""
+        """id_masked 掩码列（脱敏在工具层 _mask_id 完成；完整号另存加密列 id_number，2026-09-29 起）"""
         from tools.real_estate_owner import _mask_id
         o = _add_owner(db, id_masked=_mask_id("460005199001011234"))
         assert o["id_masked"] == "4600**********1234"

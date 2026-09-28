@@ -8,7 +8,8 @@ from agent.real_estate_display import (attach_key_warning, dedup_key_mismatch_pa
 from agent.real_estate_money import fmt_budget, fmt_wan
 from agent.real_estate_input import (STAGES, STAGE_LABELS, clamp_limit, clean_tags,
                                      money_limit_problem, norm_birthday, norm_customer_type,
-                                     norm_id, norm_money, norm_phone, norm_stage, norm_tags,
+                                     norm_id, norm_id_number, norm_money, norm_phone,
+                                     norm_stage, norm_tags,
                                      norm_tier, stage_options_text)
 from tools.registry import registry
 
@@ -107,6 +108,7 @@ def add_customer(
     name: str,
     phone: str = None,
     wechat: str = None,
+    id_number: str = None,
     tier: str = 'C',
     budget_min: int = None,
     budget_max: int = None,
@@ -200,7 +202,8 @@ def add_customer(
                           f"手机 {safe_contact(dup.get('phone')) or '未填'}）。" + msg),
             }, ensure_ascii=False)
     result = db.add_customer(
-        name=name, phone=phone, wechat=wechat, tier=tier_value,
+        name=name, phone=phone, wechat=wechat, id_number=norm_id_number(id_number),
+        tier=tier_value,
         budget_min=budget_min, budget_max=budget_max,
         area_pref=area_pref, layout_pref=layout_pref,
         location=location, renovation=renovation,
@@ -232,6 +235,7 @@ def update_customer(
     name: str = None,
     phone: str = None,
     wechat: str = None,
+    id_number: str = None,
     tier: str = None,
     budget_min: int = None,
     budget_max: int = None,
@@ -326,7 +330,8 @@ def update_customer(
             return conflict
 
     kwargs = {k: v for k, v in {
-        'name': name, 'phone': phone, 'wechat': wechat, 'tier': tier,
+        'name': name, 'phone': phone, 'wechat': wechat,
+        'id_number': norm_id_number(id_number), 'tier': tier,
         'budget_min': budget_min, 'budget_max': budget_max,
         'area_pref': area_pref, 'layout_pref': layout_pref,
         'location': location, 'renovation': renovation,
@@ -367,7 +372,8 @@ def update_customer(
 # 变更历史展示口径（2026-09-24 加，F76）：历史里原本只有英文键与裸数字，
 # 模型/经纪人得自己翻 —— 每条补 field_label + old_display/new_display，原始三字段保留不动。
 _CHANGE_FIELD_LABELS = {
-    "name": "姓名", "phone": "手机号", "wechat": "微信", "tier": "客户等级",
+    "name": "姓名", "phone": "手机号", "wechat": "微信", "id_number": "身份证",
+    "tier": "客户等级",
     "status": "客户状态", "stage": "生命周期阶段",
     "budget_min": "预算下限", "budget_max": "预算上限",
     "area_pref": "面积偏好", "layout_pref": "户型偏好", "location": "意向区域",
@@ -440,7 +446,7 @@ def customer_change_history(customer_id: int, limit: int = _CHANGE_LIMIT_DEFAULT
 
 
 def get_customer(customer_id: int, task_id: str = None) -> str:
-    """获取客户详情（联系方式、等级、预算、偏好、来源、标签、阶段、状态、生日、备注、时间）"""
+    """获取客户详情（联系方式、身份证号、等级、预算、偏好、来源、标签、阶段、状态、生日、备注、时间）"""
     customer_id, problem = norm_id(customer_id, '客户编号', '，可在客户列表里查')
     if problem:
         return _fail(problem)
@@ -546,6 +552,7 @@ TOOLS = [
             "name": {"type": "string", "description": "客户姓名"},
             "phone": {"type": "string", "description": "手机号"},
             "wechat": {"type": "string", "description": "微信号"},
+            "id_number": {"type": "string", "description": "身份证号（加密存储；网签、贷款要用到，留空也行）"},
             "tier": {"type": "string", "enum": ["S", "A", "B", "C"], "description": "客户等级（仅经纪人明确告知等级时才传；未告知则不传，默认 C 级）"},
             "budget_min": {"type": "integer", "description": "预算下限（元，如 300万=3000000）"},
             "budget_max": {"type": "integer", "description": "预算上限（元）"},
@@ -574,11 +581,12 @@ TOOLS = [
             "customer_type": {"type": "string", "enum": ["buy_new", "buy_second_hand", "rent", "unspecified"], "description": "客户类型：buy_new买一手房/buy_second_hand买二手房/rent租房/unspecified未细分（建档时没说清、后来确认了用它补上）"},
             "source": {"type": "string", "description": "客户来源（如 抖音/贝壳/安居客/转介绍/门店/58/其他）"},
             "wechat": {"type": "string", "description": "客户微信号（加密存储；建档后补录或修改都用这个参数）"},
+            "id_number": {"type": "string", "description": "客户身份证号（加密存储；建档后补录或修改都用这个参数）"},
             "birthday": {"type": "string", "description": "客户生日，格式 MM-DD 或 YYYY-MM-DD"},
         },
         "required": ["customer_id"],
     }, "handler": lambda args, **kw: update_customer(**args)},
-    {"name": "get_customer", "description": "获取某位客户的完整资料（联系方式、等级、预算区间、面积/户型偏好、意向区域、装修偏好、来源、标签、生命周期阶段、在跟/已关闭状态、生日、备注、建档与更新时间）。按客户编号查，编号来自建档或客户列表。", "parameters": {
+    {"name": "get_customer", "description": "获取某位客户的完整资料（联系方式、身份证号、等级、预算区间、面积/户型偏好、意向区域、装修偏好、来源、标签、生命周期阶段、在跟/已关闭状态、生日、备注、建档与更新时间）。按客户编号查，编号来自建档或客户列表。", "parameters": {
         "type": "object", "properties": {"customer_id": {"type": "integer"}}, "required": ["customer_id"],
     }, "handler": lambda args, **kw: get_customer(**args)},
     {"name": "list_customers", "description": "列出客户列表（默认只列在跟客户：活跃+暂缓，按最新录入优先；可按等级/客户类型/状态/**标签**筛选；已关闭客户默认不列，要看需传 include_closed=true 或 status=\"closed\"）。返回 total=符合条件的总数、count=本次返回条数、truncated", "parameters": {
@@ -632,7 +640,7 @@ registry.register(
 registry.register(
     name="get_customer",
     toolset="real_estate",
-    schema={"name": "get_customer", "description": "获取某位客户的完整资料（联系方式、等级、预算区间、面积/户型偏好、意向区域、装修偏好、来源、标签、生命周期阶段、在跟/已关闭状态、生日、备注、建档与更新时间）。按客户编号查，编号来自建档或客户列表。", "parameters": TOOLS[2]["parameters"]},
+    schema={"name": "get_customer", "description": "获取某位客户的完整资料（联系方式、身份证号、等级、预算区间、面积/户型偏好、意向区域、装修偏好、来源、标签、生命周期阶段、在跟/已关闭状态、生日、备注、建档与更新时间）。按客户编号查，编号来自建档或客户列表。", "parameters": TOOLS[2]["parameters"]},
     handler=TOOLS[2]["handler"],
 )
 registry.register(
@@ -784,6 +792,7 @@ def get_customer_form(task_id: str = None) -> str:
 - 客户姓名：（必填）
 - 客户电话：（加密保存；留空也行，可以后补）
 - 客户微信：（加密保存）
+- 客户身份证：（加密保存；网签、贷款要用到，留空也行，可以后补）
 - 客户类型：(买一手房) / (买二手房) / (租房)；不确定买新房还是买二手房就先不填，按"未细分"登记
 - 预算范围：（元，如 3000000-5000000）
 - 面积偏好：（如 80-120㎡）

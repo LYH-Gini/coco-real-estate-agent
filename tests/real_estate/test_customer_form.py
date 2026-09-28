@@ -17,6 +17,7 @@ REQUIRED_HINTS = {
     "name": ["姓名"],
     "phone": ["电话"],
     "wechat": ["微信"],
+    "id_number": ["身份证"],
     "customer_type": ["客户类型"],
     "budget_min": ["预算"],
     "budget_max": ["预算"],

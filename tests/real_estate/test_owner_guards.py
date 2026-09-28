@@ -6,7 +6,7 @@
 ② F85 同号重复登记给中文提示、不静默新建；**姓名不参与判重**（同名不同号是两个人，都要能建）；
    force=true 是同一个人的另一个号时的逃生舱。
 ③ F87 文本超列宽按列宽截断并在返回里说明（PostgreSQL 上 varchar 超长会让整次登记失败）。
-④ 身份证只存脱敏串，原号不落库（表里、库文件里都不出现）。
+④ 身份证：掩码列照旧生成（展示兜底），全号走加密列、回执与详情都给完整号（2026-09-29 改）。
 """
 import json
 
@@ -139,15 +139,15 @@ def test_notes_is_long_text_not_clipped(tool_db):
     assert tool_db.get_owner(r["owner"]["id"])["notes"] == long_note
 
 
-# ---------- ④ 证件脱敏 ----------
+# ---------- ④ 证件：掩码照旧 + 全号可查（2026-09-29 改口径，详见 test_id_number_encrypted.py）----------
 
-def test_id_number_masked_and_original_never_stored(tool_db, tmp_path):
+def test_id_number_keeps_mask_column_and_returns_full_number(tool_db):
+    """掩码列继续生成（展示兜底与老数据兼容），回执与详情给完整号 —— 经纪人下次要用得到"""
     r = call_add(name="证件房东", id_number="110101200001015678")
     assert r["owner"]["id_masked"] == "1101" + "*" * 10 + "5678", r
-    assert "原号未落库" in r["message"], r
-    assert "110101200001015678" not in json.dumps(r, ensure_ascii=False)
-    db_bytes = (tmp_path / "re_test.db").read_bytes()
-    assert b"110101200001015678" not in db_bytes, "原身份证号不该出现在库文件里"
+    assert r["owner"]["id_number"] == "110101200001015678", r
+    assert "身份证已加密存储" in r["message"], r
+    assert tool_db.get_owner(r["owner"]["id"])["id_number"] == "110101200001015678"
 
 
 # ---------- 与房源侧认人对齐（同一套归一）----------

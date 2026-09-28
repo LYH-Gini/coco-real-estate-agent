@@ -156,7 +156,7 @@ def _change_trace_value(model, field, value):
         column = None
     if column is None or not isinstance(column.type, EncryptedString):
         return text
-    # 手机号：留前 3 后 4（139****0002，便于核对是哪一位）；短号/微信号：只留前 2 位
+    # 手机号/身份证号：留前 3 后 4（139****0002，便于核对是哪一位）；短号/微信号：只留前 2 位
     if text.isdigit() and len(text) >= 8:
         return f"{text[:3]}{'*' * 4}{text[-4:]}"
     return f"{text[:2]}{'*' * 4}"
@@ -351,6 +351,7 @@ class Customer(Base):
     name = Column(String(100), nullable=False)
     phone = Column(EncryptedString)
     wechat = Column(EncryptedString)
+    id_number = Column(EncryptedString)   # 身份证号全号（加密存储，2026-09-29 起；与手机号同一套密钥）
     feishu_id = Column(String(100))
     tier = Column(String(1), default='C')
     budget_min = Column(Integer)  # 预算下限（元，如 300万=3000000）
@@ -383,7 +384,8 @@ class Customer(Base):
     def to_dict(self):
         return {
             'id': self.id, 'name': self.name, 'phone': self.phone,
-            'wechat': self.wechat, 'feishu_id': self.feishu_id,
+            'wechat': self.wechat, 'id_number': self.id_number,
+            'feishu_id': self.feishu_id,
             'tier': self.tier, 'budget_min': self.budget_min,
             'budget_max': self.budget_max, 'area_pref': self.area_pref,
             'layout_pref': self.layout_pref, 'location': self.location,
@@ -515,6 +517,7 @@ class Owner(Base):
     name = Column(String(100), nullable=False)
     phone = Column(EncryptedString)
     wechat = Column(EncryptedString)
+    id_number = Column(EncryptedString)  # 身份证号全号（加密存储，2026-09-29 起；与手机号同一套密钥）
     id_masked = Column(String(30))     # 脱敏身份证（如 4600**********1234）
     trust_note = Column(String(200))   # 信任度备注
     notes = Column(Text)
@@ -527,7 +530,8 @@ class Owner(Base):
         return {
             'id': self.id, 'name': self.name,
             'phone': self.phone, 'wechat': self.wechat,
-            'id_masked': self.id_masked, 'trust_note': self.trust_note,
+            'id_number': self.id_number, 'id_masked': self.id_masked,
+            'trust_note': self.trust_note,
             'notes': self.notes,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }

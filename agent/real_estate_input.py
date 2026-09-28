@@ -113,6 +113,23 @@ def norm_phone(value):
     return text
 
 
+def norm_id_number(value):
+    """身份证号写法归一：去空格/横线/点/括号，末位 x 统一大写。
+
+    归一只为"同一张证件写成几种样子也能认出"，不做位数校验（15 位老号与 18 位新号都放行），
+    认不出时退回去掉首尾空白的原值 —— 证件号不是必填，不该拦住建档。
+    """
+    if value is None:
+        return None
+    text = str(value).strip().replace('　', '')
+    if not text:
+        return None
+    text = re.sub(r'[\s\-－.．()（）]', '', text)
+    if text[-1:].lower() == 'x':
+        text = text[:-1] + 'X'
+    return text
+
+
 # ==================== 客户类型 / 等级 ====================
 
 CUSTOMER_TYPES = ("buy_new", "buy_second_hand", "rent")
