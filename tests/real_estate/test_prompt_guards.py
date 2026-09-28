@@ -151,7 +151,10 @@ class TestNoAbsolutePromiseGuard:
         判据看整个「数据安全应答」段；开头的问法示例用的是「会被泄露吗」，不会误伤。
         """
         section = PROMPT.split("# 数据安全应答")[1].split("# 强制规则")[0]
-        for bad in ("不会泄露", "不外传", "绝不会", "保证"):
+        # 2026-09-29 老板再纠正：这两句同属承诺（服务器账号/密钥/备份/模型服务商都能碰到数据），
+        # 一起钉在守卫里，别再写回来。
+        for bad in ("不会泄露", "不外传", "绝不会", "保证",
+                    "只有这套系统读得到", "不对公网开放"):
             assert bad not in section, f"数据安全应答里还有绝对承诺「{bad}」"
 
     def test_security_answer_is_not_recited(self):
