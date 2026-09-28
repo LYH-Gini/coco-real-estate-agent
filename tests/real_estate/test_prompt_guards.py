@@ -106,3 +106,29 @@ class TestGuidanceMenuGuards:
     def test_manual_has_menu_script(self):
         assert "引导菜单话术（2026-09-23 加）" in MANUAL
         assert "我帮你**录**（客户/房源/跟进/带看结果/成交单）" in MANUAL
+
+
+class TestOutwardWordingGuard:
+    """对外说法护栏（2026-09-28 加）
+
+    真实教训：经纪人问「你收录了哪些城市的政策？」，Coco 把工具的说明书与报错原文
+    （「本地政策库已停用…本工具只会返回…」）改写了一遍发给他，读起来像提示词。
+    根因是当时**没有任何一条规则**管"怎么对经纪人说话"。本文件钉住这条规则不被删。
+    """
+
+    def test_prompt_has_the_rule(self):
+        assert "【对外说话规则】" in PROMPT
+        # 不出现内部构造
+        assert "工具名、参数名、字段英文键与英文枚举值" in PROMPT
+        # 不解释系统怎么运作
+        assert "不向经纪人解释系统怎么运作" in PROMPT
+        # note_for_model / ask 是给模型看的
+        assert "note_for_model" in PROMPT
+        # 有"照那句话回复"的兜底
+        assert "就照那句说" in PROMPT
+
+    def test_manual_has_the_rule(self):
+        assert "对外说话规则（2026-09-28 加）" in MANUAL
+        assert "不向他解释系统怎么运作" in MANUAL
+        assert "note_for_model" in MANUAL
+
