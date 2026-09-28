@@ -81,3 +81,16 @@ def test_form_still_marks_required_field():
 
 def test_form_is_stable_across_calls():
     assert _form() == _form()
+
+
+def test_skill_copy_matches_the_tool_form():
+    """skills/real_estate/SKILL.md 里的表单副本必须与工具输出逐字一致。
+
+    该文件是模型/人都会读到的第三份副本（2026-09-28 发现它比工具输出旧了一版：缺"加密保存"、
+    预算还写着"换算成元"、等级缺 C、没有生日栏、把"情况描述/备注"拆成两行）。两份文案打架时
+    以工具输出为准，但没人会记得手工同步 —— 用这条把它们钉在一起。
+    """
+    from pathlib import Path
+
+    skill = (Path(__file__).resolve().parents[2] / "skills" / "real_estate" / "SKILL.md").read_text(encoding="utf-8")
+    assert _form() in skill, "SKILL.md 里的表单副本与 get_customer_form() 输出不一致（改表单时同步该文件）"
