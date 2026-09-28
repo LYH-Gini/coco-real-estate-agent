@@ -3,6 +3,7 @@
 # Coco（可可）房产智能体 - 一键安装脚本
 # 用法(国内): curl -fsSL https://gitee.com/LYH-Gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh
 # 用法(海外): curl -fsSL https://raw.githubusercontent.com/LYH-Gini/coco-real-estate-agent/master/install.sh -o install.sh && bash install.sh
+# 备用下载(国内直链不通时): curl -fsSL https://gitee.com/LYH-Gini/coco-real-estate-agent/releases/download/v0.21.5-3/install.sh -o install.sh && bash install.sh
 # 强制指定源: COCO_SOURCE=github bash install.sh   （不指定则并行探测，谁快用谁）
 # 私有源安装: COCO_GIT_URL=git@gitee.com:账号/仓库.git bash install.sh
 #   （用于仓库不可公开访问的场景，只走指定地址；本机需先配好凭据：SSH 部署公钥或访问令牌）
