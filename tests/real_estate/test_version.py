@@ -32,7 +32,7 @@ class TestCocoVersion:
     def test_message_is_user_facing_wording(self):
         """对外措辞（2026-09-27 定、2026-09-28 扩）：版本号 + 是不是最新版 + 可执行的下一步
 
-        正式版点明"（正式版）"；测试版**不对外**说通道（老板自用）；
+        正式版点明"（正式版）"；测试版**不对外**说通道（自用通道）；
         查不到有没有新版时如实说"没连上网"，不许说"已经是最新版"。
         """
         import tools.real_estate_version as vmod

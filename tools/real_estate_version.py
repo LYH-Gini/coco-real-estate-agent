@@ -50,7 +50,7 @@ def _git_branch() -> str:
 def _channel_label() -> str:
     """通道：正式版 / 测试版 / 未知（2026-09-27 定：只用普通话词，且**不进 message**）
 
-    测试版是我自己用的，不对外说（老板 2026-09-27）；
+    测试版是自用通道，不对外说（2026-09-27）；
     非 master/next 的分支（自定义开发分支）与拿不到分支都算「未知」，具体分支名留在 branch 字段里备查。
     """
     branch = _git_branch()
@@ -196,7 +196,7 @@ def check_update(use_cache: bool = True) -> dict:
 
 
 def _version_message(ver: str, label: str) -> str:
-    """给经纪人的那一句（三种情形分开说；2026-09-28 老板定的原文，别改回机器腔）"""
+    """给经纪人的那一句（三种情形分开说；2026-09-28 定的原文，别改回机器腔）"""
     chk = check_update()
     if chk["available"] is True:
         tail = ("我这边查到已经有新版本了 —— 在服务器上执行 coco update 就能更新"
@@ -218,7 +218,7 @@ def get_coco_version(task_id: str = None) -> str:
     channel = _channel_label()
     test_tag = _test_tag() if channel == "测试版" else ""
     if ver == "未知":
-        # 版本号文件都没有 → 不猜、不编，直接说清（老板 2026-09-27 定文案）
+        # 版本号文件都没有 → 不猜、不编，直接说清（2026-09-27 定文案）
         version_line = MSG_UNKNOWN_VERSION
         chk = {"available": None, "remote_head": None}
     else:

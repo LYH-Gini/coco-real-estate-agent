@@ -140,7 +140,7 @@ class TestChannelVisible:
 
         data = json.loads(get_coco_version())
         assert data["channel"] in ("正式版", "测试版", "未知")
-        # 2026-09-27：通道只在结构字段里（内部排查用），message 不对外说通道（测试版是老板自用）
+        # 2026-09-27：通道只在结构字段里（内部排查用），message 不对外说通道（测试版是自用通道）
         assert "测试版" not in data["message"] and "测试通道" not in data["message"], data["message"]
 
     def test_update_script_prints_channel_and_supports_switch(self):

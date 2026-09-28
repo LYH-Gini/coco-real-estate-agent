@@ -9,7 +9,7 @@
    契约 32 要求分开说；
 ④ **没有一句给经纪人看的中文结论**；代码里还留着一行死代码（`tomorrow = now.replace(day=now.day+1)`）。
 
-口径（2026-09-27 老板批准）：与定时任务侧 `scripts/coco_cron_daily.collect_birthdays`
+口径（2026-09-27 定）：与定时任务侧 `scripts/coco_cron_daily.collect_birthdays`
 （`{"when": "今天/明天", "name", "tier"}`，中文、精简）对齐 —— 工具也返回精简行，
 老键名保留、内容精简，并给一句中文 `message`。
 """

@@ -153,7 +153,7 @@ coco_wait_gateway_ready() {
     fi
     waited=$((SECONDS - start))
     [[ $waited -lt $budget ]] || return 1
-    # 等待期间一律不打提示（老板 2026-09-28：要静默等待，不要文字提醒）
+    # 等待期间一律不打提示（2026-09-28：要静默等待，不要文字提醒）
     sleep "${COCO_RESTART_RECHECK_INTERVAL:-3}"
   done
 }
