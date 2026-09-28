@@ -48,8 +48,11 @@ RELEASE_LABELS=("Gitee" "GitHub")
 DEV_LABELS=("Gitee 开发仓" "GitHub 开发仓")
 
 has_remote() { git remote | grep -qx "$1"; }
-# 只回显**真实存在**的远程（别的机器上可能没有开发仓远程 —— 那时跳过测试通道同步）
-existing() { for r in "$@"; do has_remote "$r" && printf '%s\n' "$r"; done; }
+# 只回显**真实存在**的远程（别的机器上可能没有开发仓远程 —— 那时跳过测试通道同步）。
+# 必须显式 `return 0`：远端不存在时 `has_remote` 返回 1，函数就会以非零收尾，
+# 而调用处是 `X="$(existing … | tr …)"` —— 管道 + pipefail 会让赋值失败、被 `set -e` 静默打断
+# （2026-09-28 实测：CI 上 15 个用例全挂在"取远程最新状态..."后面，stderr 一个字符都没有）。
+existing() { local r found=0; for r in "$@"; do if has_remote "$r"; then printf '%s\n' "$r"; found=1; fi; done; return 0; }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in

@@ -354,17 +354,20 @@ class TestPromoteSyncsTestChannelFirst:
         for name in ("coco_channel.sh", "promote_release.sh"):
             shutil.copy(SCRIPTS / name, work / "scripts" / name)
         _commit_all(work, "init")
-        for name in ("gitee.git", "github.git"):
+        for name in ("gitee.git", "github.git", "dev-gitee.git", "dev-gh.git"):
             subprocess.run(["git", "init", "-q", "--bare", str(tmp_path / name)], check=True)
         subprocess.run(["git", "-C", str(work), "remote", "add", "origin", str(tmp_path / "gitee.git")], check=True)
         subprocess.run(["git", "-C", str(work), "remote", "add", "github", str(tmp_path / "github.git")], check=True)
+        # 2026-09-28：测试通道（next）住在**开发仓**，正式仓只放 master
+        subprocess.run(["git", "-C", str(work), "remote", "add", "dev-gitee", str(tmp_path / "dev-gitee.git")], check=True)
+        subprocess.run(["git", "-C", str(work), "remote", "add", "dev-gh", str(tmp_path / "dev-gh.git")], check=True)
         for r in ("origin", "github"):
             subprocess.run(["git", "-C", str(work), "push", "-q", r, "master"], check=True)
-        # 测试分支：推一版旧的，然后在本地再加一个"未推送"的提交
+        # 测试分支：推一版旧的到开发仓，然后在本地再加一个"未推送"的提交
         subprocess.run(["git", "-C", str(work), "checkout", "-q", "-b", "next"], check=True)
         (work / "old.txt").write_text("old", encoding="utf-8")
         _commit_all(work, "pushed to test channel")
-        for r in ("origin", "github"):
+        for r in ("dev-gitee", "dev-gh"):
             subprocess.run(["git", "-C", str(work), "push", "-q", r, "next"], check=True)
         (work / "new.txt").write_text("new", encoding="utf-8")
         tip = _commit_all(work, "not pushed yet")
@@ -377,8 +380,14 @@ class TestPromoteSyncsTestChannelFirst:
         assert "推齐" in out, out
         assert subprocess.run(["git", "-C", str(tmp_path / "gitee.git"), "rev-parse", "master"],
                               capture_output=True, text=True).stdout.strip() == tip
-        assert subprocess.run(["git", "-C", str(tmp_path / "gitee.git"), "rev-parse", "next"],
-                              capture_output=True, text=True).stdout.strip() == tip, "测试通道也应被推齐"
+        for name in ("dev-gitee.git", "dev-gh.git"):
+            got = subprocess.run(["git", "-C", str(tmp_path / name), "rev-parse", "--verify", "--quiet",
+                                  "refs/heads/next"], capture_output=True, text=True).stdout.strip()
+            assert got == tip, f"{name} 的 next 应被推齐（推的是开发仓）：{out}"
+        for name in ("gitee.git", "github.git"):
+            got = subprocess.run(["git", "-C", str(tmp_path / name), "rev-parse", "--verify", "--quiet",
+                                  "refs/heads/next"], capture_output=True, text=True).stdout.strip()
+            assert got == "", f"正式仓（{name}）不该出现 next：{out}"
 
 
 class TestApprovalGate:
