@@ -269,7 +269,7 @@ case "${1:-version}" in
     if coco_wait_gateway_ready 0; then
       exit 0                        # 官方那行已经确认过就绪，不重复打印
     fi
-    echo "⏳ 等待服务就绪（最多 ${COCO_RESTART_RECHECK_SECS} 秒）..."
+    # 等就绪期间不打提示行（保持静默等待，设定仍是 COCO_RESTART_RECHECK_SECS 秒）
     RCK=0
     coco_wait_gateway_ready "$COCO_RESTART_RECHECK_SECS" || RCK=$?
     read -r _ _UNIT <<< "$(coco_service_state)"

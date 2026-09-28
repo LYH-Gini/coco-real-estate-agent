@@ -191,7 +191,7 @@ class TestRestartRecheck:
             {"COCO_RESTART_RECHECK_SECS": "20", "COCO_RESTART_RECHECK_INTERVAL": "1",
              "COCO_TEST_FLIP_AFTER": "2", "COCO_TEST_FLIP_TO": "running"},
         )
-        assert "等待服务就绪" in r.stdout, r.stdout
+        assert "等待服务就绪" not in r.stdout, r.stdout   # 等就绪期间不打提示行（2026-09-28 老板要求）
         assert "✓ Coco 服务已重启并在运行（PID 4242）" in r.stdout, r.stdout
         assert r.returncode == 0, r.stdout + r.stderr
 
@@ -204,7 +204,7 @@ class TestRestartRecheck:
             root, ["restart"], bindir, home,
             {"COCO_RESTART_RECHECK_SECS": "1", "COCO_RESTART_RECHECK_INTERVAL": "1"},
         )
-        assert "等待服务就绪" in r.stdout, r.stdout
+        assert "等待服务就绪" not in r.stdout, r.stdout   # 静默等待（2026-09-28 老板要求）
         assert "状态还是 starting" in r.stdout, r.stdout
         assert "coco status" in r.stdout and "coco logs 50" in r.stdout, r.stdout
         assert r.returncode == 0, r.stdout + r.stderr
