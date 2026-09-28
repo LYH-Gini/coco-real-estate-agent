@@ -153,9 +153,7 @@ coco_wait_gateway_ready() {
     fi
     waited=$((SECONDS - start))
     [[ $waited -lt $budget ]] || return 1
-    if [[ $waited -gt 0 && $((waited % 30)) -eq 0 ]]; then
-      echo "⏳ 还在等就绪（已等 ${waited} 秒 / 最多 ${budget} 秒）..."
-    fi
+    # 等待期间一律不打提示（老板 2026-09-28：要静默等待，不要文字提醒）
     sleep "${COCO_RESTART_RECHECK_INTERVAL:-3}"
   done
 }
