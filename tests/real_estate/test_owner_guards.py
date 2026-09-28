@@ -104,11 +104,14 @@ def test_wechat_used_for_dedupe_when_no_phone(tool_db):
 
 
 def test_ciphertext_contact_refuses_to_deduplicate(tool_db):
-    """密钥不一致时读出来是乱码串：不强行判重，提示先检查密钥（与客户侧同口径）"""
+    """密钥不一致时读出来是乱码串：不强行判重，对经纪人只说人话（与客户侧同口径）"""
     tool_db.add_owner(name="密钥坏了的房东", phone="gAAAAA" + "x" * 40)
     r = call_add(name="正常新房东", phone="13900008000")
     assert r["success"] is False and r["duplicate"] is False, r
-    assert "检查加密密钥（COCO_ENC_KEY）" in r["error"], r
+    assert "先不给你判重结果" in r["error"], r
+    assert "COCO_ENC_KEY" not in r["error"], "对外文案不提服务器上的密钥变量"
+    assert "COCO_ENC_KEY" in r["note_for_model"], "系统口径进给模型看的字段"
+    assert r["key_mismatch"] is True, r
     assert "Ava" not in r["error"], r
 
 

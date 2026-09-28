@@ -3,7 +3,8 @@ Coco 房产工具 - 客户管理
 """
 import json
 
-from agent.real_estate_display import attach_key_warning, mask_contacts, safe_contact
+from agent.real_estate_display import (attach_key_warning, dedup_key_mismatch_payload,
+                                       mask_contacts, safe_contact)
 from agent.real_estate_money import fmt_budget, fmt_wan
 from agent.real_estate_input import (STAGES, STAGE_LABELS, clamp_limit, clean_tags,
                                      money_limit_problem, norm_birthday, norm_customer_type,
@@ -61,8 +62,7 @@ def _tier_error(raw_tier):
 def _contact_conflict(label, dup, warn):
     """改联系方式前的查重：命中别人已在用的号/微信就给两条可执行路径（与建档同口径）"""
     if warn:
-        return _fail("检测到加密密钥不一致，这次没法安全判重（可能把同一个人的两条档案合错）。"
-                     "请先检查加密密钥（COCO_ENC_KEY）后再操作。")
+        return json.dumps(dedup_key_mismatch_payload(warn), ensure_ascii=False)
     if not dup:
         return None
     return json.dumps({
@@ -177,12 +177,8 @@ def add_customer(
         dup, warn = db.find_duplicate_customer(
             phone=phone, wechat=wechat, name=name, customer_type=ctype)
         if warn:
-            # 密钥不一致防御：不强行判重，提示先检查 COCO_ENC_KEY
-            return json.dumps({
-                "success": False, "duplicate": False, "warning": warn,
-                "error": "检测到加密密钥不一致，这次没法安全判重（可能把同一个人的两条档案合错）。"
-                         "请先检查加密密钥（COCO_ENC_KEY）后再操作。",
-            }, ensure_ascii=False)
+            # 密钥不一致防御：不强行判重；对经纪人只说人话，系统口径进 note_for_model
+            return json.dumps(dedup_key_mismatch_payload(warn), ensure_ascii=False)
         if dup:
             # 判断本次录入与已存在客户的关键字段是否完全一致（2026-08-30 加）
             identical = True

@@ -7,7 +7,8 @@ import json
 from datetime import datetime
 
 from agent.real_estate_display import (OWNER_KEY_MISMATCH_WARNING, PERSON_KEY_MISMATCH_WARNING,
-                                       attach_key_warning, mask_contacts, safe_contact)
+                                       attach_key_warning, dedup_key_mismatch_payload,
+                                       mask_contacts, safe_contact)
 from agent.real_estate_input import clamp_limit, clean_text, clip_text, norm_id, norm_phone
 from agent.real_estate_money import fmt_budget, fmt_price
 from tools.real_estate_property import _STATUS_LABELS
@@ -82,12 +83,8 @@ def add_owner(name: str, phone: str = None, wechat: str = None,
     if not force and (phone or wechat):
         dup, warn = db.find_duplicate_owner(phone=phone, wechat=wechat)
         if warn:
-            # 密钥不一致防御：不强行判重，提示先检查密钥
-            return json.dumps({
-                "success": False, "duplicate": False, "warning": warn,
-                "error": "检测到加密密钥不一致，这次没法安全判重（可能把同一个房东的两条档案合错）。"
-                         "请先检查加密密钥（COCO_ENC_KEY）后再操作。",
-            }, ensure_ascii=False)
+            # 密钥不一致防御：不强行判重；对经纪人只说人话，系统口径进 note_for_model
+            return json.dumps(dedup_key_mismatch_payload(warn), ensure_ascii=False)
         if dup:
             identical = (dup.get('name') == name
                          and all(clean_text(dup.get(k)) == v for k, v in
@@ -170,11 +167,7 @@ def update_owner(owner_id: int, name: str = None, phone: str = None, wechat: str
                                             wechat=updates.get('wechat'),
                                             exclude_id=owner_id)
         if warn:
-            return json.dumps({
-                "success": False, "duplicate": False, "warning": warn,
-                "error": "检测到加密密钥不一致，这次没法安全查重（可能把同一个房东拆成两条、"
-                         "或把两位房东合错）。请先检查加密密钥（COCO_ENC_KEY）。",
-            }, ensure_ascii=False)
+            return json.dumps(dedup_key_mismatch_payload(warn), ensure_ascii=False)
         if dup:
             return json.dumps({
                 "success": False, "duplicate": True, "existing_owner": dup,

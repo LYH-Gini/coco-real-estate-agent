@@ -11,7 +11,8 @@
 - 业主版：只提房东联系方式
 - 合并版：按姓名查人一次涉及客户与业主两块
 """
-from agent.real_estate_db import KEY_MISMATCH_HINT, looks_like_ciphertext
+from agent.real_estate_db import (DEDUP_KEY_MISMATCH_NOTE, DEDUP_KEY_MISMATCH_TEXT,
+                                  KEY_MISMATCH_HINT, looks_like_ciphertext)
 
 CUSTOMER_KEY_MISMATCH_WARNING = (
     "客户联系方式读不出来：库里的加密内容用当前密钥解不开"
@@ -38,6 +39,21 @@ def safe_contact(value):
     if not value:
         return None
     return KEY_MISMATCH_HINT if looks_like_ciphertext(value) else value
+
+
+def dedup_key_mismatch_payload(warning: str = None) -> dict:
+    """判重/查重遇到密钥不一致时的返回体（客户侧与房东侧共用一处构造，2026-09-28）
+
+    对外只给 `DEDUP_KEY_MISMATCH_TEXT`（产品语言，不提 COCO_ENC_KEY 这类服务器上的东西），
+    系统口径放 `note_for_model`，另给机器读的 `key_mismatch: True`。
+    """
+    payload = {
+        "success": False, "duplicate": False, "key_mismatch": True,
+        "error": DEDUP_KEY_MISMATCH_TEXT, "note_for_model": DEDUP_KEY_MISMATCH_NOTE,
+    }
+    if warning:
+        payload["warning"] = warning
+    return payload
 
 
 def mask_contacts(row, fields=_CONTACT_FIELDS):

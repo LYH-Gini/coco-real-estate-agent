@@ -58,11 +58,18 @@ def test_same_wechat_is_still_a_duplicate(tool_db):
 
 
 def test_real_ciphertext_contact_still_refuses_to_deduplicate(tool_db):
-    """密钥不一致时读出来是乱码串：不强行判重，给中文提示（防御保留）"""
+    """密钥不一致时读出来是乱码串：不强行判重，对经纪人只说人话（2026-09-28 口径）
+
+    原先 error 写的是「请先检查加密密钥（COCO_ENC_KEY）」—— COCO_ENC_KEY 是服务器上的
+    环境变量，经纪人拿到也做不了什么，等于把系统内部的东西念给他听。
+    """
     tool_db.add_customer(name='密钥坏了的客户', phone='gAAAAA' + 'x' * 40, tier='C',
                          customer_type='unspecified', status='active')
     r = call_add(name='正常新客', phone='13900008000', customer_type='buy_second_hand')
-    assert r['success'] is False and '检查加密密钥（COCO_ENC_KEY）' in r['error'], r
+    assert r['success'] is False and '先不给你判重结果' in r['error'], r
+    assert 'COCO_ENC_KEY' not in r['error'], '对外文案不提服务器上的密钥变量'
+    assert 'COCO_ENC_KEY' in r['note_for_model'], '系统口径进给模型看的字段'
+    assert r['key_mismatch'] is True, r
     assert "Ava" not in r['error'], r
 
 

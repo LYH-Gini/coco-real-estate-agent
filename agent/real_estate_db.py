@@ -101,6 +101,19 @@ _PROPERTY_TYPE_LABEL = {"new": "一手房", "second_hand": "二手房", "rental"
 
 KEY_MISMATCH_HINT = "读取失败（密钥不一致，请检查备份的密钥文件）"
 
+# 判重/查重遇到密钥不一致时给经纪人的那句话（2026-09-28 收口：4 个工具出口 + 库层 4 条警告共用一处）。
+# 原先写的是「请先检查加密密钥（COCO_ENC_KEY）」—— COCO_ENC_KEY 是服务器上的环境变量，
+# 经纪人拿到这句话也做不了什么，只会把系统内部的东西念给他听（见【对外说话规则】）。
+DEDUP_KEY_MISMATCH_TEXT = (
+    "这台机器上的加密信息读不出来，这次没法核对是不是同一个人，先不给你判重结果 —— "
+    "免得把同一个人的两条档案合到一起，或者把同一个人拆成两条。"
+    "要现在处理，需要技术侧检查一下加密设置。")
+
+# 同一场景给模型看的说明（不要念给经纪人）
+DEDUP_KEY_MISMATCH_NOTE = (
+    "密钥不一致（COCO_ENC_KEY 与库里的密文不匹配）：本次未判重，别编造判重结论；"
+    "要修复需在服务器上用备份里的密钥文件恢复 COCO_ENC_KEY。")
+
 
 def looks_like_ciphertext(value) -> bool:
     """值看起来是 Fernet 密文 —— 密钥不一致时解密失败会把密文原样返回，
@@ -852,8 +865,7 @@ class RealEstateDB:
                 #（2026-09-24 修：原来的"含字母就当密文"启发式会把正常微信号/含字母的联系方式误判成密文，
                 #  导致库里一旦有微信客户，后续带微信的建档全被拦死）
                 if looks_like_ciphertext(v):
-                    warning = ("检测到本机加密密钥与库里的不一致，未强行判重"
-                               "（可能把同一个人拆成两条、或把两个人合错）。请先检查加密密钥（COCO_ENC_KEY）。")
+                    warning = DEDUP_KEY_MISMATCH_TEXT
                     continue
                 if norm_phone(v) == probe:
                     if exclude_id is None or c['id'] != exclude_id:
@@ -867,8 +879,7 @@ class RealEstateDB:
                 if v is None:
                     continue
                 if looks_like_ciphertext(v):
-                    warning = warning or ("检测到本机加密密钥与库里的不一致，未强行判重"
-                                          "（可能把同一个人拆成两条、或把两个人合错）。请先检查加密密钥（COCO_ENC_KEY）。")
+                    warning = warning or DEDUP_KEY_MISMATCH_TEXT
                     continue
                 if str(v).strip() == probe:
                     if exclude_id is None or c['id'] != exclude_id:
@@ -1505,8 +1516,7 @@ class RealEstateDB:
                         if exclude_id is not None and oid == exclude_id:
                             continue          # 改自己的号时排除自己（2026-09-25 update_owner）
                         if looks_like_ciphertext(value):
-                            return (None, "检测到本机加密密钥与库里的不一致，未强行判重"
-                                          "（可能把同一个房东拆成两条、或把两位房东合错）。请先检查加密密钥（COCO_ENC_KEY）。")
+                            return (None, DEDUP_KEY_MISMATCH_TEXT)
                         if norm_phone(value) == probe:
                             o = s.query(Owner).get(oid)
                             return (o.to_dict() if o else None, None)
@@ -1518,8 +1528,7 @@ class RealEstateDB:
                         if exclude_id is not None and oid == exclude_id:
                             continue          # 改自己的号时排除自己（2026-09-25 update_owner）
                         if looks_like_ciphertext(value):
-                            return (None, "检测到本机加密密钥与库里的不一致，未强行判重"
-                                          "（可能把同一个房东拆成两条、或把两位房东合错）。请先检查加密密钥（COCO_ENC_KEY）。")
+                            return (None, DEDUP_KEY_MISMATCH_TEXT)
                         if str(value).strip() == probe:
                             o = s.query(Owner).get(oid)
                             return (o.to_dict() if o else None, None)
