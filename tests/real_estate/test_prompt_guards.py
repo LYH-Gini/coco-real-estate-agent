@@ -146,13 +146,25 @@ class TestNoAbsolutePromiseGuard:
         assert "查到的事实" in PROMPT
 
     def test_security_answer_has_no_absolute_claim(self):
-        """对客户的加密口径里不许再出现"不会泄露 / 不外传"这类承诺
+        """加密口径里不许再出现"不会泄露 / 不外传"这类承诺（2026-09-28 老板报的真实回复）
 
-        注意判据只看**对客户的那几条**（开头的问法示例里有「会不会泄漏」字样，别误伤）。
+        判据看整个「数据安全应答」段；开头的问法示例用的是「会被泄露吗」，不会误伤。
         """
-        section = PROMPT.split("对客户（对外口径）")[1].split("对老板")[0]
+        section = PROMPT.split("# 数据安全应答")[1].split("# 强制规则")[0]
         for bad in ("不会泄露", "不外传", "绝不会", "保证"):
             assert bad not in section, f"数据安全应答里还有绝对承诺「{bad}」"
+
+    def test_security_answer_is_not_recited(self):
+        """这一段是给模型的说明：必须写明"不要把这一整段原样念给他"、不要列"项目/说明"表
+
+        真实教训（2026-09-28 22:39 实测）：Coco 把提示词整段念了出去 —— 「对客户（对外口径）」
+        的小标题、"客户可以放心的话术"、密钥、备份全都倒出来，还带"具体保护措施/项目/说明"表格。
+        """
+        section = PROMPT.split("# 数据安全应答")[1].split("# 强制规则")[0]
+        assert "不要把这一整段原样念给他" in section
+        assert "不要另起" in section and "表格" in section
+        for meta in ("对外口径", "对内口径", "话术"):
+            assert f"（{meta}）" not in section, f"段里还留着会被照念的元标签「{meta}」"
 
     def test_manual_has_the_rule(self):
         assert "不做绝对承诺" in MANUAL
