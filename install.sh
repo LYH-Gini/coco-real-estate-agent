@@ -39,6 +39,49 @@ ok()    { echo -e "${GREEN}[OK]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
+# ==================== 加密密钥永不变（2026-09-28） ====================
+# ===== COCO-SECRETS-BEGIN =====
+# 老板定的规则：**密钥就是第一次安装生成的那把，永不更换**（除了泄漏后他明确要求换）。
+# 重跑安装脚本（或重装系统后再装）时必须沿用既有密钥 —— 库里存的联系方式是用旧密钥加密的，
+# 换了密钥就永久解不开（灾难级）。同理，数据库口令也沿用，避免重装后连不上原有数据库。
+# 取值优先级：现有安装目录的 .env.db → 备份目录的 enc_key.txt（安装脚本会把密钥备份到这里）。
+_env_value() {   # 从 .env / enc_key.txt 里取一个键的值（取不到就输出空）
+    local file="$1" key="$2"
+    [[ -f "$file" ]] || return 0
+    sed -n "s/^${key}=//p" "$file" 2>/dev/null | head -1 | tr -d '[:space:]'
+    return 0
+}
+
+collect_previous_secrets() {   # ⚠️ 必须在删掉安装目录之前调用（clone_project 会 rm -rf 它）
+    PREV_ENC_KEY="$(_env_value "$INSTALL_DIR/.env.db" COCO_ENC_KEY)"
+    PREV_DB_PASSWORD="$(_env_value "$INSTALL_DIR/.env.db" DB_PASSWORD)"
+    PREV_SECRETS_FROM=""
+    if [[ -n "$PREV_ENC_KEY" ]]; then
+        PREV_SECRETS_FROM="$INSTALL_DIR/.env.db"
+    else
+        PREV_ENC_KEY="$(_env_value "$HOME/backups/real_estate/enc_key.txt" COCO_ENC_KEY)"
+        [[ -n "$PREV_ENC_KEY" ]] && PREV_SECRETS_FROM="$HOME/backups/real_estate/enc_key.txt"
+    fi
+    return 0
+}
+
+keep_old_enc_key_backup() {   # 覆盖 enc_key.txt 之前，先把旧的那份留成 .bak-<时间>
+    local dir="$HOME/backups/real_estate" f="$HOME/backups/real_estate/enc_key.txt"
+    [[ -f "$f" ]] || return 0
+    local cur; cur="$(_env_value "$f" COCO_ENC_KEY)"
+    [[ -n "$cur" ]] || return 0
+    # 密钥没变（沿用的情况）就不用留，免得每次重装堆一份
+    [[ -n "${COCO_ENC_KEY:-}" && "$cur" == "$COCO_ENC_KEY" ]] && return 0
+    local bak="$dir/enc_key.txt.bak-$(date +%Y%m%d%H%M%S)"
+    cp -p "$f" "$bak" 2>/dev/null || return 0
+    ok "已保留上一份密钥备份：$bak"
+    # 只留最近 3 份，别把备份目录堆满
+    ls -1t "$dir"/enc_key.txt.bak-* 2>/dev/null | tail -n +4 > "$TMPDIR_C/old_enc_keys.txt" 2>/dev/null || true
+    while IFS= read -r old; do [[ -n "$old" ]] && rm -f "$old"; done < "$TMPDIR_C/old_enc_keys.txt" 2>/dev/null || true
+    return 0
+}
+# ===== COCO-SECRETS-END =====
+
 # ==================== 系统检测 ====================
 check_system() {
     info "检测系统环境..."
@@ -495,15 +538,31 @@ install_packages() {
 # ==================== 数据库配置 ====================
 setup_database() {
     info "配置数据库..."
-    DB_PASSWORD=$(openssl rand -hex 16)
     DB_USER="hermes"
     DB_NAME="hermes_agent"
-    # 生成敏感字段加密密钥（Fernet，cryptography 已在 install_packages 装好）
-    COCO_ENC_KEY=$("$INSTALL_DIR/venv/bin/python" -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" 2>/dev/null || echo "")
-    if [[ -z "$COCO_ENC_KEY" ]]; then
-        warn "未能生成加密密钥，敏感字段将以明文存储（请确认 cryptography 已安装）"
+    # 加密密钥：能沿用就沿用（密钥永不变），只有全新机器才生成新的
+    if [[ -n "${PREV_ENC_KEY:-}" ]]; then
+        COCO_ENC_KEY="$PREV_ENC_KEY"
+        ok "已沿用你原来的加密密钥（未更换；来源：${PREV_SECRETS_FROM:-上次安装}）"
     else
-        ok "敏感字段加密密钥已生成"
+        # 全新密钥：如果这台机器上已经有 Coco 的数据库，先把风险说清（找不到旧密钥 = 旧联系方式读不出）
+        if sudo -u postgres psql -tAc "select 1 from pg_database where datname='${DB_NAME}'" 2>/dev/null | grep -q 1; then
+            warn "这台机器上已经有 Coco 的数据库，但没找到原来的加密密钥：如果库里存过客户联系方式，新密钥读不出旧数据"
+            warn "（原来的密钥一般在 ~/backups/real_estate/enc_key.txt 或旧安装目录的 .env.db 里；确认找不回来了再继续）"
+        fi
+        COCO_ENC_KEY=$("$INSTALL_DIR/venv/bin/python" -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" 2>/dev/null || echo "")
+        if [[ -z "$COCO_ENC_KEY" ]]; then
+            warn "未能生成加密密钥，敏感字段将以明文存储（请确认 cryptography 已安装）"
+        else
+            ok "敏感字段加密密钥已生成"
+        fi
+    fi
+    # 数据库口令：同样能沿用就沿用（否则重装后应用连不上原有数据库）
+    if [[ -n "${PREV_DB_PASSWORD:-}" ]]; then
+        DB_PASSWORD="$PREV_DB_PASSWORD"
+        ok "已沿用原来的数据库口令（未更换）"
+    else
+        DB_PASSWORD=$(openssl rand -hex 16)
     fi
     if [[ "$OS" == "linux" ]]; then
         sudo systemctl enable postgresql
@@ -512,7 +571,10 @@ setup_database() {
         brew services start postgresql
     fi
     
-    sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';" 2>/dev/null || true
+    # 角色已存在时 CREATE 会静默失败（旧版就因此让重装后的应用连不上原库）→ 补一条 ALTER 对齐口令
+    sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';" 2>/dev/null \
+        || sudo -u postgres psql -c "ALTER USER $DB_USER WITH PASSWORD '$DB_PASSWORD';" 2>/dev/null \
+        || true
     sudo -u postgres psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;" 2>/dev/null || true
     sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;" 2>/dev/null || true
     
@@ -735,6 +797,7 @@ start_service() {
     chmod 700 ~/backups/real_estate
 
     # 自动备份加密密钥（防丢失：密钥在 .env.db，单独备份一份到备份目录）
+    keep_old_enc_key_backup       # 覆盖旧的 enc_key.txt 之前，先留一份 .bak-<时间>
     if [[ -f "$INSTALL_DIR/.env.db" ]] && grep -q "COCO_ENC_KEY=" "$INSTALL_DIR/.env.db"; then
         grep "^COCO_ENC_KEY=" "$INSTALL_DIR/.env.db" > ~/backups/real_estate/enc_key.txt
         chmod 600 ~/backups/real_estate/enc_key.txt
@@ -1028,6 +1091,7 @@ main() {
     setup_timezone
     install_deps
     install_node
+    collect_previous_secrets      # 必须在 clone_project 之前：它会 rm -rf 安装目录，旧的 .env.db 就在里面
     clone_project
     setup_python
     install_packages
