@@ -69,8 +69,18 @@ echo "  时间: $(date '+%Y-%m-%d %H:%M:%S %Z')"
 echo "  注意：测试标签**不发 Release、不进正式版**；晋升时另打正式标签 v${VER}"
 
 if [[ "$DO_PUSH" == "1" ]]; then
-    for r in origin github; do
-        info "推送测试标签到 $r"
+    # 测试号标签只进**开发仓**（2026-09-28 仓库拆分后的口径；正式仓只放 master）
+    DEV_REMOTES=(${TEST_TAG_DEV_REMOTES:-dev-gitee dev-gh})
+    TARGETS=()
+    for r in "${DEV_REMOTES[@]}"; do
+        git remote get-url "$r" >/dev/null 2>&1 && TARGETS+=("$r")
+    done
+    if [[ ${#TARGETS[@]} -eq 0 ]]; then
+        echo -e "${YELLOW}[WARN]${NC} 本机没有开发仓远程（${DEV_REMOTES[*]}）—— 测试标签只在本地，未推送"
+        TARGETS=()
+    fi
+    for r in ${TARGETS[@]:-}; do
+        info "推送测试标签到 $r（开发仓）"
         for i in 1 2 3; do
             if git push "$r" "$TAG" >/dev/null 2>&1; then break; fi
             [[ $i == 3 ]] && fail "$r 推送测试标签失败（网络问题？重跑本脚本即可）"

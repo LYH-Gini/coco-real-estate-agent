@@ -37,8 +37,19 @@ TO_BRANCH="master"      # 稳定通道
 TAG=""
 DRY_RUN=0
 ONLY_COMMITS=()
-REMOTES=("origin" "github")
-LABELS=("Gitee" "GitHub")
+# 远程映射（2026-09-28 仓库拆分后的口径，别改回去）：
+#   正式线（master + 正式标签）→ **正式仓**：origin(Gitee) / github(GitHub)
+#   开发线（next 分支）        → **开发仓**：dev-gitee(Gitee) / dev-gh(GitHub)
+# 之前这里只有一组 REMOTES，导致"推齐测试通道"那一步把 next 推到了正式仓
+# （2026-09-28 实测踩到：正式仓被建出 next 分支，与 channel-guard 的规则冲突）。
+RELEASE_REMOTES=(${PROMOTE_RELEASE_REMOTES:-origin github})
+DEV_REMOTES=(${PROMOTE_DEV_REMOTES:-dev-gitee dev-gh})
+RELEASE_LABELS=("Gitee" "GitHub")
+DEV_LABELS=("Gitee 开发仓" "GitHub 开发仓")
+
+has_remote() { git remote | grep -qx "$1"; }
+# 只回显**真实存在**的远程（别的机器上可能没有开发仓远程 —— 那时跳过测试通道同步）
+existing() { for r in "$@"; do has_remote "$r" && printf '%s\n' "$r"; done; }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -66,25 +77,33 @@ if [[ -n "$(git status --porcelain | grep -vE '^\?\?' || true)" ]]; then
     fail "工作区有未提交的代码改动，先 commit（晋升必须是"仓库里的东西"）"
 fi
 
-info "取两个远程的最新状态..."
-for r in "${REMOTES[@]}"; do
+info "取远程最新状态..."
+for r in "${RELEASE_REMOTES[@]}"; do
     git fetch -q "$r" || fail "拉取 $r 失败（网络问题？）"
+done
+for r in $(existing "${DEV_REMOTES[@]}"); do
+    git fetch -q "$r" || warn "拉取开发仓 $r 失败（不影响正式线）"
 done
 
 # 晋升的必须是"测试通道上已经发布出去的内容"：本地测试分支若还有未推送的提交，
 # 先把它推齐再晋升。否则会拿旧的 SHA 做校验（误报失败），还会把标签打到错误的位置。
 LOCAL_TEST_SHA="$(git rev-parse "$FROM_BRANCH")"
 SYNCED=0
-for r in "${REMOTES[@]}"; do
-    remote_test_sha="$(git ls-remote "$r" "refs/heads/$FROM_BRANCH" | cut -f1)"
-    if [[ "$remote_test_sha" != "$LOCAL_TEST_SHA" ]]; then
-        if [[ "$SYNCED" == "0" ]]; then
-            info "测试通道本地领先远程，先把 $FROM_BRANCH 推齐（晋升的是测试通道上的内容）"
-            SYNCED=1
+DEV_PRESENT="$(existing "${DEV_REMOTES[@]}" | tr '\n' ' ')"
+if [[ -z "${DEV_PRESENT// /}" ]]; then
+    warn "没有开发仓远程（${DEV_REMOTES[*]}）—— 跳过测试通道同步（开发线只在开发仓，别推正式仓）"
+else
+    for r in ${DEV_PRESENT}; do
+        remote_test_sha="$(git ls-remote "$r" "refs/heads/$FROM_BRANCH" | cut -f1)"
+        if [[ "$remote_test_sha" != "$LOCAL_TEST_SHA" ]]; then
+            if [[ "$SYNCED" == "0" ]]; then
+                info "测试通道本地领先开发仓，先把 $FROM_BRANCH 推齐（晋升的是测试通道上的内容）"
+                SYNCED=1
+            fi
+            git push "$r" "$FROM_BRANCH" || fail "推送 $FROM_BRANCH 到 $r 失败（先让测试通道齐了再晋升）"
         fi
-        git push "$r" "$FROM_BRANCH" || fail "推送 $FROM_BRANCH 到 $r 失败（先让测试通道齐了再晋升）"
-    fi
-done
+    done
+fi
 
 # ---- --only：只把指定提交推到正式版（2026-09-23 加）----
 # 背景：next 上长期滞留 backup-* 标签钉住的“禁止推正式版”备用方案，全量快进会把它们一起带上，
@@ -158,9 +177,9 @@ if [[ ${#ONLY_COMMITS[@]} -gt 0 ]]; then
     if [[ -n "$TAG" ]]; then
         info "打标签 $TAG"
         git tag -a "$TAG" -m "Coco $TAG" "$NEW_TO_SHA" 2>/dev/null || warn "标签 $TAG 已存在，沿用现有标签"
-        for r in "${REMOTES[@]}"; do git push "$r" "$TAG" || fail "标签推送到 $r 失败"; done
+        for r in "${RELEASE_REMOTES[@]}"; do git push "$r" "$TAG" || fail "标签推送到 $r 失败"; done
     fi
-    for r in "${REMOTES[@]}"; do
+    for r in "${RELEASE_REMOTES[@]}"; do
         info "推送 $r：$TO_BRANCH"
         git push "$r" "${NEW_TO_SHA}:refs/heads/$TO_BRANCH" || fail "$r 推送 $TO_BRANCH 失败"
     done
@@ -168,10 +187,10 @@ if [[ ${#ONLY_COMMITS[@]} -gt 0 ]]; then
     git checkout -q "$FROM_BRANCH" || fail "切回 $FROM_BRANCH 失败"
     git merge -q -m "Merge branch '$TO_BRANCH' into $FROM_BRANCH" "$TO_BRANCH" \
         || warn "自动合并失败：请手工 git merge $TO_BRANCH（冲突保留 next 版）后再推 $FROM_BRANCH"
-    for r in "${REMOTES[@]}"; do git push "$r" "$FROM_BRANCH" || warn "推送 $FROM_BRANCH 到 $r 失败"; done
+    for r in $(existing "${DEV_REMOTES[@]}"); do git push "$r" "$FROM_BRANCH" || warn "推送 $FROM_BRANCH 到开发仓 $r 失败"; done
     mismatch=0
-    for idx in "${!REMOTES[@]}"; do
-        r="${REMOTES[$idx]}"; label="${LABELS[$idx]}"
+    for idx in "${!RELEASE_REMOTES[@]}"; do
+        r="${RELEASE_REMOTES[$idx]}"; label="${RELEASE_LABELS[$idx]}"
         got="$(git ls-remote "$r" "refs/heads/$TO_BRANCH" | cut -f1)"
         [[ "$got" == "$NEW_TO_SHA" ]] || { warn "$label 的 $TO_BRANCH 停在 ${got:0:7}，期望 ${NEW_TO_SHA:0:7}"; mismatch=1; }
     done
@@ -183,7 +202,9 @@ if [[ ${#ONLY_COMMITS[@]} -gt 0 ]]; then
     exit 0
 fi
 
-FROM_SHA="$(git ls-remote origin "refs/heads/$FROM_BRANCH" | cut -f1)"
+# 测试通道的提交以**本地 + 开发仓**为准（正式仓没有 next 分支了，别再去那儿读）；
+# 正式线仍以正式仓的 master 为准。
+FROM_SHA="$(git rev-parse "$FROM_BRANCH")"
 TO_SHA="$(git ls-remote origin "refs/heads/$TO_BRANCH" | cut -f1)"
 
 if [[ "$FROM_SHA" == "$TO_SHA" ]]; then
@@ -254,8 +275,8 @@ if [[ "${PROMOTE_CONFIRM:-}" != "$(git rev-parse --short=7 "$FROM_SHA")" ]]; the
 fi
 
 # 用 refspec 推（next:master）：不依赖本地当前在哪个分支，也不动工作区
-for idx in "${!REMOTES[@]}"; do
-    r="${REMOTES[$idx]}"; label="${LABELS[$idx]}"
+for idx in "${!RELEASE_REMOTES[@]}"; do
+    r="${RELEASE_REMOTES[$idx]}"; label="${RELEASE_LABELS[$idx]}"
     info "推送 $label：$FROM_BRANCH → $TO_BRANCH"
     git push "$r" "$FROM_BRANCH:$TO_BRANCH" || fail "$label 推送失败（重跑本脚本即可，快进是幂等的）"
 done
@@ -271,15 +292,15 @@ if [[ -n "$TAG" ]]; then
     info "打标签 $TAG 并推送"
     git tag -a "$TAG" -m "Coco $TAG" "$FROM_SHA" 2>/dev/null \
         || warn "标签 $TAG 已存在，沿用现有标签"
-    for r in "${REMOTES[@]}"; do
+    for r in "${RELEASE_REMOTES[@]}"; do
         git push "$r" "$TAG" || fail "标签推送到 $r 失败"
     done
 fi
 
 # 复核：两个远程的 master 都必须等于 next 的提交
 mismatch=0
-for idx in "${!REMOTES[@]}"; do
-    r="${REMOTES[$idx]}"; label="${LABELS[$idx]}"
+for idx in "${!RELEASE_REMOTES[@]}"; do
+    r="${RELEASE_REMOTES[$idx]}"; label="${RELEASE_LABELS[$idx]}"
     got="$(git ls-remote "$r" "refs/heads/$TO_BRANCH" | cut -f1)"
     if [[ "$got" != "$FROM_SHA" ]]; then
         warn "$label 的 $TO_BRANCH 停在 ${got:0:7}，期望 ${FROM_SHA:0:7}"

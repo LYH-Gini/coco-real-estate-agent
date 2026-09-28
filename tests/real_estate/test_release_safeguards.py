@@ -251,3 +251,77 @@ class TestPushAllTwoRepos:
         assert "缺少远程" in out, out
         assert "git remote add dev-gitee" in out, out
 
+
+
+class TestPromoteAndVerifyRouting:
+    """通道路由（2026-09-28 仓库拆分后）：**开发线的产物只进开发仓**
+
+    真实踩坑（本轮实测）：`promote_release.sh` 原来只有一组 `REMOTES=("origin" "github")`，
+    "把测试通道推齐"那一步把 `next` 推到了**正式仓**（Gitee/GitHub 都出现了 next 分支）——
+    与 `channel-guard`「正式仓只放 master、别人只能拿到正式版」直接冲突。
+    本类钉住：next 分支与验收标签走**开发仓**（dev-gitee / dev-gh）；master 与正式标签走**正式仓**。
+    """
+
+    def _setup(self, tmp_path, with_verified_tag=True):
+        work = tmp_path / "work"
+        work.mkdir()
+        subprocess.run(["git", "init", "-q", "-b", "master", str(work)], check=True)
+        for k, v in (("user.email", "t@t"), ("user.name", "t")):
+            subprocess.run(["git", "-C", str(work), "config", k, v], check=True)
+        (work / "scripts").mkdir()
+        for s in ("promote_release.sh", "mark_verified.sh"):
+            shutil.copy(SCRIPTS / s, work / "scripts" / s)
+        (work / "VERSION").write_text("0.21.5-9\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(work), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(work), "commit", "-qm", "init"], check=True)
+        for name in ("gitee.git", "github.git", "dev-gitee.git", "dev-gh.git"):
+            subprocess.run(["git", "init", "-q", "--bare", str(tmp_path / name)], check=True)
+        subprocess.run(["git", "-C", str(work), "remote", "add", "origin", str(tmp_path / "gitee.git")], check=True)
+        subprocess.run(["git", "-C", str(work), "remote", "add", "github", str(tmp_path / "github.git")], check=True)
+        subprocess.run(["git", "-C", str(work), "remote", "add", "dev-gitee", str(tmp_path / "dev-gitee.git")], check=True)
+        subprocess.run(["git", "-C", str(work), "remote", "add", "dev-gh", str(tmp_path / "dev-gh.git")], check=True)
+        subprocess.run(["git", "-C", str(work), "push", "-q", "origin", "master"], check=True)
+        subprocess.run(["git", "-C", str(work), "push", "-q", "github", "master"], check=True)
+        subprocess.run(["git", "-C", str(work), "checkout", "-q", "-b", "next"], check=True)
+        (work / "dev.txt").write_text("x", encoding="utf-8")
+        subprocess.run(["git", "-C", str(work), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(work), "commit", "-qm", "dev work"], check=True)
+        sha = subprocess.run(["git", "-C", str(work), "rev-parse", "HEAD"],
+                             capture_output=True, text=True).stdout.strip()
+        if with_verified_tag:
+            subprocess.run(["git", "-C", str(work), "tag", "-a", f"verified/v0.21.5-9-{sha[:7]}",
+                            "-m", "v0.21.5-9 已验收", sha], check=True)
+        return work, sha
+
+    def _head(self, repo, branch):
+        return subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "--quiet",
+                               f"refs/heads/{branch}"],
+                              capture_output=True, text=True).stdout.strip()
+
+    def _has_tag(self, repo, tag):
+        return bool(subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "--quiet",
+                                    f"refs/tags/{tag}"],
+                                   capture_output=True, text=True).stdout.strip())
+
+    def test_promote_dry_run_syncs_next_to_dev_repo_only(self, tmp_path):
+        """晋升前的"推齐测试通道"只许碰开发仓，正式仓不许出现 next"""
+        work, sha = self._setup(tmp_path)
+        r = _run(["bash", "scripts/promote_release.sh", "--tag", "v0.21.5-9", "--dry-run"], cwd=work)
+        out = r.stdout + r.stderr
+        assert r.returncode == 0, out
+        for remote in ("dev-gitee.git", "dev-gh.git"):
+            assert self._head(tmp_path / remote, "next") == sha, f"{remote} 没拿到 next：{out}"
+        for remote in ("gitee.git", "github.git"):
+            assert self._head(tmp_path / remote, "next") == "", f"{remote} 上不该有 next：{out}"
+
+    def test_mark_verified_tag_goes_to_dev_repo(self, tmp_path):
+        """验收标签钉的是测试通道的提交 → 只进开发仓"""
+        work, sha = self._setup(tmp_path, with_verified_tag=False)
+        r = _run(["bash", "scripts/mark_verified.sh", "--note", "验收通过：版本/更新口径"], cwd=work)
+        out = r.stdout + r.stderr
+        assert r.returncode == 0, out
+        tag = f"verified/v0.21.5-9-{sha[:7]}"
+        for remote in ("dev-gitee.git", "dev-gh.git"):
+            assert self._has_tag(tmp_path / remote, tag), f"{remote} 没拿到验收标签：{out}"
+        for remote in ("gitee.git", "github.git"):
+            assert not self._has_tag(tmp_path / remote, tag), f"{remote} 上不该有开发线的验收标签：{out}"

@@ -29,8 +29,19 @@ cd "$REPO_DIR"
 
 NOTE=""
 DO_PUSH=1
-REMOTES=("origin" "github")
-LABELS=("Gitee" "GitHub")
+# 验收标签钉的是**测试通道**（next）上的提交 → 推**开发仓**（2026-09-28 仓库拆分后的口径）：
+# 正式仓只放 master，别把开发线的标签与对象塞过去。本机没有开发仓远程时退回正式仓（只影响可审计性）。
+DEV_REMOTES=(${VERIFY_DEV_REMOTES:-dev-gitee dev-gh})
+RELEASE_REMOTES=("origin" "github")
+REMOTES=()
+LABELS=()
+for r in "${DEV_REMOTES[@]}"; do
+    if git remote get-url "$r" >/dev/null 2>&1; then REMOTES+=("$r"); LABELS+=("$r（开发仓）"); fi
+done
+if [[ ${#REMOTES[@]} -eq 0 ]]; then
+    REMOTES=("${RELEASE_REMOTES[@]}")
+    LABELS=("origin" "github")
+fi
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
