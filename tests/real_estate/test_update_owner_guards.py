@@ -141,7 +141,11 @@ class TestDedupe:
         assert _row(wired, b["id"])[2] == "wx_b"
 
     def test_ciphertext_blocks_dedupe_with_hint(self, wired):
-        """库里躺着读不出来的密文（密钥不一致的真实形态）→ 不强行查重，给中文提示"""
+        """库里躺着读不出来的密文（密钥不一致的真实形态）→ 不强行查重，对经纪人只说人话
+
+        2026-09-28 口径：原先 error 里写着「请先检查加密密钥（COCO_ENC_KEY）」—— 那是服务器上的
+        环境变量，经纪人拿到也做不了什么；系统口径改放进 `note_for_model`。
+        """
         cid = _owner(wired, name="登录的房东", phone="13800001111")["id"]
         with wired.get_session() as s:
             s.execute(text("UPDATE re_owners SET phone = :p WHERE id = :i"),
@@ -149,7 +153,10 @@ class TestDedupe:
             s.commit()
         other = _owner(wired, name="另一位房东", phone="13800002222")["id"]
         out = _call(owner_id=other, phone="13900003333")
-        assert out["success"] is False and "密钥" in out["error"], out
+        assert out["success"] is False and "先不给你判重结果" in out["error"], out
+        assert "COCO_ENC_KEY" not in out["error"], "对外文案不提服务器上的密钥变量"
+        assert "COCO_ENC_KEY" in out["note_for_model"], "系统口径进给模型看的字段"
+        assert out["key_mismatch"] is True, out
         assert _row(wired, other)[1] == "13800002222"
 
     def test_name_only_change_skips_dedupe(self, wired):
