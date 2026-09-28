@@ -351,7 +351,7 @@ class Customer(Base):
     name = Column(String(100), nullable=False)
     phone = Column(EncryptedString)
     wechat = Column(EncryptedString)
-    id_number = Column(EncryptedString)   # 身份证号全号（加密存储，2026-09-29 起；与手机号同一套密钥）
+    id_number = Column(EncryptedString)
     feishu_id = Column(String(100))
     tier = Column(String(1), default='C')
     budget_min = Column(Integer)  # 预算下限（元，如 300万=3000000）
@@ -517,7 +517,7 @@ class Owner(Base):
     name = Column(String(100), nullable=False)
     phone = Column(EncryptedString)
     wechat = Column(EncryptedString)
-    id_number = Column(EncryptedString)  # 身份证号全号（加密存储，2026-09-29 起；与手机号同一套密钥）
+    id_number = Column(EncryptedString)
     id_masked = Column(String(30))     # 脱敏身份证（如 4600**********1234）
     trust_note = Column(String(200))   # 信任度备注
     notes = Column(Text)

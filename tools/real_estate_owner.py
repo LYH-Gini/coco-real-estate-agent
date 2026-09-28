@@ -28,7 +28,6 @@ def _get_db():
 FIND_LIMIT_DEFAULT = 20   # 按姓名查人：客户/业主两张表各自默认返回条数（与客户列表同口径）
 EXCLUSIVE_LIMIT_DEFAULT = 20   # 独家到期清单默认返回条数
 
-# 老数据说明（2026-09-29）：这天之前身份证只存脱敏串、原号不落库，完整号无法还原，只能补录一次
 ID_FULL_MISSING_NOTE_ONE = (
     "这位房东的完整身份证号不在库里（登记早于身份证改为加密存储的版本，当时只保存了脱敏号）；"
     "需要完整号就把他证件号发我一次，我补录进去。")
@@ -68,7 +67,7 @@ def _norm_days(value, default=30):
 def add_owner(name: str, phone: str = None, wechat: str = None,
               id_number: str = None, trust_note: str = None,
               notes: str = None, force: bool = False, task_id: str = None) -> str:
-    """登记房东（业主）。身份证号与手机号同一套口径：加密存储全号。
+    """登记房东（业主）。
 
     登记前按手机号查重（没给手机号时按微信号），命中给出已有房东、不重复建档；
     确认是另一个人（或同一个人的另一个号）时用 force=True 跳过查重。

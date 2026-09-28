@@ -52,13 +52,13 @@ def test_owner_id_stored_as_ciphertext_and_returned_in_full(wired):
     oid = r["owner"]["id"]
     stored = _raw("re_owners", "id_number", oid, wired)
     assert stored and stored.startswith("gAAAA") and ID_FULL not in stored, stored
-    assert _raw("re_owners", "id_masked", oid, wired) == ID_MASKED      # 掩码列仍在（展示兜底）
-    assert r["owner"]["id_number"] == ID_FULL                           # 回执就给全号
+    assert _raw("re_owners", "id_masked", oid, wired) == ID_MASKED
+    assert r["owner"]["id_number"] == ID_FULL
     assert "身份证已加密存储" in r["message"], r["message"]
 
     detail = json.loads(m_owner.get_owner(owner_id=oid))
     assert detail["owner"]["id_number"] == ID_FULL, detail
-    assert "note_id_full_missing" not in detail                         # 新记录不该出补录提示
+    assert "note_id_full_missing" not in detail
 
 
 def test_owner_id_written_in_any_style_is_normalized(wired):
@@ -116,7 +116,6 @@ def test_legacy_owner_without_full_id_gets_backfill_hint(wired):
     assert "补录" in detail["note_id_full_missing"], detail
     lst = json.loads(m_owner.list_owners())
     assert "补录" in lst["note_id_full_missing"], lst
-    # 补录一次之后，提示消失、全号可查
     json.loads(m_owner.update_owner(owner_id=legacy["id"], id_number=ID_FULL))
     after = json.loads(m_owner.get_owner(owner_id=legacy["id"]))
     assert after["owner"]["id_number"] == ID_FULL and "note_id_full_missing" not in after
