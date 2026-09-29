@@ -135,7 +135,10 @@ registry.register(
     toolset="real_estate",
     schema={"name": "enable_cron", "description": f"开启定时任务（{_schedule_text()}），经纪人要求开启定时提醒时调用", "parameters": {
         "type": "object",
-        "properties": {},
+        "properties": {
+            # 声明出来才过得了框架的参数名校验；不传时按当前会话推送（默认路径）
+            "chat_id": {"type": "string", "description": "推送会话地址（形如 oc_xxx）。**一般不用传**：默认推到当前这段对话；只有经纪人明确要求把提醒发到别的会话时才填"},
+        },
     }},
     handler=lambda args, **kw: enable_cron(
         **{k: v for k, v in {

@@ -190,13 +190,20 @@ def test_no_param_tools_reject_extra_args():
 
 
 def test_handlers_that_read_args_keep_their_undeclared_params():
-    """对照：handler 真的会读 args 的工具放行（`enable_cron` 的 chat_id 是 schema 未声明但要用的）"""
+    """需要显式指定会话的工具（enable_cron 的 chat_id）不能被参数校验误伤
+
+    `enable_cron` 原先把 chat_id 留在 schema 之外、靠框架"放行未声明参数"；改成显式声明后
+    走常规校验 —— 两条路都必须能把会话地址传进去。
+    """
     from tools.registry import ToolRegistry
 
     registry, names = _no_param_coco_tools()
-    reading = [n for n in names if ToolRegistry._handler_reads_args(registry.get_entry(n))]
-    assert 'enable_cron' in reading, reading
     sid = _bind_session()
+    for name in [n for n in names if ToolRegistry._handler_reads_args(registry.get_entry(n))]:
+        out = json.loads(registry.dispatch(name, {}, session_id=sid, task_id='t'))
+        assert '不认识参数' not in json.dumps(out, ensure_ascii=False), (name, out)
+    props = ((registry.get_entry('enable_cron').schema or {}).get('parameters') or {}).get('properties') or {}
+    assert 'chat_id' in props, props
     out = json.loads(registry.dispatch('enable_cron', {'chat_id': 'oc_explicit'},
                                        session_id=sid, task_id='t'))
     assert '不认识参数' not in json.dumps(out, ensure_ascii=False), out
