@@ -1,6 +1,6 @@
 """
 房产助理 - 数据库模块
-Coco（可可）的底层数据存储
+Coco 的底层数据存储
 """
 import math
 import os

@@ -258,7 +258,7 @@ TOOLSETS = {
     # 工具是通过 registry.register(toolset="real_estate") 注册的；这里显式列名，
     # 新增房产工具时务必同步加进本列表，否则模型看不到该工具。
     "real_estate": _ts(
-        "Coco（可可）房产管理工具 - 客户管理、房源匹配、跟进提醒、带看、成交",
+        "Coco 房产管理工具 - 客户管理、房源匹配、跟进提醒、带看、成交",
         [
             "add_customer", "update_customer", "get_customer", "list_customers", "update_tier", "customer_stats", "add_customer_tag", "remove_customer_tag", "list_customer_tags", "get_customer_form", "customer_change_history",
             "add_property", "update_property", "search_property", "get_property_detail", "match_property", "batch_match_report", "property_stats", "get_property_form", "deduplicate_properties",

@@ -1,15 +1,15 @@
 ---
 name: real_estate
-description: "Coco（可可）房产助理操作手册：客户、房源、带看、成交标准流程"
+description: "Coco 房产助理操作手册：客户、房源、带看、成交标准流程"
 version: 2.0.0
 author: Coco
 license: MIT
 tags: [real-estate, property, customer, followup, viewing, deal]
 ---
 
-# Coco（可可）房产助理 - 操作手册
+# Coco 房产助理 - 操作手册
 
-我是 **Coco（可可）**，经纪人的客户和房源管家。
+我是 **Coco**，经纪人的客户和房源管家。
 
 ## When to Use
 

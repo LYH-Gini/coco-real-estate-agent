@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Coco（可可）房产智能体 - 一键安装脚本
+# Coco 房产智能体 - 一键安装脚本
 # 用法(国内): curl -fsSL https://gitee.com/LYH-Gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh
 # 用法(海外): curl -fsSL https://raw.githubusercontent.com/LYH-Gini/coco-real-estate-agent/master/install.sh -o install.sh && bash install.sh
 # 备用下载(国内直链不通时): curl -fsSL https://gitee.com/LYH-Gini/coco-real-estate-agent/releases/download/v0.21.5-3/install.sh -o install.sh && bash install.sh
@@ -598,7 +598,7 @@ setup_config() {
     info "配置 Coco 房产智能体..."
     echo ""
     echo -e "${BLUE}========================================${NC}"
-    echo -e "${BLUE}  Coco（可可）房产智能体 - 配置说明${NC}"
+    echo -e "${BLUE}  Coco 房产智能体 - 配置说明${NC}"
     echo -e "${BLUE}========================================${NC}"
     echo ""
     echo -e "${YELLOW}安装完成后的配置步骤：${NC}"
@@ -843,7 +843,7 @@ print_result() {
         echo ""
     else
         echo -e "${GREEN}========================================${NC}"
-        echo -e "${GREEN}  ✅ Coco（可可）房产智能体安装完成！${NC}"
+        echo -e "${GREEN}  ✅ Coco 房产智能体安装完成！${NC}"
         echo -e "${GREEN}========================================${NC}"
         echo ""
     fi
@@ -1084,7 +1084,7 @@ install_poster_fonts() {
 main() {
     echo ""
     echo -e "${BLUE}========================================${NC}"
-    echo -e "${BLUE}  🏠 Coco（可可）房产智能体 - 一键安装${NC}"
+    echo -e "${BLUE}  🏠 Coco 房产智能体 - 一键安装${NC}"
     echo -e "${BLUE}========================================${NC}"
     echo ""
     

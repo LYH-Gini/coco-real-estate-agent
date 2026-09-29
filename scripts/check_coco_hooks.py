@@ -48,7 +48,7 @@ CONTENT_CHECKS = [
         "02",
         "Coco 身份文案",
         "agent/prompt_builder.py",
-        [r"DEFAULT_AGENT_IDENTITY[\s\S]{0,800}?Coco", r"Coco（可可）"],
+        [r"DEFAULT_AGENT_IDENTITY[\s\S]{0,800}?Coco", r"Coco"],
         "Coco 自我介绍会变回官方默认（自称 Hermes）。"
         "处理：按 patches/02-prompt-builder-identity.patch 的语义重写身份常量。",
     ),
@@ -92,7 +92,7 @@ CONTENT_CHECKS = [
         # 的 _hmwa_first_contact_notes()。官方将来再拆分时，按同样方式更新这里的路径
         # （找不到文件即 FAIL，会提醒我们重新定位）。
         "gateway/run_turn.py",
-        [r"我是 Coco|你是 Coco|Coco（可可）"],
+        [r"我是 Coco|你是 Coco"],
         "首次对话开场白变回官方文案（并可能带回官方 profile-build 引导）。"
         "处理：按 patches/07-gateway-run-greeting.patch 恢复。",
     ),

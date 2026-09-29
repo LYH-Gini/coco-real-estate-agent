@@ -2656,7 +2656,7 @@ class FeishuAdapter(BasePlatformAdapter):
             if os.path.exists(marker):
                 return
             welcome = (
-                "你好，我是 Coco（可可），你的客户和房源管家。\n"
+                "你好，我是 Coco，你的客户和房源管家。\n"
                 "可以直接发给我：\n"
                 "\"登记客户：张先生，预算300万，想买美兰区3室\"\n"
                 "\"添加房源：XX小区，200万，110平，3室2厅\"\n"
