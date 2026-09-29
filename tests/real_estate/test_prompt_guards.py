@@ -193,3 +193,24 @@ class TestNoAbsolutePromiseGuard:
         assert "不做绝对承诺" in MANUAL
         assert "绝不会泄露" in MANUAL
 
+
+class TestIdNumberStorageWording:
+    """身份证号是加密存全号的（2026-09-29 实测）
+
+    真实回复：经纪人问「还有哪些信息没填」，Coco 自己补了一句「身份证号系统只存脱敏版
+    （前 4 + 后 4），原号不落库，全号需你自己存档」—— 与实现不符（加密存全号、查档给完整号码），
+    会让经纪人以为这个号白记了。
+    """
+
+    def test_prompt_states_the_storage_rule(self):
+        section = PROMPT.split("# 数据安全应答")[1].split("# 强制规则")[0]
+        assert "身份证号（客户与房东）都是加密存全号的" in section
+        # 规则要把错说法点名禁掉，否则模型还是会照旧印象说
+        for bad in ("只存脱敏版", "原号不落库"):
+            assert bad in section, f"提示词没点名禁止「{bad}」这个说法"
+
+    def test_manual_states_the_same(self):
+        assert "身份证号（客户与房东）是加密存全号的" in MANUAL
+        for bad in ("只存脱敏版", "原号不落库"):
+            assert bad in MANUAL, f"操作手册没点名禁止「{bad}」这个说法"
+
