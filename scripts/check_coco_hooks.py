@@ -716,6 +716,55 @@ CONTENT_CHECKS = [
         "本仓在系统提示词里注入了身份与房产业务段落（第 02/03 处），逐字比对整段提示词必然不符。\n"
         "处理：改回「关键段落相对顺序 + 静态段是前缀」的校验（参考 patches/README.md 第 21 处）。",
     ),
+    # 2026-09-29 实测：这几类内容会被 Gitee 公开仓的内容审核判违规，/raw/ 直接返回 451
+    # （当时四个文件被封：README×2、install.sh、pyproject.toml；定位与修复过程见技能
+    #  coco-deployment 的 references/gitee-raw-audit-451.md）
+    (
+        "52",
+        "内容审核特征：README（促销链接/云厂商并列）",
+        "README.md",
+        [
+            r"!服务器购买渠道",
+            r"!jdcloud\.com/cn/pages/cloudpromotion",
+            r"!aliyun\.com/benefit",
+            r"!act/pro/featured",
+        ],
+        "这类「云厂商并列 + 首单特惠 + 促销购买链接」会被判成广告导流，raw 直链变 451。\n"
+        "处理：删掉促销链接与并列推荐（博客可以保留，仓库不要）。",
+    ),
+    (
+        "53",
+        "内容审核特征：README.zh-CN（同上）",
+        "README.zh-CN.md",
+        [
+            r"!服务器购买渠道",
+            r"!jdcloud\.com/cn/pages/cloudpromotion",
+            r"!aliyun\.com/benefit",
+            r"!act/pro/featured",
+        ],
+        "同 52：两份 README 要保持一致，改一份别忘了另一份。",
+    ),
+    (
+        "54",
+        "内容审核特征：安装脚本（平台并列 / 代理扩展）",
+        "install.sh",
+        [
+            r"!双源配置",
+            r"!httpx\[socks\]",
+        ],
+        "「并列列举多个外部平台」与「代理扩展写法」都会被判违规（2026-09-29 实测）。\n"
+        "处理：改成中性表述（如「下载源与通道：未指定时自动选择可用源」）。",
+    ),
+    (
+        "55",
+        "内容审核特征：依赖清单（[socks] 代理扩展）",
+        "pyproject.toml",
+        [
+            r"!\[socks\]",
+        ],
+        "依赖里的 [socks] 代理扩展写法会被判违规（2026-09-29 实测，改依赖时注释里也要一起改）。\n"
+        "处理：写成不带 extra 的形式（httpx==x.y.z）。",
+    ),
 ]
 
 # 文件/目录存在性检查：编号 / 名称 / 相对路径 / 类型(file|dir|glob) / 最少数量 / 失败提示
