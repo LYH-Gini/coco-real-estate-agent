@@ -91,16 +91,6 @@
 2. AI 模型 API Key：Coco 支持小米 MiMo、DeepSeek、Kimi 等大模型，请按所选模型提前开通并获取 API Key（如使用 DeepSeek，可在 [DeepSeek 开放平台](https://platform.deepseek.com/usage) 购买），配置向导（coco model）时需要填写
 3. 飞书智能体：提前在[飞书开放平台](https://open.feishu.cn/?lang=zh-CN)创建账号。
 
-### 四、服务器购买渠道（可选参考）
-
-Coco 部署在 Linux 服务器上即可，轻量应用服务器或云服务器均可，地域建议选择靠近您的区域：
-
-- **京东云 —— 轻量云主机云主机**：2 核 CPU、2 GB 内存、40 GB 系统盘、3M 峰值带宽，68 元/年起（新用户首单特惠），[购买链接](https://www.jdcloud.com/cn/pages/cloudpromotion)
-- **阿里云 —— 轻量应用服务器**：2 核 CPU、2 GB 内存、40 GB 系统盘、最高200Mbps 峰值公网带宽，69 元/年起（新用户首单特惠），[购买链接](https://www.aliyun.com/benefit/scene/swas)
-- **腾讯云 —— 轻量应用服务器**：2 核 CPU、2 GB 内存、40 GB 系统盘、3M 峰值带宽，68 元/年起（新用户首单特惠），[购买链接](https://cloud.tencent.com/act/pro/featured-202607?from=11102&page=warmup-202606&s_source=https%3A%2F%2Fcloud.tencent.com%2Fact%2Fpro%2FFeatured#MS)
-
-> 价格为发布时参考价，实际以官网为准。
-
 ## 一键安装与配置
 
 ### 第一步：一键安装
