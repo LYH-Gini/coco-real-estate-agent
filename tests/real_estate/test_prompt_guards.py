@@ -214,3 +214,22 @@ class TestIdNumberStorageWording:
         for bad in ("只存脱敏版", "原号不落库"):
             assert bad in MANUAL, f"操作手册没点名禁止「{bad}」这个说法"
 
+
+class TestCustomerIntakeDoesNotAddOnItsOwn:
+    """建档就只建档（2026-09-29 实测）
+
+    真实回复：经纪人只发了一段自由文本，Coco 自己建了一条「2026-10-01 10:00 细聊购房需求」
+    的跟进提醒（库里 followup 可查到），还往备注里写了一句自己的归纳 —— 两项他都没说过。
+    """
+
+    def test_prompt_forbids_self_service(self):
+        assert "建档就只建档" in PROMPT
+        assert "自己顺手建跟进提醒" in PROMPT
+        assert "替他写备注" in PROMPT
+        assert "要不要我给这位客户设个回访提醒" in PROMPT
+
+    def test_manual_has_the_rule(self):
+        assert "建档就只建档" in MANUAL
+        assert "自己顺手建跟进提醒" in MANUAL
+        assert "替他写备注" in MANUAL
+
