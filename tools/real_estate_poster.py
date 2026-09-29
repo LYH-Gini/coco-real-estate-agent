@@ -744,10 +744,11 @@ def generate_property_poster(property_id: int = None, title: str = None, qr_cont
             payload["candidates"] = cands
         return json.dumps(payload, ensure_ascii=False)
 
+    # 二维码只在经纪人真的给了内容时才印。拿名片里的微信号现生成的码扫出来只是一串文字，
+    # 微信里加不上好友（实测），会让海报上出现一个"看着像名片、其实没用"的码。
     qr_path = None
-    qr_value = qr_content or card.get('wechat') or ''
-    if qr_value:
-        qr_path = _make_qr_png(qr_value)
+    if qr_content:
+        qr_path = _make_qr_png(qr_content)
 
     data = {
         "template": tpl,
@@ -1001,8 +1002,8 @@ def generate_poster_grid(property_ids: str, show_room_no: str = "unit",
             mode = "unit"                      # 没给 = 用默认档（默认 unit 是文档承诺的行为）
         else:
             return json.dumps({"success": False, "error": (
-                f"房号写法没能识别：你说的是「{show_room_no}」。可以这样说：full 写完整房号（如 7号楼2单元1602）/ "
-                f"unit 只写楼栋单元（如 7号楼2单元）（这是默认）/ none 不写房号、只显示小区名。")},
+                f"房号写法没能识别：你说的是「{show_room_no}」。可以这样说：完整写（如 7号楼2单元1602）/ "
+                f"只写楼栋单元（如 7号楼2单元）（这是默认）/ 不写、只显示小区名。")},
                 ensure_ascii=False)
 
     warnings = []
@@ -1087,8 +1088,8 @@ registry.register(
                   "font_style": {"type": "string", "enum": ["serif", "sans"], "description": "字体气质：serif 衬线（稳重高级）/ sans 黑体（醒目促销）"},
                   "show_fields": {"type": "array", "items": {"type": "string", "enum": ["price", "unit_price", "area", "layout", "floor", "orientation", "tags", "community"]}, "description": "海报上显示哪些信息（参考图信息少就少显示）"},
                   "decor": {"type": "string", "enum": ["rounded_soft", "sharp", "bordered"], "description": "装饰：圆角柔和 / 直角硬朗 / 描边款"}}},
-              "show_room_no": {"type": "string", "enum": ["full", "unit", "none"], "description": "海报上要不要写房号：full 写完整（如 7号楼2单元1602）/unit 只写楼栋单元（如 7号楼2单元）/none 不写、只显示小区名。**不传会并入待问清单先问经纪人**——不同经纪人对房号曝光的诉求不同，不要替他决定"},
-            "qr_content": {"type": "string", "description": "可选：二维码内容；不传则用经纪人名片里的微信号（微信名片）"},
+              "show_room_no": {"type": "string", "enum": ["full", "unit", "none"], "description": "海报上要不要写房号：完整写（如 7号楼2单元1602）/只写楼栋单元（如 7号楼2单元）/不写、只显示小区名（中文说法都认）。问经纪人的时候说中文，不要把内部值念给他。**不传会并入待问清单先问经纪人**——不同经纪人对房号曝光的诉求不同，不要替他决定"},
+            "qr_content": {"type": "string", "description": "可选：经纪人自己给的微信二维码内容（他把自己的二维码图/链接发过来时才传）；不传就不印二维码——拿微信号现生成的码扫不出微信名片"},
             "allow_missing": {"type": "boolean", "description": "仅当经纪人明确说「就这些，先出图」时传 true；缺的字段留空，不编造"},
         },
     }},
@@ -1115,7 +1116,7 @@ registry.register(
         "type": "object",
         "properties": {
             "property_ids": {"type": "string", "description": "房源编号列表，最多 9 个（如 1,2,3,4,5,6,7,8,9；数组写法也认）"},
-              "show_room_no": {"type": "string", "enum": ["full", "unit", "none"], "description": "每格标题里的房号写法：full 写完整房号（如 7号楼2单元1602）/ unit 只写楼栋单元（如 7号楼2单元，默认）/ none 不写房号、只显示小区名"},
+              "show_room_no": {"type": "string", "enum": ["full", "unit", "none"], "description": "每格标题里的房号写法：完整写（如 7号楼2单元1602）/ 只写楼栋单元（如 7号楼2单元，默认）/ 不写、只显示小区名（中文说法都认）"},
         },
         "required": ["property_ids"],
     }},

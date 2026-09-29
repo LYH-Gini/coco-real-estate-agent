@@ -1,12 +1,10 @@
 """海报 v2（SVG 引擎 + 信息齐全校验 + 经纪人名片 + 标题候选）测试。
 
 隔离原则：使用 sqlite 临时库；海报输出写到 tmp_path；渲染类测试在缺少 rsvg-convert
-的环境（如精简 CI）自动跳过；二维码相关断言额外要求 qrcode 包（缺包时海报会按设计
-降级为「无二维码」，那不是回归）。
+的环境（如精简 CI）自动跳过。
 """
 from __future__ import annotations
 
-import importlib.util
 import json
 import shutil
 
@@ -17,11 +15,6 @@ import tools.real_estate_settings as settings
 
 HAS_RSVG = shutil.which("rsvg-convert") is not None
 needs_rsvg = pytest.mark.skipif(not HAS_RSVG, reason="未安装 rsvg-convert（librsvg2-bin）")
-
-# 二维码：qrcode 是项目依赖（pyproject 的 feishu 附加项里就有）。本地/CI 缺它时海报
-# 会走「无二维码」的降级路径，所以这类断言要显式跳过，而不是报成回归。
-HAS_QRCODE = importlib.util.find_spec("qrcode") is not None
-needs_qrcode = pytest.mark.skipif(not HAS_QRCODE, reason="未安装 qrcode（生成微信二维码用）")
 
 
 @pytest.fixture
@@ -185,16 +178,16 @@ def test_render_no_platform_branding_and_has_footer(wired, tmp_path):
 
 
 @needs_rsvg
-@needs_qrcode
-def test_render_includes_wechat_qr_caption(wired, tmp_path):
-    """二维码=微信名片：有名片微信时海报要画出二维码与「扫码加我微信」"""
+def test_no_qr_generated_from_wechat_id(wired, tmp_path):
+    """有微信号也不自动生成二维码：拿微信号生成的码扫出来只是一串文字，微信里加不上好友"""
     _save_card()
     pid = _prop(wired)["id"]
     res = json.loads(poster.generate_property_poster(property_id=pid, poster_title="仅此一套",
                                                      template="A", show_room_no="full"))
     assert res["success"] is True
     svg = open(res["poster_path"] + ".svg", encoding="utf-8").read()
-    assert "扫码加我微信" in svg
+    assert "扫码加我微信" not in svg
+    assert "微信 hk-6688" in svg
 
 
 @needs_rsvg

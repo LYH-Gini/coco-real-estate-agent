@@ -2,6 +2,7 @@
 房产助理 - 数据库模块
 Coco（可可）的底层数据存储
 """
+import math
 import os
 import json
 import re
@@ -417,7 +418,7 @@ class Property(Base):
     year_built = Column(Integer)
     has_elevator = Column(Integer)  # 1=有 / 0=无 / NULL=还没确认（别再默认成"有"）
     property_type = Column(String(20), default="second_hand")  # new/second_hand/rental
-    parking = Column(Integer, default=0)
+    parking = Column(Integer)  # 1=有 / 0=无 / NULL=还没确认（与电梯同口径，别再默认成"无"）
     tags = Column(Text)
     images = Column(Text)
     defect_tags = Column(Text)  # 缺陷标签（带看反馈反哺，2026-08-28 功能3）
@@ -456,7 +457,9 @@ class Property(Base):
             return None
         if not price or not area or area <= 0:
             return None
-        return round(price / area, 2)
+        # 四舍五入到分：Python 的 round 是银行家舍入（14453.125 → 14453.12），
+        # 经纪人按四舍五入对账（14453.13）
+        return math.floor(price / area * 100 + 0.5) / 100
 
     def to_dict(self):
         return {

@@ -25,7 +25,7 @@ def add_property(
     rooms: int = None, halls: int = None, bathrooms: int = None,
     floor: str = None, orientation: str = None,
     renovation: str = None, year_built: int = None,
-    has_elevator: int = None, parking: int = 0,
+    has_elevator: int = None, parking: int = None,
     property_type: str = "second_hand",
     tags: str = None, images: str = None,
     image_paths: str = None, agent_id: str = None,
@@ -72,6 +72,12 @@ def add_property(
         normalized['property_type'] = f"类型「{property_type}」不认识，已按二手房记（要改就说一声）"
         property_type = "second_hand"
     price, area = price_value, area_value
+    # 电梯/车位只认原话里出现过的值，其余回到"未确认"（留空），避免猜测值进档案
+    _raw_text = " ".join(str(x) for x in (title, community, district, address, renovation,
+                                          tags, viewing_note, tenant_requirements) if x)
+    _kept, ignored_guess = _keep_only_mentioned(_raw_text, has_elevator=has_elevator,
+                                                parking=parking)
+    has_elevator, parking = _kept["has_elevator"], _kept["parking"]
     # 合并 images 和 image_paths，并**先归档**：网关缓存目录里的文件 24 小时后会被自动清理
     # （见 agent/real_estate_media.py），所以照片要在进库前就搬进不会被清理的目录。
     img_list = []
@@ -167,6 +173,15 @@ def add_property(
     except Exception:
         duplicate_warning = None
     response = {"success": True, "property": result}
+    unconfirmed = _unconfirmed_fields(result)
+    if unconfirmed:
+        response["unconfirmed"] = unconfirmed
+        response["note_unconfirmed"] = ("这些还没确认（留空）：" + "、".join(unconfirmed)
+                                        + "。回执末尾一句话带过，不要逐项追问。")
+    if ignored_guess:
+        response["ignored_guess"] = ignored_guess
+        response["note_ignored_guess"] = ("这次的原话里没提到「" + "、".join(ignored_guess)
+                                          + "」，没有按猜测填（留空＝还没确认）。")
     # 疑似重复（2026-09-21 加）：小区同一个 + 面积同口径，但标题里房号不全 → 只提示，不拦录入
     if suspected:
         response["suspected_duplicate"] = {
@@ -243,6 +258,65 @@ _MERGE_OPTIONS = [
     "② 只补空缺（库里已有的一律不动，只补缺的字段）",
     "③ 确实是另一套 → 强制新增",
 ]
+
+# 「经纪人没说就没人知道」的确认类字段：只认本次原话里出现过的值。
+# 实测：原话里没有"电梯"两个字，档案里却记成"有电梯"，回执、详情、海报都跟着当真话说。
+_CONFIRM_KEYWORDS = {
+    "has_elevator": ("电梯", "梯户", "楼梯房"),
+    "parking": ("车位", "车库", "停车"),
+}
+
+
+def _keep_only_mentioned(raw_text: str, **fields):
+    """原话里没提到的确认类字段一律回到"未确认"（None）。
+
+    返回 (保留值, 被丢弃的字段中文名)。**只用于录入**：补录/修改时经纪人的话就是明确指令，
+    走 update_property，不受此限。
+    """
+    kept, dropped = {}, []
+    for key, value in fields.items():
+        if value is None or any(w in raw_text for w in _CONFIRM_KEYWORDS[key]):
+            kept[key] = value
+        else:
+            kept[key] = None
+            dropped.append(_MERGE_PREVIEW_FIELDS[key])
+    return kept, dropped
+
+
+_PRICE_IN_TEXT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(万元|万|元)")
+
+
+def _wan_text(amount) -> str:
+    return f"{amount / 10000:g}万"
+
+
+def sync_title_price(title, old_price, new_price):
+    """标题里写着旧价时换成新价；没写价格、或写的不是这个旧价 → 返回 None（不动标题）。
+
+    标题是录入那一刻按当时价格生成的，改价后旧价会跟着它上海报、进发布文案。
+    """
+    if not title or not old_price or not new_price:
+        return None
+    changed = []
+
+    def _repl(m):
+        num, unit = float(m.group(1)), m.group(2)
+        value = int(round(num * 10000)) if unit.startswith("万") else int(round(num))
+        if value != int(old_price):
+            return m.group(0)
+        text = _wan_text(new_price) if unit.startswith("万") else f"{int(new_price)}元"
+        changed.append(text)
+        return text
+
+    new_title = _PRICE_IN_TEXT_RE.sub(_repl, title)
+    return new_title if changed else None
+
+
+def _unconfirmed_fields(prop: dict) -> list:
+    """"还没确认"的关键字段（空 = 没说过）—— 回执末尾一句话带过，不逐项问"""
+    checks = (("电梯", prop.get("has_elevator")), ("车位", prop.get("parking")),
+              ("建成年份", prop.get("year_built")), ("卫数", prop.get("bathrooms")))
+    return [label for label, value in checks if value in (None, "")]
 
 
 def _merge_preview(existing: dict, incoming: dict) -> dict:
@@ -343,6 +417,14 @@ def update_property(
         current = db.get_available_property(property_id) or db.get_property(property_id) or {}
         kept_existing = {k: current.get(k) for k in kwargs if not _blank(current.get(k))}
         kwargs = {k: v for k, v in kwargs.items() if _blank(current.get(k))}
+    # 改价了就把标题里写的旧价一起改掉（否则旧价会跟着标题上海报、进文案）
+    title_synced = None
+    if price is not None and "title" not in kwargs:
+        before = db.get_property(property_id) or {}
+        synced = sync_title_price(before.get("title"), before.get("price"), price)
+        if synced:
+            kwargs["title"] = synced
+            title_synced = synced
     result = db.update_property(property_id, **kwargs)
     if not result:
         return json.dumps({"success": False, "error": "房源不存在"}, ensure_ascii=False)
@@ -374,6 +456,9 @@ def update_property(
         response["owner_note"] = owner_note
     if owner_warning:
         response["warning_owner"] = owner_warning
+    if title_synced:
+        response["title_price_synced"] = title_synced
+        response["note_title_synced"] = "标题里写的价格也一起改成新价了。"
     return json.dumps(response, ensure_ascii=False)
 
 
@@ -826,7 +911,7 @@ TOOLS = [
             "orientation": {"type": "string", "description": "朝向。如 南/北/东/西/东南/西南/东北/西北/南北通透（朝南、南向、南北通都会归一）"},
             "year_built": {"type": "integer", "description": "建造年份，如 2015"},
             "has_elevator": {"type": "integer", "description": "有无电梯：1=有，0=无；经纪人没提到就别传（留空＝还没确认，不会当成「有」）"},
-            "parking": {"type": "integer", "description": "有无车位：1=有，0=无（默认 0）"},
+            "parking": {"type": "integer", "description": "有无车位：1=有，0=无；经纪人没提到就别传（留空＝还没确认，不会当成「无」）"},
             "tags": {"type": "string", "description": "特色标签，多个用逗号分隔，如 学区房,地铁房,精装修"},
             "force": {"type": "boolean", "description": "默认 false。true=跳过房源查重强制新增（仅当确认是不同期数/楼栋而要保留同名时用）"},
         }, "required": ["title", "price", "area"],
@@ -845,8 +930,8 @@ TOOLS = [
             "orientation": {"type": "string", "description": "朝向（补录或修改；朝北/北向 → 北；南北通 → 南北通透）"},
             "address": {"type": "string", "description": "详细地址"},
             "year_built": {"type": "integer", "description": "建造年份"},
-            "has_elevator": {"type": "integer", "description": "有无电梯：1=有/0=无"},
-            "parking": {"type": "integer", "description": "有无车位：1=有/0=无"},
+            "has_elevator": {"type": "integer", "description": "有无电梯：1=有/0=无；只传经纪人这次说到的字段，没说到的不要传"},
+            "parking": {"type": "integer", "description": "有无车位：1=有/0=无；只传经纪人这次说到的字段，没说到的不要传"},
             "tags": {"type": "string", "description": "特色标签，多个用逗号分隔"},
             "owner_name": {"type": "string", "description": "业主姓名。填了即自动登记房东并关联此房源"},
             "owner_phone": {"type": "string", "description": "业主手机号，加密存储"},
@@ -904,8 +989,8 @@ def get_property_form(task_id: str = None) -> str:
 - 朝向：（南/北/东南/南北通透等）
 - 装修：（毛坯/简装/精装/豪装）
 - 建造年份：
-- 有无电梯：（有/无）
-- 车位：（有/无）
+- 有无电梯：（有/无，不确定就空着）
+- 车位：（有/无，不确定就空着）
 - 房源类型：（一手房/二手房/租房）
 - 业主（房东）姓名 / 电话 / 微信：（可选；填了系统会自动登记房东并关联此房源，电话加密保存）
 -- 租客要求：（仅出租房源，如"不吸烟、禁养宠物/学生优先"）

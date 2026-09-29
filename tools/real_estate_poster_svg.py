@@ -130,8 +130,24 @@ def _code_line_for(d, p) -> str:
     none        : 只显示小区名，如「海阔天空」（没有小区名时才退回掩码后的标题）
     """
     mode = str(d.get("room_no_mode") or "full").lower()
-    raw = d.get("code_line") or p.get("title") or p.get("community") or "房源"
+    raw = d.get("code_line") or _identity_line(p) or p.get("title") or p.get("community") or "房源"
     return mask_room_no(raw, mode, community=p.get("community")) or "房源"
+
+
+def _identity_line(p) -> str:
+    """房源标识行：小区 + 楼栋/单元/房号（由身份要素拼）。
+
+    不直接印整条标题：标题里带着面积/户型/价格（改价后旧价会跟着上海报），而且太长会被截断。
+    拼不出楼栋/房号时只给小区名 —— 认不出来的不编。
+    """
+    from agent.real_estate_db import parse_property_identity
+
+    ident = parse_property_identity(p.get("title") or p.get("address") or "")
+    community = p.get("community") or ident.get("community") or ""
+    seg = "".join([f"{ident['building']}号楼" if ident.get("building") else "",
+                   f"{ident['unit']}单元" if ident.get("unit") else "",
+                   str(ident["room"]) if ident.get("room") else ""])
+    return " ".join(x for x in (community, seg) if x)
 
 
 def _esc(text) -> str:
