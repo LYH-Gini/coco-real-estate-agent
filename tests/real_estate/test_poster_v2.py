@@ -283,9 +283,10 @@ class TestRoomNoMasking:
         assert "1602" not in svg and "海阔天空" in svg
 
     def test_display_title_helper_masks(self):
-        assert poster._poster_display_title(self.PROP, "unit") == "海口美兰区桂林洋海阔天空, 7号楼2单元"
+        """标识行 = 小区 + 楼栋单元 + 房号（不用整条标题：标题里的面积/价格会跟着上墙）"""
+        assert poster._poster_display_title(self.PROP, "full") == "海阔天空 7号楼2单元1602"
+        assert poster._poster_display_title(self.PROP, "unit") == "海阔天空 7号楼2单元"
         assert poster._poster_display_title(self.PROP, "none") == "海阔天空"
-        assert poster._poster_display_title(self.PROP, "full") == self.PROP["title"]
 
     def test_normalize_room_no_mode_aliases(self):
         for raw, want in (("完整", "full"), ("只写楼栋", "unit"), ("不写", "none"), (None, None)):

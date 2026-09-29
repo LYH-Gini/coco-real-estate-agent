@@ -3,6 +3,7 @@ Coco 房产工具 - 经纪人配置（品牌/公司名）
 2026-08-12 加：海报品牌必须来自经纪人真实告知的公司名，禁止用默认值硬凑。
 """
 import json
+import os
 import re
 
 from agent.real_estate_input import clip_text, norm_phone
@@ -13,6 +14,7 @@ _CARD_LABELS = {"name": "姓名", "phone": "电话", "wechat": "微信", "compan
 _CARD_LIMITS = {"name": 10, "phone": 20, "wechat": 30, "company": 30}
 _CARD_SETTINGS = {"name": "agent_name", "phone": "agent_phone",
                   "wechat": "agent_wechat", "company": "brand_name"}
+_QR_SETTING = "agent_qr_image"      # 经纪人自己给的微信二维码图片（归档后的路径）
 _WECHAT_PREFIX = re.compile(r"^(微信号|微信|vx|VX|wx|WX)\s*[:：]?\s*")
 _PHONE_LIKE = re.compile(r"[\d\-]{7,20}")
 
@@ -86,11 +88,30 @@ def get_brand_or_none() -> str:
         return ''
 
 
-def save_agent_card(name: str = None, phone: str = None, wechat: str = None,
-                    company: str = None, task_id: str = None) -> str:
-    """保存经纪人名片（姓名/电话/微信/公司门店名），只写入本次提供的字段
+def _archive_qr_image(value):
+    """把经纪人发来的二维码图归档到长期目录 → (归档后路径, 错误说明)
 
-    海报用：公司名做品牌栏，姓名/电话/微信做底部名片区。
+    走与房源照片同一套归档：网关缓存目录里的文件 24 小时后会被清理，存路径进去等于丢图。
+    文件找不到就给中文说明（不臆造、不静默）。
+    """
+    from agent.real_estate_media import archive_images
+
+    raw = str(value or "").strip()
+    if not raw:
+        return None, None
+    archived, _detail = archive_images(raw)
+    first = (archived or "").split(",")[0].strip()
+    if first and os.path.exists(first):
+        return first, None
+    return None, f"这张二维码图片没找到（收到的是「{raw}」）：把图片重新发一次就行。"
+
+
+def save_agent_card(name: str = None, phone: str = None, wechat: str = None,
+                    company: str = None, qr_image_path: str = None,
+                    task_id: str = None) -> str:
+    """保存经纪人名片（姓名/电话/微信/公司门店名/微信二维码图），只写入本次提供的字段
+
+    海报用：公司名做品牌栏，姓名/电话/微信做底部名片区，二维码图印在底部（扫了直接加微信）。
     没提供的字段保持原值不动；绝不写默认值或占位符。
     """
     provided = {"name": name, "phone": phone, "wechat": wechat, "company": company}
@@ -116,8 +137,15 @@ def save_agent_card(name: str = None, phone: str = None, wechat: str = None,
             notes.append(f"{_CARD_LABELS[key]}太长，已按前 {_CARD_LIMITS[key]} 字记下：「{text}」。")
         db.set_setting(_CARD_SETTINGS[key], text)
         saved[key] = text
+    if qr_image_path:
+        qr_path, qr_problem = _archive_qr_image(qr_image_path)
+        if qr_problem:
+            return json.dumps({"success": False, "error": qr_problem}, ensure_ascii=False)
+        db.set_setting(_QR_SETTING, qr_path)
+        saved["qr_image"] = qr_path
+        notes.append("二维码已存好，以后出海报会印在底部。")
     if not saved:
-        return json.dumps({"success": False, "error": "没有可保存的内容（姓名/电话/微信/公司名 至少给一项）"},
+        return json.dumps({"success": False, "error": "没有可保存的内容（姓名/电话/微信/公司名/二维码图 至少给一项）"},
                           ensure_ascii=False)
     card = get_agent_card_or_empty()
     missing = [label for key, label in (('name', '姓名'), ('phone', '电话'),
@@ -152,12 +180,23 @@ def get_agent_card_or_empty() -> dict:
     return out
 
 
+def get_agent_qr_path():
+    """供海报等内部调用：经纪人自己给的二维码图片路径；没配置或文件不在就返回 None"""
+    try:
+        db = _get_db()
+        path = (db.get_setting(_QR_SETTING) or '').strip()
+    except Exception:
+        return None
+    return path if path and os.path.exists(path) else None
+
+
 def get_agent_card(task_id: str = None) -> str:
     """查看经纪人名片与缺失项"""
     card = get_agent_card_or_empty()
     missing = [label for key, label in (('name', '姓名'), ('phone', '电话'),
                                         ('wechat', '微信'), ('company', '公司/门店名')) if not card.get(key)]
-    payload = {"success": True, "card": card, "missing": missing}
+    payload = {"success": True, "card": card, "missing": missing,
+               "qr_image": bool(get_agent_qr_path())}
     if not any(card.values()):
         payload["message"] = ("还没配置经纪人名片，海报底部会空着。"
                               "把姓名、电话、微信号、公司门店名发我，我存下来海报就能用。")
@@ -218,7 +257,8 @@ registry.register(
         "properties": {
             "name": {"type": "string", "description": "经纪人姓名，如 李经理"},
             "phone": {"type": "string", "description": "联系电话（完整号码）"},
-            "wechat": {"type": "string", "description": "微信号（海报二维码内容）"},
+            "wechat": {"type": "string", "description": "微信号（海报底部显示）"},
+            "qr_image_path": {"type": "string", "description": "经纪人自己发的微信二维码图片路径（他把二维码图发过来时传这个；海报会印这张图——不要拿微信号现生成）"},
             "company": {"type": "string", "description": "公司/门店名称（海报品牌栏，绝不写平台名或虚构名）"},
         },
     }},

@@ -441,7 +441,14 @@ def template_a(d: dict) -> str:
 
     top = 168
     title_h, sub_h = 196, 84
-    card_h = 94 + 60 + max(len(cards), 1) * 122
+    # 价格字号按列宽定，卡片高度必须容得下那个大字 —— 否则字会压出卡片、盖到背景上
+    divider_x = 660
+    left_w = divider_x - MARGIN - 60
+    ptext = _price_text(p)
+    up_text = _unit_price_text(p)
+    psize = _auto_size(ptext, left_w, 150, "title_heavy", 76)
+    price_h = 214 + psize * 1.05 + (62 if up_text else 0) + 44
+    card_h = max(94 + 60 + max(len(cards), 1) * 122, price_h)
     caps_h = 74 if tags else 0
     agent_h = 252
     foot_h = 40
@@ -506,17 +513,12 @@ def template_a(d: dict) -> str:
                   _auto_size(code_line, CONTENT_W - 80, 40, "body", 30),
                   _esc(_fit(code_line, CONTENT_W - 80, 40))))
 
-    # 左：总价（大字自适应右列宽度）
-    divider_x = 660
-    left_w = divider_x - MARGIN - 60
+    # 左：总价（字号与卡片高度在开头一起算好）
     out.append('<text x="%d" y="%.0f" font-family="%s" font-size="40" fill="#8A7A6A">总价</text>'
                % (MARGIN + 50, cy0 + 214, _esc(FONTS["body"][0])))
-    ptext = _price_text(p)
-    psize = _auto_size(ptext, left_w, 150, "title_heavy", 76)
     out.append('<text x="%d" y="%.0f" font-family="%s" font-weight="900" font-size="%d" fill="#C81E2B" '
                'letter-spacing="-3">%s</text>'
                % (MARGIN + 50, cy0 + 214 + psize * 0.86, _esc(FONTS["number"][0]), psize, _esc(ptext)))
-    up_text = _unit_price_text(p)
     if up_text:
         out.append('<text x="%d" y="%.0f" font-family="%s" font-size="34" fill="#8A7A6A">%s</text>'
                    % (MARGIN + 50, cy0 + 214 + psize * 0.86 + 62, _esc(FONTS["body"][0]),

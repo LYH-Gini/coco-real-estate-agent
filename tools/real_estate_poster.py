@@ -154,18 +154,24 @@ def _rounded_card(size, radius, fill, outline=None, width=0):
     return card
 
 
-def _draw_qr(img, qr_content, center_x, center_y, size=260, bg_light=True):
-    """在 img 上画二维码（居中定位）"""
-    if not qr_content:
+def _draw_qr(img, qr_source, center_x, center_y, size=260, bg_light=True):
+    """在 img 上画二维码（居中定位）：给图片文件就贴那张图，给文本内容才现生成"""
+    if not qr_source:
+        return
+    from PIL import Image
+
+    pad = 18
+    panel = Image.new('RGB', (size + pad * 2, size + pad * 2), (255, 255, 255))
+    if os.path.exists(str(qr_source)):
+        try:
+            panel.paste(Image.open(str(qr_source)).convert('RGB').resize((size, size)), (pad, pad))
+        except Exception:
+            return
+        img.paste(panel, (int(center_x - panel.width / 2), int(center_y - panel.height / 2)))
         return
     try:
         import qrcode
-        from PIL import Image
-        qr = qrcode.make(qr_content)
-        qr = qr.convert('RGB')
-        # 白底
-        pad = 18
-        panel = Image.new('RGB', (size + pad * 2, size + pad * 2), (255, 255, 255))
+        qr = qrcode.make(str(qr_source)).convert('RGB')
         panel.paste(qr.resize((size, size)), (pad, pad))
         img.paste(panel, (int(center_x - panel.width / 2), int(center_y - panel.height / 2)))
     except ImportError:
@@ -491,14 +497,14 @@ def _norm_room_no_mode(value):
 
 
 def _poster_display_title(p, room_no_mode: str = "full") -> str:
-    """海报上显示的房源标题：按房号档位掩码（unit/none 档不显示具体房号）。
+    """房源标识行（海报/九宫格共用）：小区 + 楼栋/单元/房号，按房号档位掩码。
 
-    渲染前**兜底**：即便上游把带房号的标题塞进来，也不会把具体房号印到图上；
-    **掩完没有可显示的字时不回退原串**（那等于没掩），退回小区名或「优质房源」。
+    与 SVG 引擎的 `_code_line_for` 同源，两个引擎显示一致。**不用整条标题**：标题里带面积/
+    户型/价格，改价后旧价会跟着上墙，太长还会被截断。掩完没字也不回退原串，退回小区名。
     """
-    from tools.real_estate_poster_svg import mask_room_no
+    from tools.real_estate_poster_svg import _identity_line, mask_room_no
 
-    raw = p.get('title') or '优质房源'
+    raw = _identity_line(p) or p.get('title') or '优质房源'
     return mask_room_no(raw, room_no_mode, community=p.get('community')) or '优质房源'
 
 
@@ -744,10 +750,16 @@ def generate_property_poster(property_id: int = None, title: str = None, qr_cont
             payload["candidates"] = cands
         return json.dumps(payload, ensure_ascii=False)
 
-    # 二维码只在经纪人真的给了内容时才印。拿名片里的微信号现生成的码扫出来只是一串文字，
-    # 微信里加不上好友（实测），会让海报上出现一个"看着像名片、其实没用"的码。
+    # 二维码：优先用经纪人自己发来的二维码图（存进名片），其次才用显式传入的内容现生成。
+    # 拿微信号现生成的码扫出来只是一串文字、微信加不上好友，所以**绝不**自动拿微信号生成。
     qr_path = None
-    if qr_content:
+    try:
+        from tools.real_estate_settings import get_agent_qr_path
+
+        qr_path = get_agent_qr_path()
+    except Exception:
+        qr_path = None
+    if not qr_path and qr_content:
         qr_path = _make_qr_png(qr_content)
 
     data = {
@@ -782,7 +794,7 @@ def generate_property_poster(property_id: int = None, title: str = None, qr_cont
         notes.append(f"已回落到旧引擎（原因：{result.get('error')}）")
         try:
             path = _render_legacy({**p, "title": _poster_display_title(p, room_no_mode)},
-                                  qr_content, tpl)
+                                  qr_path or qr_content, tpl)
         except Exception as exc:  # noqa: BLE001
             return json.dumps({"success": False, "error": (
                 f"海报没出成：本机的 SVG 渲染器与备用引擎都不能用（{exc}）。"
