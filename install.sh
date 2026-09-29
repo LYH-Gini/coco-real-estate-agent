@@ -12,8 +12,8 @@
 set -euo pipefail
 
 # ==================== 配置 ====================
-# 双源配置：Gitee（国内快）+ GitHub（海外稳定），自动切换
-# 通道：默认装稳定版(master)；开发版不对外发布，装开发版需指定私有源（见下方"私有源安装"说明）
+# 下载源与通道：未指定时自动选择可用源，可用环境变量覆盖（见上方用法）
+# 通道：默认装稳定版(master)；开发版不对外发布，装开发版需指定私有源（见上方"私有源安装"说明）
 COCO_CHANNEL="${COCO_CHANNEL:-master}"
 GITEE_RAW_URL="https://gitee.com/LYH-Gini/coco-real-estate-agent/raw/master/install.sh"
 GITEE_REPO_URL="https://gitee.com/LYH-Gini/coco-real-estate-agent.git"
