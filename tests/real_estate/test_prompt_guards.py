@@ -265,3 +265,12 @@ class TestOutwardWordingNamedExamples:
         assert "点名禁掉这三种写法" in MANUAL
         assert "客户阶段与状态一律说中文" in MANUAL
 
+    def test_prompt_forbids_system_as_subject(self):
+        """不把"系统"当主语（2026-09-29 实测：「系统提示客户很可能在别处看到了更便宜的房子」）"""
+        assert "不把\"系统\"当主语" in PROMPT
+        assert "系统提示 / 系统判断 / 系统里显示" in PROMPT
+
+    def test_manual_forbids_system_as_subject(self):
+        assert "不把\"系统\"当主语" in MANUAL
+        assert "系统提示 / 系统判断" in MANUAL
+
