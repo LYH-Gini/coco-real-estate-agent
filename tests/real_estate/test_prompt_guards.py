@@ -133,6 +133,27 @@ class TestOutwardWordingGuard:
         assert "note_for_model" in MANUAL
 
 
+class TestConciseReportingGuards:
+    """先给结论、别一次倒一屏；匹配分数只说一种说法（2026-09-29）"""
+
+    def test_matching_report_is_narrowed(self):
+        assert "只报两件事：匹配到几位" in PROMPT
+        assert "还有 N 位沾边" in PROMPT
+        assert "不要一次把每位客户的预算/区域/户型都列出来" in PROMPT
+
+    def test_score_wording_is_fixed(self):
+        assert "匹配度 X 分" in PROMPT
+        assert "系统评分" in PROMPT and "自造词" in PROMPT
+
+    def test_price_change_reports_only_itself(self):
+        assert "【改价只报改价】" in PROMPT
+        assert "不要顺手去查降价捞回名单" in PROMPT
+
+    def test_manual_matches(self):
+        assert "只报\"匹配到几位 ＋ 最匹配的 1~2 位（名字 + 一句理由）\"" in MANUAL
+        assert "改价只报改价" in MANUAL
+
+
 class TestNoAbsolutePromiseGuard:
     """不做绝对承诺（2026-09-28 加）
 
