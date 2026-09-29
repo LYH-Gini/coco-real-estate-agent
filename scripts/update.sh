@@ -30,6 +30,15 @@ ok(){   echo -e "\033[1;32m   OK\033[0m $*"; }
 err(){  echo -e "\033[1;31m   FAIL\033[0m $*" >&2; }
 fail(){ echo -e "\033[1;31m   FAIL\033[0m $*" >&2; exit 1; }
 
+# 用户级 systemctl 的稳健调用（2026-09-29 加）：在 sudo -i / 剥净环境里
+# `systemctl --user` 连不上用户总线（实测报 "Failed to connect to bus: No medium found"），
+# 探测会假失败 → 更新后不重启、进程继续跑旧代码。先按当前环境试，失败则钉住
+# XDG_RUNTIME_DIR 再试一次（同一 uid 下这样就能连上）。
+sysd_user() {
+  systemctl --user "$@" 2>/dev/null && return 0
+  XDG_RUNTIME_DIR="/run/user/$(id -u)" systemctl --user "$@" 2>/dev/null
+}
+
 # 并发保护（2026-09-21 加）：同一实例同时跑两次更新会互相踩 —— git 索引锁冲突、
 # 依赖安装与迁移交叠、服务被重复重启。这里用 flock 拿独占锁，拿不到就明确退出。
 # 锁文件是未跟踪文件（不进 git），工作区检查会忽略它。
@@ -216,34 +225,64 @@ else
   echo "  提示: 运行时配置对齐未完成，可执行 coco config set 手动设置，或用 coco config 查看当前值"
 fi
 
-info "[7/8] 重启服务（以 hermes-gateway 用户服务为准，兼容 hermes-agent）"
+info "[7/8] 重启服务（优先走官方重启入口，兼容用户服务 / 旧版系统服务）"
 if [[ "$NO_RESTART" == "1" ]]; then
   echo "  已跳过重启（--no-restart），请稍后手动重启。"
 else
   RESTARTED=0
-  if command -v systemctl >/dev/null 2>&1; then
-    if systemctl --user is-active --quiet hermes-gateway.service 2>/dev/null; then
-      systemctl --user restart hermes-gateway.service
-      ok "已重启 hermes-gateway.service（用户服务）"
-      RESTARTED=1
-    elif systemctl is-active --quiet hermes-agent.service 2>/dev/null; then
-      sudo systemctl restart hermes-agent.service
-      ok "已重启 hermes-agent.service（旧版系统服务）"
-      RESTARTED=1
-    fi
+  RESTART_HOW=""
+  # 首选官方入口（与 coco restart 同一条路）：它自己解析单元名与作用域，
+  # 在 sudo -i 这类"连不上用户总线"的环境里同样可用（2026-09-29 实测）。
+  if [[ -x "$REPO_ROOT/venv/bin/hermes" ]]; then
+    "$REPO_ROOT/venv/bin/hermes" gateway restart >/dev/null 2>&1 && { RESTARTED=1; RESTART_HOW="官方重启入口"; }
+  else
+    "$VENV_PY" -m hermes_cli.main gateway restart >/dev/null 2>&1 && { RESTARTED=1; RESTART_HOW="官方重启入口"; }
   fi
-  if [[ "$RESTARTED" == "0" ]]; then
-    err "未检测到在运行的 hermes-gateway / hermes-agent 服务，请手动重启以加载新代码。"
+  # 回退：候选单元名 × 用户/系统两级（用户级带钉住 XDG_RUNTIME_DIR 的重试）
+  if [[ "$RESTARTED" == "0" ]] && command -v systemctl >/dev/null 2>&1; then
+    for _unit in hermes-gateway hermes-agent coco; do
+      if sysd_user is-active --quiet "$_unit"; then
+        if sysd_user restart "$_unit"; then RESTARTED=1; RESTART_HOW="用户服务 $_unit"; break; fi
+      elif systemctl is-active --quiet "$_unit" 2>/dev/null; then
+        if sudo systemctl restart "$_unit" 2>/dev/null; then RESTARTED=1; RESTART_HOW="系统服务 $_unit"; break; fi
+      fi
+    done
   fi
-  # 体检放在重启之后，读到的才是新进程的状态与日志；服务是 Type=simple，
-  # restart 会在进程刚起来时就返回，所以等它真正 active 再体检。
   if [[ "$RESTARTED" == "1" ]]; then
+    ok "服务已重启（$RESTART_HOW）"
+  else
+    err "服务没能重启：新代码已下载到本地，但正在运行的进程还是旧代码（Coco 会继续按旧行为回答）。"
+    echo "  手动重启：coco restart"
+    echo "  若上面这条也报错，用：XDG_RUNTIME_DIR=/run/user/\$(id -u) systemctl --user restart hermes-gateway"
+    echo "  注意：这次更新若是在 sudo -i / 另一个用户下执行的，请回到安装该实例的用户下执行 coco restart。"
+  fi
+  # 等新进程真正起来（服务是 Type=simple，重启会在进程刚起来时就返回）
+  if [[ "$RESTARTED" == "1" ]] && command -v systemctl >/dev/null 2>&1; then
     for _ in $(seq 1 30); do
-      systemctl --user is-active --quiet hermes-gateway.service 2>/dev/null && break
+      sysd_user is-active --quiet hermes-gateway.service && break
       sleep 2
     done
     sleep 5
   fi
+fi
+
+# 复核本次更新是否真的生效：进程启动时会把代码指纹写进 gateway_state.json，
+# 与本地 HEAD 不一致 = 跑的还是旧代码（2026-09-29 加，来源是一次实测事故）。
+LOCAL_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo '')"
+RUN_SHA="$(HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}" "$VENV_PY" - <<'PY' 2>/dev/null || true
+import json, os, pathlib
+home = pathlib.Path(os.environ.get("HERMES_HOME") or (pathlib.Path.home() / ".hermes"))
+try:
+    print(json.loads((home / "gateway_state.json").read_text()).get("code_sha") or "")
+except Exception:
+    print("")
+PY
+)"
+if [[ -n "$LOCAL_SHA" && -n "$RUN_SHA" && "$RUN_SHA" != "$LOCAL_SHA" ]]; then
+  err "本次更新尚未生效：正在运行的网关仍是旧代码（进程指纹 ${RUN_SHA:0:7} ≠ 本地 ${LOCAL_SHA:0:7}）。"
+  echo "  处理：coco restart（在安装该实例的用户下执行）"
+elif [[ -n "$RUN_SHA" ]]; then
+  ok "新代码已生效（进程指纹 ${RUN_SHA:0:7}）"
 fi
 
 info "[8/8] 部署健康自检"
