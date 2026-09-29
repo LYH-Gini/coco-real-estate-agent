@@ -149,6 +149,15 @@ class TestConciseReportingGuards:
         assert "【改价只报改价】" in PROMPT
         assert "不要顺手去查降价捞回名单" in PROMPT
 
+    def test_customer_edit_reports_only_itself(self):
+        """改客户资料只报改资料（2026-09-29 实测：只改预算，却回了一屏匹配结果与建议）"""
+        assert "【改客户资料只报改资料】" in PROMPT
+        assert "不要顺手跑匹配" in PROMPT
+
+    def test_manual_has_the_customer_edit_rule(self):
+        assert "改客户资料只报改资料" in MANUAL
+        assert "顺手跑匹配" in MANUAL
+
     def test_manual_matches(self):
         assert "只报\"匹配到几位 ＋ 最匹配的 1~2 位（名字 + 一句理由）\"" in MANUAL
         assert "改价只报改价" in MANUAL
