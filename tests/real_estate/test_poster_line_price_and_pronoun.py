@@ -102,14 +102,6 @@ class TestUnitPriceRounding:
 
 
 class TestRoomNoAskWording:
-    def test_grid_error_text_is_chinese(self, tmp_path, monkeypatch):
-        registry = _registry(tmp_path, monkeypatch)
-        out = json.loads(registry.get_entry("generate_poster_grid").handler(
-            {"property_ids": "1", "show_room_no": "随便写"}, session_id="agent:main:feishu:dm:oc_x"))
-        assert out["success"] is False
-        for internal in ("full", "unit", "none"):
-            assert internal not in out["error"], out["error"]
-
     def test_prompt_and_manual_ask_in_chinese(self):
         assert "`full` 写完整" not in PROMPT
         assert "别把内部值念给他" in PROMPT

@@ -1168,7 +1168,7 @@ class ToolRegistry:
 
         COCO-PATCH 2026-09-18 / 2026-09-24：看"值"而不是"键"—— 模型常把没问出来的必填参数
         显式写成 null（{"name": null}），只看键存在会放行到 handler，实测 9 个工具会直接崩在
-        数据库约束上（add_customer / mortgage_calculator / generate_poster_grid 等），
+        数据库约束上（add_customer / mortgage_calculator 等），
         而模型看到"执行失败"会转向自己编答案。
         """
         try:

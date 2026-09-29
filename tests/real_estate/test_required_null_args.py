@@ -2,7 +2,7 @@
 
 模型常把"没问出来的字段"显式写成 null。网关必填校验若只看"键在不在"，就会放行到 handler ——
 实测 add_customer / add_followup / mortgage_calculator / tax_calculator / roi_calculator /
-update_birthday / generate_poster_grid / loan_compare / tax_breakdown_report 这 9 个会直接崩，
+update_birthday / loan_compare / tax_breakdown_report 这几个会直接崩，
 模型看到"执行失败"就会自己编答案（历史教训）。
 
 本文件对全部带必填参数的工具逐个验证：传 null → 必须给"缺少必填参数"提示，且不得出现执行失败。

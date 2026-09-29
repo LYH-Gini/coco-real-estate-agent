@@ -8,9 +8,7 @@
 本文件覆盖：
 ① 38 个工具 × 非数字文本 → 「X编号没能识别…编号是数字」；
 ② 数字字符串仍要认（不许把老调用改坏）；
-③ `add_followup(customer_id='abc')` 原先**写库成功**（落一条 customer_id='abc' 的孤儿跟进）—— 必须不落库；
-④ `generate_poster_grid` 的 schema 声明 `property_ids` 是数组，历史实现按逗号串 `.split(',')`，
-   模型照 schema 传数组直接崩 —— 数组与逗号串都要认。
+③ `add_followup(customer_id='abc')` 原先**写库成功**（落一条 customer_id='abc' 的孤儿跟进）—— 必须不落库。
 """
 import json
 
@@ -152,19 +150,3 @@ def test_followup_with_garbage_customer_id_does_not_write(fixtures, wired):
         assert wired.count_followups() == before
 
 
-# ==================== ② 九宫格：数组与逗号串都认 ====================
-def test_poster_grid_accepts_array_and_comma_string(fixtures, wired, tmp_path, monkeypatch):
-    """schema 说 property_ids 是数组 → 传数组不能再崩；逗号串仍兼容"""
-    monkeypatch.setattr(m_poster, "_poster_dir", lambda: str(tmp_path))
-    monkeypatch.setattr(m_poster, "_agent_card", lambda: {"name": "Coco", "phone": "13800000000"})
-    pid = fixtures["property_available"]
-    for raw in ([pid], str(pid), [str(pid)]):
-        out = json.loads(m_poster.generate_poster_grid(property_ids=raw))
-        assert "Tool execution failed" not in json.dumps(out, ensure_ascii=False), (raw, out)
-        assert out.get("success") is True and out.get("property_ids") == [pid], (raw, out)
-
-
-@pytest.mark.parametrize("raw", [["abc"], "abc", ["abc", "def"]])
-def test_poster_grid_bad_id_gets_hint(fixtures, wired, raw):
-    out = json.loads(m_poster.generate_poster_grid(property_ids=raw))
-    assert out.get("success") is not True and "房源编号没能识别" in (out.get("error") or ""), out

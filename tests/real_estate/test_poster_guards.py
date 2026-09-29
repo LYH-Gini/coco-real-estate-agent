@@ -201,7 +201,7 @@ def test_poster_prune_keeps_recent_and_spares_other_files(db, monkeypatch, tmp_p
 
 
 def test_prune_is_per_property_not_global(db, monkeypatch, tmp_path):
-    """名额按房源分：1 号房 7 份 → 留 5；2 号房 3 份 → 全留；九宫格单独一个桶，同样留 5 份"""
+    """名额按房源分：1 号房 7 份 → 留 5；2 号房 3 份 → 全留；历史拼图成品单独一个桶，同样留 5 份"""
     _wire(db, monkeypatch, poster_dir=tmp_path)
     for i in range(7):
         (tmp_path / f"poster_1_A_{i:08x}.png").write_bytes(b"x")

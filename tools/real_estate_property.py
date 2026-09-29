@@ -644,7 +644,7 @@ _PROPERTY_UNAVAILABLE_ACTION = {"sold": "发在售文案", "rented": "发在租�
 
 
 def unavailable_property_note(property_id, prop=None, action=None):
-    """房源不能用的中文说明（**一处定义**：文案 / 海报 / 九宫格 / 口播稿都走它）
+    """房源不能用的中文说明（**一处定义**：文案 / 海报 / 口播稿都走它）
 
     三种情况分开说 —— 不存在 / 已售 / 已租。原先是同一句「房源不存在或不在售」，
     经纪人看不出这套其实在库、只是已售（2026-09-26 文案那轮先修，海报同族）。

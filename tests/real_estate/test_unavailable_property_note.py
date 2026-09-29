@@ -2,7 +2,7 @@
 
 由来：同一句判断原先散在文案、海报两处（都是「房源不存在或不在售」），经纪人看不出这套其实在库、
 只是已售/已租。文案那轮先修，现在抽成一处实现，`generate_listing_copy` 与 `generate_property_poster`
-（以及后面的九宫格/口播稿）共用，避免第三次复制。
+（以及后面的口播稿）共用，避免第三次复制。
 
 本文件只钉共用件本身；两个工具侧的接入在各自文件里另有用例
 （`test_listing_copy_guards.py` / `test_poster_guards.py`）。
@@ -31,7 +31,7 @@ def test_default_action_follows_status(status, phrase, action, label):
 
 
 def test_action_can_be_overridden_for_other_tools():
-    """海报/九宫格/口播稿传自己的动作词，措辞同一套"""
+    """海报/口播稿传自己的动作词，措辞同一套"""
     text, _ = unavailable_property_note(5, {"title": "某小区 1号楼101", "status": "sold"},
                                         action="出海报")
     assert "已经售出，不能出海报" in text, text
