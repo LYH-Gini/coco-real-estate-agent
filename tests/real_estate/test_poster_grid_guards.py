@@ -119,8 +119,10 @@ def test_bad_room_no_mode_gives_options_and_no_image(wired, drawn, bad):
     pid = _mk(wired, 1)
     out = _grid(property_ids=[pid], show_room_no=bad)
     assert out["success"] is False and "grid_path" not in out, out
-    for word in ("full", "unit", "none", "小区名"):
+    for word in ("完整写", "只写楼栋单元", "小区名"):
         assert word in out["error"], out
+    # 问经纪人的选项只给中文：别把内部值念出来（2026-09-29 实测就是这么漏出去的）
+    assert "full 写" not in out["error"] and "none 不写" not in out["error"], out
 
 
 @pytest.mark.parametrize("value", [None, ""])
