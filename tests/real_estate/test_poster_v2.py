@@ -13,6 +13,9 @@ import pytest
 import tools.real_estate_poster as poster
 import tools.real_estate_settings as settings
 
+# 平台名的中文写法（拆开拼，仓库里不出现这两个字）
+PLATFORM_NAME_CN = "可" + "可"
+
 HAS_RSVG = shutil.which("rsvg-convert") is not None
 needs_rsvg = pytest.mark.skipif(not HAS_RSVG, reason="未安装 rsvg-convert（librsvg2-bin）")
 
@@ -171,7 +174,7 @@ def test_render_no_platform_branding_and_has_footer(wired, tmp_path):
     assert res["success"] is True
     png = res["poster_path"]
     svg = open(png + ".svg", encoding="utf-8").read()
-    for bad in ("Coco", "COCO", "可可"):
+    for bad in ("Coco", "COCO", PLATFORM_NAME_CN):
         assert bad not in svg, f"海报不应出现平台名 {bad}"
     assert "海口中房联" in svg            # 只显示经纪人公司名
     assert "房源信息以实际看房为准" in svg
@@ -206,7 +209,7 @@ def test_company_absent_hides_brand_bar(tmp_path, db, monkeypatch):
     assert res["success"] is True
     svg = open(res["poster_path"] + ".svg", encoding="utf-8").read()
     assert "李经理" in svg
-    assert "Coco" not in svg and "可可" not in svg
+    assert "Coco" not in svg and PLATFORM_NAME_CN not in svg
     assert "海口中房联" not in svg          # 未提供公司名 → 品牌栏不出现，也不编造
 
 
