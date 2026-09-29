@@ -233,3 +233,26 @@ class TestCustomerIntakeDoesNotAddOnItsOwn:
         assert "自己顺手建跟进提醒" in MANUAL
         assert "替他写备注" in MANUAL
 
+
+class TestOutwardWordingNamedExamples:
+    """对外措辞：点名禁掉工具名 / 内部键 / 英文枚举（2026-09-29 实测）
+
+    真实回复：「我用 update_customer 补进他的档案」「客户 ID 37」「阶段 lead、状态 active」——
+    规则里原本只有"不出现工具名/英文键/英文枚举"的说法，没点具体形态，模型照旧。
+    """
+
+    def test_prompt_names_the_three_bad_shapes(self):
+        assert "点名禁掉这三种写法" in PROMPT
+        assert "update_customer 补进他的档案" in PROMPT
+        assert "客户 ID 37" in PROMPT
+        assert "阶段 lead、状态 active" in PROMPT
+
+    def test_prompt_lists_cn_stage_and_status(self):
+        assert "【客户阶段与状态的中文说法】" in PROMPT
+        assert "潜在 / 意向 / 强意向 / 已看房 / 谈判 / 成交中 / 售后维护 / 流失" in PROMPT
+        assert "在跟 / 暂缓 / 已关闭" in PROMPT
+
+    def test_manual_matches(self):
+        assert "点名禁掉这三种写法" in MANUAL
+        assert "客户阶段与状态一律说中文" in MANUAL
+
