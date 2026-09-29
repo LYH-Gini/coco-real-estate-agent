@@ -35,7 +35,7 @@ coco check  # 预期 FAIL 0
 | 查看[客户]的需求变更历史 | customer_change_history | 变更记录完整 |
 | 把[房源]月租改成 X 元 / 价格改成 X 万 | update_property | 价格变 + 落库；**单价按新总价÷面积自动变（两位小数）** |
 | 搜索[区域] X-Y 万的房源 | search_property | 结果与库一致 |
-| 你是什么版本 / 版本号是多少 | get_coco_version | 返回 `Coco v0.21.5-3（正式版）` + 更新指引 |
+| 你是什么版本 / 版本号是多少 | get_coco_version | 返回 `Coco v0.21.5-4（正式版）` + 更新指引 |
 | 查 [某套房源] 的详细信息 | get_property_detail | 房源全字段 + **单价(两位小数)** + **业主姓名/完整电话** |
 | 查一下[某个库里没有的楼栋房号]的详情 | get_property_detail | 如实说找不到 + 列出候选，**不得拿别的房源充当答案** |
 | 查一下房源统计数据 | property_stats | 总数/在售/已售 |
