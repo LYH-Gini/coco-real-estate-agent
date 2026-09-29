@@ -18,6 +18,7 @@ _HARD_CONFLICT_REASONS = ("超预算", "区域不符", "类型不符")
 
 # 客户状态（与建档/列表口径一致）：在跟 / 暂缓 / 已关闭
 _STATUS_VALUES = ("active", "paused", "closed")
+_STATUS_LABELS = {"active": "在跟", "paused": "暂缓", "closed": "已关闭"}
 _STATUS_ALIASES = {"在跟": "active", "跟进中": "active", "活跃": "active",
                    "暂缓": "paused", "搁置": "paused", "暂停": "paused",
                    "关闭": "closed", "已关闭": "closed"}
@@ -46,6 +47,21 @@ def _norm_status(value):
 
 def _fail(message: str) -> str:
     return json.dumps({"success": False, "error": message}, ensure_ascii=False)
+
+
+def _with_cn_labels(customer: dict) -> dict:
+    """补中文阶段名与状态名：返回体里原本只有英文键（lead / active），模型只能自己翻 ——
+    实测一轮翻成"线索期"、另一轮干脆把 lead、active 念给了经纪人（2026-09-29）。
+    老键照留（消费方在用），这里只补不改。"""
+    if not isinstance(customer, dict):
+        return customer
+    stage = customer.get("stage")
+    if stage:
+        customer.setdefault("stage_label", STAGE_LABELS.get(stage, stage))
+    status = customer.get("status")
+    if status:
+        customer.setdefault("status_label", _STATUS_LABELS.get(status, status))
+    return customer
 
 
 def _stage_before(new_stage, old_stage):
@@ -219,7 +235,7 @@ def add_customer(
         # 失败不能悄悄咽掉：否则界面显示"无匹配"，经纪人以为库里没合适房源
         matched_properties = []
         match_warning = f"自动匹配房源失败：{type(exc).__name__}: {exc}（可稍后重跑匹配）"
-    response = {"success": True, "customer": result}
+    response = {"success": True, "customer": _with_cn_labels(result)}
     if matched_properties:
         response["matched_properties"] = matched_properties
         response["message"] = _match_message(matched_properties, budget_max)
@@ -361,7 +377,7 @@ def update_customer(
         })
 
     result, masked = mask_contacts(result)
-    response = {"success": True, "customer": result}
+    response = {"success": True, "customer": _with_cn_labels(result)}
     if warnings:
         response['warnings'] = warnings
     if alerts:
@@ -380,7 +396,7 @@ _CHANGE_FIELD_LABELS = {
     "renovation": "装修偏好", "notes": "备注", "source": "客户来源",
     "customer_type": "客户类型", "birthday": "生日", "tags": "标签",
 }
-_CHANGE_STATUS_LABELS = {"active": "在跟", "paused": "暂缓", "closed": "已关闭"}
+_CHANGE_STATUS_LABELS = _STATUS_LABELS  # 变更历史与客户回执共用一张表（一处定义）
 _CHANGE_TYPE_LABELS = {"buy_new": "买一手房", "buy_second_hand": "买二手房", "rent": "租房",
                        "unspecified": "未细分", "buy": "未细分"}
 
@@ -457,7 +473,7 @@ def get_customer(customer_id: int, task_id: str = None) -> str:
     # 联系方式展示防御（2026-09-24 加，与房源详情 F16 同口径）：密钥不一致时读出来是密文，
     # 绝不能把 gAAAA… 当客户手机号说给经纪人，也不能默默咽掉（要给 warning 让 Coco 如实转述）。
     result, masked = mask_contacts(result)
-    return json.dumps(attach_key_warning({"success": True, "customer": result}, masked),
+    return json.dumps(attach_key_warning({"success": True, "customer": _with_cn_labels(result)}, masked),
                       ensure_ascii=False)
 
 
@@ -513,7 +529,8 @@ def list_customers(tier: str = None, status: str = None, customer_type: str = No
     if tag_values:
         scope += f"，含标签：{'、'.join(tag_values)}"
     total = total if total is not None else len(result)
-    response = {"success": True, "customers": result, "count": len(result), "total": total,
+    response = {"success": True, "customers": [_with_cn_labels(r) for r in result],
+                "count": len(result), "total": total,
                 "truncated": bool(total > len(result)), "count_scope": scope}
     if response["truncated"]:
         response["message"] = (f"共 {total} 位{scope}，这里列最近 {len(result)} 位（最新录入优先）。"
@@ -534,7 +551,7 @@ def update_tier(customer_id: int, tier: str, task_id: str = None) -> str:
     if not result:
         return json.dumps({"success": False, "error": "客户不存在"}, ensure_ascii=False)
     result, masked = mask_contacts(result)
-    payload = {"success": True, "customer": result, "message": f"已将客户等级调整为 {tier_value}"}
+    payload = {"success": True, "customer": _with_cn_labels(result), "message": f"已将客户等级调整为 {tier_value}"}
     return json.dumps(attach_key_warning(payload, masked), ensure_ascii=False)
 
 
@@ -858,7 +875,7 @@ def update_customer_stage(customer_id: int, stage: str, task_id: str = None) -> 
     payload = {
         "success": True,
         "message": f"{updated['name']} 生命周期阶段已更新为: {STAGE_LABELS[stage_value]}",
-        "customer": updated,
+        "customer": _with_cn_labels(updated),
     }
     if warnings:
         payload["warnings"] = warnings
