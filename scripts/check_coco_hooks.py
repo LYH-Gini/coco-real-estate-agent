@@ -781,6 +781,19 @@ CONTENT_CHECKS = [
         "官方送达包装是英文抬头 + 内部任务名与编号（实测经纪人看到「Cronjob Response: coco_overdue_sentinel」）。\n"
         "处理：COCO-PATCH 改成中文抬头、不带任务名与编号，保留一句“怎么关”。",
     ),
+    (
+        "57",
+        "澄清选项不替经纪人标推荐（标签本身也必须是中文）",
+        "tools/clarify_tool.py",
+        [
+            r'RECOMMENDED_LABEL = "（推荐）"',
+            r"!\(Recommended\)",
+            r"def mark_recommended",
+        ],
+        "官方原实现会把第一个选项标成英文“(Recommended)”—— 经纪人的中文对话里出现英文，"
+        "而且等于替他做选择（实测：问哪个城市的政策，一个外地城市被标成“推荐”）。\n"
+        "处理：RECOMMENDED_LABEL 保持中文、mark_recommended 不再改写选项（只留 strip 用于剥离历史标记）。",
+    ),
 ]
 
 # 文件/目录存在性检查：编号 / 名称 / 相对路径 / 类型(file|dir|glob) / 最少数量 / 失败提示

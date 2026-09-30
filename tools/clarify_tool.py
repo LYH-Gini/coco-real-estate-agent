@@ -12,8 +12,10 @@ MAX_QUESTIONS = 5  # independent questions per batch call
 # treats it (like ``None``) as "the user walked away" and aborts remaining questions.
 TIMEOUT_RESPONSE = ("The user did not provide a response within the time limit. "
                     "Use your best judgement to make the choice and proceed.")
-# Applied to the first choice here (not per-surface) so every adapter renders it identically.
-RECOMMENDED_LABEL = "(Recommended)"
+# 展示层的"推荐"标记（2026-09-30 改）：原来这里的英文标签会被自动加到第一个选项后面，
+# 经纪人看到的是"某城市 （推荐）"那种英文 + 被替他做主的组合。现在：① 不再自动加标记（见 mark_recommended）；
+# ② 万一手写/历史数据里带中文标记"（推荐）"，剥离时认得出来。
+RECOMMENDED_LABEL = "（推荐）"
 _UNAVAILABLE = "Clarify tool is not available in this execution context."
 
 
@@ -33,12 +35,13 @@ def _flatten_choice(c) -> str:
 
 
 def mark_recommended(choices: List[str]) -> List[str]:
-    """Suffix the first choice (schema says best-first) with RECOMMENDED_LABEL; idempotent,
-    and a lone choice is left untouched (nothing to prefer it over)."""
-    first = str(choices[0]).strip() if choices else ""
-    if len(choices) < 2 or first != strip_recommended(first):
-        return choices
-    return [f"{first} {RECOMMENDED_LABEL}"] + list(choices[1:])
+    """不再给选项加"推荐"标记（2026-09-30 COCO-PATCH，原为给第一个选项补一个英文"推荐"标签）。
+
+    为什么去掉：① 那是英文，经纪人面对的是中文对话；② 它等于**替经纪人做选择**（实测：问"哪个城市的政策"，
+    选项里的外地城市被标成"推荐"，而他做的是另一个城市）。选项顺序仍可"最合适的在前"，但界面不再替他表态。
+    保留函数名与 strip_recommended，是为了兼容历史/手写标记仍能被剥离。
+    """
+    return list(choices)
 
 
 def strip_recommended(text: str) -> str:
@@ -225,7 +228,7 @@ def clarify_tool(question: str, choices: Optional[List[str]] = None, multi_selec
         choices = _clean_choices(choices)
     if callback is None:
         return tool_error(_UNAVAILABLE)
-    # The bare list goes back to the agent; the "(Recommended)" label is presentation only.
+    # The bare list goes back to the agent; the presentation layer no longer tags a "推荐"选项。
     shown = mark_recommended(choices) if choices is not None else None
     try:
         raw_response = _invoke_callback(callback, question, shown, multi_select)
@@ -250,8 +253,9 @@ CLARIFY_SCHEMA = {
         "one-entry array, and several INDEPENDENT questions belong in ONE "
         "call (one form beats a chain of clarify calls; if one answer would "
         "change another question, ask separately). Per question: "
-        f"single-select (up to {MAX_CHOICES} choices — put your recommended "
-        "option FIRST, the UI marks it '(Recommended)' and auto-appends an "
+        f"single-select (up to {MAX_CHOICES} choices — put the most suitable "
+        "option FIRST and let the user pick; the UI does not mark any option "
+        "as recommended, and auto-appends an "
         "'Other' free-text row), multi-select (multi_select=true), or "
         "open-ended (omit choices). Options go ONLY in `choices`, never "
         "enumerated inside the question text (choices render as pickable "
@@ -271,7 +275,7 @@ CLARIFY_SCHEMA = {
                 "maxItems": MAX_QUESTIONS,
                 "description": (
                     "The question(s). Each: question text (options excluded), "
-                    "optional choices (recommended first; omit for free-text), "
+                    "optional choices (most suitable first; omit for free-text), "
                     "optional multi_select. Responses come back in question "
                     "order with the question text echoed."
                 ),

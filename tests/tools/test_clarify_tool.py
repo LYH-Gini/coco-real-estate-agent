@@ -62,7 +62,7 @@ class TestClarifyToolChoicesValidation:
             return "answer"
 
         clarify_tool("Pick", choices=[1, 2, 3], callback=mock_callback)  # type: ignore
-        assert choices_received == ["1 (Recommended)", "2", "3"]
+        assert choices_received == ["1", "2", "3"]
 
 
 class TestClarifyToolCallbackHandling:
@@ -122,7 +122,7 @@ class TestClarifyDictChoices:
             callback=cb,
         ))  # type: ignore
         assert seen == [
-            "Tight, covers all 3 points (Recommended)",
+            "Tight, covers all 3 points",
             "Loose layout",
             "A plain string choice",
         ]
@@ -188,15 +188,15 @@ class TestClarifyToolMultiSelect:
 
 
 class TestClarifyRecommendedLabel:
-    """The first choice is the agent's pick and is labelled as such.
+    """不再给任何选项加"推荐"标记（2026-09-30 改，原为把第一个选项标成英文 "(Recommended)"）。
 
-    The schema tells the model to order choices best-first, so the tool tags
-    element 0 with "(Recommended)" at the one platform-agnostic entry point —
-    CLI, TUI, desktop, and messaging adapters all inherit the same label. The
-    label is presentation only: it never appears in the answer the agent reads.
+    为什么改：① 那是英文，而经纪人的对话是中文；② 它等于替经纪人做选择
+    （实测：问"哪个城市的政策"，一个外地城市被标成"推荐"，而他做的是另一个城市）。
+    选项仍按"最合适的在前"排序，但展示层不替他表态；`strip_recommended` 保留，
+    用于剥离历史/手写的中文"（推荐）"标记。
     """
 
-    def test_first_choice_is_labelled(self):
+    def test_no_recommendation_label_is_added(self):
         seen = []
 
         def cb(question, choices):
@@ -204,10 +204,10 @@ class TestClarifyRecommendedLabel:
             return choices[1]
 
         clarify_tool("Pick", choices=["Rebase", "Merge"], callback=cb)
-        assert seen == ["Rebase (Recommended)", "Merge"]
+        assert seen == ["Rebase", "Merge"]
 
     def test_answer_strips_the_label(self):
-        """Picking the recommended option returns the bare option text."""
+        """历史/手写带中文"（推荐）"标记时，回答仍是干净文本。"""
         def cb(question, choices):
             return choices[0]
 
@@ -400,8 +400,8 @@ class TestClarifyBatchValidation:
         )
         q0, q1 = seen["questions"]
         assert len(q0["choices"]) == MAX_CHOICES
-        assert q0["choices"][0] == "a (Recommended)"
-        assert q1["choices"] == ["Loose layout (Recommended)", "Tight"]
+        assert q0["choices"][0] == "a"
+        assert q1["choices"] == ["Loose layout", "Tight"]
 
     def test_batch_internal_ids_are_stable_and_model_id_echoed(self):
         """Wire ids are q0..qN. A model-supplied id only shows in results."""
@@ -536,7 +536,7 @@ class TestClarifyBatchDispatch:
             callback=legacy_cb,
         ))
         assert [c[0] for c in calls] == ["One?", "Two?"]
-        assert calls[0][1] == ("a (Recommended)", "b")
+        assert calls[0][1] == ("a", "b")
         assert calls[1][1] is None
         assert [r["user_response"] for r in result["responses"]] == [
             "answer to One?", "answer to Two?",
