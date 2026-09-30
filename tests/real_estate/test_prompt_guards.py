@@ -333,9 +333,11 @@ class TestOutwardWordingNamedExamples:
         assert "工具返回的 warnings 也这样转述" in MANUAL
 
     def test_prompt_forbids_naming_the_brokers_city(self):
-        """不许替经纪人总结"你主做哪个城市"（实测：冒出"你主做的北京"，而他做的是海口）"""
+        """不许替经纪人总结"你主做哪个城市"，也不许在选项里写"推荐"（实测：冒出"你主做的某市"）"""
         assert "城市只按经纪人自己的资料说" in PROMPT
+        assert "选项文字里也不要写" in PROMPT
         assert "不要替他总结" in MANUAL
+        assert "选项文字里也不写" in MANUAL
 
     def test_policy_citation_needs_source_and_no_mixing(self):
         """政策引用要带来源、别把两次调整混着说（实测："2024-05-17 起二套也降到 15%"）"""
