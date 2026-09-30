@@ -72,7 +72,7 @@ def test_doctor_names_retired_wal_holders_instead_of_healthy_state_db(tmp_path, 
     finding = doctor_state._check_state_db(True)
     out = capsys.readouterr().out
 
-    assert "4242" in out and "retired WAL" in out
+    assert "4242" in out and "已废弃的 WAL 版本" in out
     assert "✓" not in out
     assert probed == [] and finding.fixed == 0
     assert any("4242" in issue and "gateway stop" in issue for issue in finding.issues)

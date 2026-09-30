@@ -75,7 +75,7 @@ def _check_auth_providers(should_fix: bool, f: Finding) -> None:
         # Native OAuth is Hermes' own device-code flow; the Codex CLI only imports existing ~/.codex/auth.json
         # tokens, so the hint sits under the Codex row (not as another provider's remedy).
         if not _login_row("OpenAI Codex auth", get_codex_auth_status(), show_error=True) and not _safe_which("codex"):
-            check_info("codex CLI not installed (optional — only required to import tokens from an existing Codex CLI login)")
+            check_info("没装 codex CLI（可选 —— 只有想从已有的 Codex CLI 登录导入令牌时才需要）")
         minimax_status = get_minimax_oauth_auth_status()
         _login_row("MiniMax OAuth", minimax_status, f"(logged in, region={minimax_status.get('region', 'global')})")
     with warn_on_error(""):  # xAI OAuth separately, so an import failure cannot disrupt the rows already printed
@@ -85,7 +85,7 @@ def _check_auth_providers(should_fix: bool, f: Finding) -> None:
 
 def _login_row(label: str, status: dict, ok_detail: str = "(logged in)", show_error: bool = False) -> bool:
     """ok/warn row for an OAuth status dict; with show_error, its ``error`` hint prints under a not-logged-in row."""
-    logged_in = check_bool(status.get("logged_in"), (label, ok_detail), (label, "(not logged in)"))
+    logged_in = check_bool(status.get("logged_in"), (label, ok_detail), (label, "（未登录）"))
     if not logged_in and show_error and status.get("error"):
         check_info(status["error"])
     return logged_in

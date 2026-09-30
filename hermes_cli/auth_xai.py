@@ -79,7 +79,7 @@ def _read_xai_oauth_tokens(*, _lock: bool = True) -> Dict[str, Any]:
             state = global_state
     if not state:
         raise _xai_err(
-            "No xAI OAuth credentials stored. Select xAI Grok OAuth (SuperGrok / Premium+) in `hermes model`.",
+            "还没存 xAI 的登录凭据。在「coco model」里选 xAI Grok OAuth（SuperGrok / Premium+）。",
             "xai_auth_missing", relogin=True,
         )
     tokens = state.get("tokens")

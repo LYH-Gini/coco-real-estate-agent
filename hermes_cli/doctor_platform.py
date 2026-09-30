@@ -500,7 +500,7 @@ def _check_required_packages(should_fix: bool, f: Finding) -> None:
     for module, name, optional in _PACKAGES:
         try:
             __import__(module)
-            check_ok(name, "(optional)" if optional else "")
+            check_ok(name, "（可选）" if optional else "")
         except ImportError:
             if optional:
                 check_warn(name, "（可选，未安装）")

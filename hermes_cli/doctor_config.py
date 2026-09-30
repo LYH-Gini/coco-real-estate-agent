@@ -85,14 +85,14 @@ def report_deprecated_config_and_env(raw_config: dict | None = None, env_map: di
     relay_cutover = collect_relay_plugin_cutover_findings(raw_config, env_map)
     findings = deprecated + relay_cutover
     if not findings:
-        check_ok("No deprecated config keys or env vars")
+        check_ok("没有过时的配置项或环境变量")
         return findings
     for legacy, replacement in deprecated:
-        check_warn(f"Deprecated: {legacy}", f"(use {replacement} instead)")
-        check_info(f"Replace {legacy} → {replacement} (warn-only; not auto-migrated here)")
+        check_warn(f"已过时：{legacy}", f"（改用 {replacement}）")
+        check_info(f"把 {legacy} 换成 {replacement}（只提示，这里不自动迁移）")
     for legacy, replacement in relay_cutover:
-        check_warn(f"Breaking Relay migration: {legacy}", f"({replacement})")
-        check_info(f"Migrate {legacy}: {replacement}")
+        check_warn(f"中转插件迁移会影响使用：{legacy}", f"（{replacement}）")
+        check_info(f"迁移 {legacy}：{replacement}")
     return findings
 
 
@@ -106,9 +106,9 @@ def managed_scope_check() -> None:
     if managed_dir is None:
         return
     n_cfg, n_env = len(managed_scope.managed_config_keys()), len(managed_scope.load_managed_env())
-    check_ok(f"Managed scope active: {n_cfg} config key(s), {n_env} env key(s) pinned by {managed_dir}")
+    check_ok(f"托管配置生效：{managed_dir} 固定了 {n_cfg} 个配置项、{n_env} 个环境变量")
     if os.environ.get("HERMES_MANAGED_DIR", "").strip():
-        check_info(f"managed dir set via HERMES_MANAGED_DIR={managed_dir}")
+        check_info(f"托管目录来自 HERMES_MANAGED_DIR={managed_dir}")
 
 
 @doctor_check("MCP security check failed: {e}")
@@ -123,10 +123,10 @@ def _check_mcp_security(should_fix: bool, f: Finding) -> None:
         if not issues_found:
             continue
         suspicious += 1
-        check_warn(f"MCP server '{name}' has suspicious stdio command", "; ".join(issues_found))
-        f.manual_issues.append(f"Review/remove mcp_servers.{name} in config.yaml; rotate any credentials that may have been exposed.")
+        check_warn(f"MCP 服务「{name}」的 stdio 命令可疑", "; ".join(issues_found))
+        f.manual_issues.append(f"请在 config.yaml 里检查或删除 mcp_servers.{name}；可能已暴露的凭据请及时更换。")
     if suspicious == 0:
-        check_ok("No suspicious MCP stdio commands")
+        check_ok("MCP 的 stdio 命令没有可疑项")
 
 
 @doctor_check()
@@ -136,30 +136,30 @@ def _check_env_file(should_fix: bool, f: Finding) -> None:
     managed_scope_check()
     env_path = HERMES_HOME / '.env'
     if env_path.exists():
-        check_ok(f"{_DHH}/.env file exists")
+        check_ok(f"{_DHH}/.env 存在")
         # UTF-8 first; latin-1 fallback for Windows Notepad/cp1252 files (matches env_loader._load_dotenv_with_fallback).
         try:
             content = env_path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             content = env_path.read_text(encoding="latin-1")
-        if not check_bool(_has_provider_env_config(content), "API key or custom endpoint configured", f"No API key found in {_DHH}/.env"):
-            f.issues.append("Run 'hermes setup' to configure API keys")
+        if not check_bool(_has_provider_env_config(content), "密钥或自定义接口已配置", f"{_DHH}/.env 里没找到密钥"):
+            f.issues.append("跑「coco setup」配置密钥")
     elif (PROJECT_ROOT / '.env').exists():  # project root as fallback
-        check_ok(".env file exists (in project directory)")
+        check_ok(".env 存在（在项目目录里）")
     else:
-        check_fail(f"{_DHH}/.env file missing")
+        check_fail(f"{_DHH}/.env 缺失")
         if should_fix:
             env_path.parent.mkdir(parents=True, exist_ok=True)
             env_path.touch()
             # .env holds API keys — touch() obeys umask (commonly 0o022, world-readable); tighten explicitly.
             with warn_on_error(""):
                 os.chmod(str(env_path), 0o600)
-            check_ok(f"Created empty {_DHH}/.env")
-            check_info("Run 'hermes setup' to configure API keys")
+            check_ok(f"已创建空的 {_DHH}/.env")
+            check_info("跑「coco setup」配置密钥")
             f.fixed += 1
         else:
-            check_info("Run 'hermes setup' to create one")
-            f.issues.append("Run 'hermes setup' to create .env")
+            check_info("跑「coco setup」创建一个")
+            f.issues.append("跑「coco setup」创建 .env")
 
 
 def _known_provider_ids(cfg: dict) -> tuple[set, list, object, object, object]:
@@ -253,9 +253,9 @@ def _validate_model_config(config_path, issues: list) -> None:
         from utils import base_url_host_matches
         accepts_vendor_slug = accepts_vendor_slug or not base_url_host_matches(model_base_url, "api.openai.com")
     if default_model and "/" in default_model and policy_id and not accepts_vendor_slug:
-        check_warn(f"model.default '{default_model}' uses a vendor/model slug but provider is '{provider_raw}'",
+        check_warn(f"model.default「{default_model}」写成了「厂商/模型」格式，但 provider 是「{provider_raw}」",
                    "(vendor-prefixed slugs belong to aggregators like openrouter)")
-        issues.append(f"model.default '{default_model}' is vendor-prefixed but model.provider is '{provider_raw}'. "
+        issues.append(f"model.default「{default_model}」带了厂商前缀，但 model.provider 是「{provider_raw}」。"
                       "Either set model.provider to 'openrouter', or drop the vendor prefix.")
     if runtime_provider and runtime_provider not in ("auto", "custom"):
         from hermes_cli.doctor import _DHH
@@ -287,11 +287,11 @@ def _validate_auxiliary_config(config_path, issues: list) -> None:
                             f"silently runs on the main model. Fix the provider name/credentials in auxiliary.{task}.", issues)
             continue
         if not runtime.get("api_key") and not runtime.get("command"):
-            check_warn(f"auxiliary.{task}.provider '{provider}' resolved without credentials", f"({runtime.get('provider')} @ {runtime.get('base_url')})")
+            check_warn(f"auxiliary.{task}.provider「{provider}」解析出来却没有凭据", f"（{runtime.get('provider')} @ {runtime.get('base_url')}）")
             continue
         ok.append(f"{task}→{runtime.get('provider')}@{base_url_hostname(str(runtime.get('base_url') or '')) or '?'}")
     if ok:
-        check_ok("auxiliary task routing resolves: " + ", ".join(ok))
+        check_ok("辅助任务的模型路由解析结果：" + ", ".join(ok))
 
 
 @doctor_check()
@@ -300,13 +300,13 @@ def _check_config_file(should_fix: bool, f: Finding) -> None:
     from hermes_cli.doctor import HERMES_HOME, PROJECT_ROOT, _DHH
     config_path = HERMES_HOME / 'config.yaml'
     if config_path.exists():
-        check_ok(f"{_DHH}/config.yaml exists")
+        check_ok(f"{_DHH}/config.yaml 存在")
         with warn_on_error("Could not validate model/provider config"):
             _validate_model_config(config_path, f.issues)
         with warn_on_error("Could not validate auxiliary task routing"):
             _validate_auxiliary_config(config_path, f.issues)
     elif (PROJECT_ROOT / 'cli-config.yaml').exists():
-        check_ok("cli-config.yaml exists (in project directory)")
+        check_ok("cli-config.yaml 存在（在项目目录里）")
     elif should_fix:
         config_path.parent.mkdir(parents=True, exist_ok=True)
         example_config = PROJECT_ROOT / 'cli-config.yaml.example'
@@ -315,28 +315,28 @@ def _check_config_file(should_fix: bool, f: Finding) -> None:
         else:
             from hermes_cli.config import DEFAULT_CONFIG, save_config
             save_config(DEFAULT_CONFIG)
-        check_ok(f"Created {_DHH}/config.yaml from {'cli-config.yaml.example' if example_config.exists() else 'defaults'}")
+        check_ok(f"已创建 {_DHH}/config.yaml（来源：{'cli-config.yaml.example' if example_config.exists() else 'defaults'}）")
         f.fixed += 1
     else:
-        check_warn("config.yaml not found", "(using defaults)")
+        check_warn("找不到 config.yaml", "（用默认值）")
 
 
 def _drift_config_version(f: Finding, should_fix: bool, config_path) -> None:
     from hermes_cli.config import check_config_version, migrate_config
     current_ver, latest_ver = check_config_version()
     outdated = (f"Config version outdated (v{current_ver} → v{latest_ver})", "(new settings available)")
-    if check_bool(current_ver >= latest_ver, f"Config version up to date (v{current_ver})", outdated):
+    if check_bool(current_ver >= latest_ver, f"配置版本已是最新（v{current_ver}）", outdated):
         return
     if not should_fix:
-        f.issues.append("Run 'hermes doctor --fix' or 'hermes setup' to migrate config")
+        f.issues.append("跑「coco doctor --fix」或「coco setup」迁移配置")
         return
     try:
         migrate_config(interactive=False, quiet=False)
-        check_ok("Config migrated to latest version")
+        check_ok("配置已迁移到最新版本")
         f.fixed += 1
     except Exception as mig_err:
-        check_warn(f"Auto-migration failed: {mig_err}")
-        f.issues.append("Run 'hermes setup' to migrate config")
+        check_warn(f"自动迁移失败：{mig_err}")
+        f.issues.append("跑「coco setup」迁移配置")
 
 
 def _drift_stale_root_keys(f: Finding, should_fix: bool, config_path) -> None:
@@ -346,9 +346,9 @@ def _drift_stale_root_keys(f: Finding, should_fix: bool, config_path) -> None:
     stale_root_keys = [k for k in ("provider", "base_url") if k in raw_config and isinstance(raw_config[k], str)]
     if not stale_root_keys:
         return
-    check_warn(f"Stale root-level config keys: {', '.join(stale_root_keys)}", "(should be under 'model:' section)")
+    check_warn(f"根级残留的配置项：{', '.join(stale_root_keys)}", "（应该放在 model: 段里）")
     if not should_fix:
-        f.issues.append("Stale root-level provider/base_url in config.yaml — run 'hermes doctor --fix'")
+        f.issues.append("config.yaml 根级还留着 provider/base_url —— 跑「coco doctor --fix」")
         return
     # Coerce scalar/None ``model:`` into a dict before mutation (setdefault would hand back a scalar).
     raw_model = raw_config.get("model")
@@ -359,7 +359,7 @@ def _drift_stale_root_keys(f: Finding, should_fix: bool, config_path) -> None:
         if not raw_model.get(k):
             raw_model[k] = value
     atomic_config_write(config_path, raw_config)
-    check_ok("Migrated stale root-level keys into model section")
+    check_ok("已把根级残留的配置项迁到 model 段")
     f.fixed += 1
 
 
@@ -386,16 +386,16 @@ def _drift_max_iterations_ghost(f: Finding, should_fix: bool, config_path) -> No
     env_ghost = load_env().get("HERMES_MAX_ITERATIONS")
     if cfg_max_turns is None or env_ghost is None or str(cfg_max_turns).strip() == str(env_ghost).strip():
         return
-    check_warn(f"HERMES_MAX_ITERATIONS={env_ghost} in .env shadows agent.max_turns={cfg_max_turns} in config.yaml",
+    check_warn(f".env 里的 HERMES_MAX_ITERATIONS={env_ghost} 会盖掉 config.yaml 的 agent.max_turns={cfg_max_turns}",
                "(stale ghost from an earlier `hermes setup` run)")
     if not should_fix:
-        f.issues.append("Stale HERMES_MAX_ITERATIONS in .env shadows config.yaml — run 'hermes doctor --fix'")
+        f.issues.append(".env 里残留的 HERMES_MAX_ITERATIONS 会盖住 config.yaml —— 跑「coco doctor --fix」")
     elif remove_env_value("HERMES_MAX_ITERATIONS"):
-        check_ok(f"Removed stale HERMES_MAX_ITERATIONS from .env (config.yaml agent.max_turns={cfg_max_turns} is now authoritative)")
+        check_ok(f"已从 .env 删掉残留的 HERMES_MAX_ITERATIONS（现在以 config.yaml 的 agent.max_turns={cfg_max_turns} 为准）")
         f.fixed += 1
     else:
-        check_warn("Could not remove HERMES_MAX_ITERATIONS from .env")
-        f.manual_issues.append(f"Manually delete the HERMES_MAX_ITERATIONS line from {_DHH}/.env — config.yaml agent.max_turns is authoritative.")
+        check_warn("没能从 .env 删掉 HERMES_MAX_ITERATIONS")
+        f.manual_issues.append(f"请手工删掉 {_DHH}/.env 里的 HERMES_MAX_ITERATIONS 行 —— 以 config.yaml 的 agent.max_turns 为准。")
 
 
 def _drift_deprecations(f: Finding, should_fix: bool, config_path) -> None:
@@ -414,7 +414,7 @@ def _drift_structure(f: Finding, should_fix: bool, config_path) -> None:
     config_issues = validate_config_structure()
     if not config_issues:
         return
-    _section("Config Structure")
+    _section("配置结构")
     for ci in config_issues:
         (check_fail if ci.severity == "error" else check_warn)(ci.message)
         for hint_line in ci.hint.splitlines():
@@ -446,7 +446,7 @@ def _drift_legacy_custom_providers(f: Finding, should_fix: bool, config_path) ->
         if not isinstance(entry, dict) or not _endpoint_url(entry) or _endpoint_url(entry) in twins:
             continue
         label = str(entry.get("name") or "").strip() or _endpoint_url(entry)
-        check_warn(f"Legacy custom_providers entry '{label}' has no providers: twin",
+        check_warn(f"旧的 custom_providers 条目「{label}」在新写法里找不到对应项",
                    "(still read from the retired list store; every other surface edits providers:)")
         f.manual_issues.append(
             f"Move custom_providers entry '{label}' into config.yaml providers: as `providers.<key>.api: "
@@ -480,12 +480,12 @@ def _check_xai_retirement(should_fix: bool, f: Finding) -> None:
     from hermes_cli.xai_retirement import MIGRATION_GUIDE_URL, find_retired_xai_refs, format_issue
     retired_refs = find_retired_xai_refs(load_config())
     if not retired_refs:
-        check_ok("No retired xAI models in config")
+        check_ok("配置里没有已下线的 xAI 模型")
         return
     for ref in retired_refs:
         check_warn(format_issue(ref))
-    check_info(f"Migration guide: {MIGRATION_GUIDE_URL}")
-    f.manual_issues.append(f"Update {len(retired_refs)} retired xAI model reference(s) in config.yaml — see {MIGRATION_GUIDE_URL}")
+    check_info(f"迁移指南：{MIGRATION_GUIDE_URL}")
+    f.manual_issues.append(f"config.yaml 里有 {len(retired_refs)} 处已下线的 xAI 模型引用，请更新 —— 见 {MIGRATION_GUIDE_URL}")
 
 
 @doctor_check("Plugin compat check skipped", "({e})")
@@ -493,12 +493,12 @@ def _check_plugin_compat(should_fix: bool, f: Finding) -> None:
     from hermes_cli.plugin_compat import ALLOW_KEY, COMPAT_REMOVAL, compat_report, removal_in_effect
     report = compat_report()
     if not report:
-        check_ok(f"No enabled plugin imports paths removed on {COMPAT_REMOVAL}")
+        check_ok(f"没有启用的插件还在用 {COMPAT_REMOVAL} 已移除的导入路径")
         return
     for name, hits in sorted(report.items()):
         (check_fail if removal_in_effect() else check_warn)(
             f"{name}: {len(hits)} import(s) of paths removed on {COMPAT_REMOVAL}", f"{hits[0].old} -> {hits[0].new}")
-    check_info("Details: hermes plugins compat")
+    check_info("详情：coco plugins compat")
     f.manual_issues.append(
         f"Update {len(report)} plugin(s) still importing pre-decomposition paths (hermes plugins compat) — "
         + ("they are NOT being loaded" if removal_in_effect() else f"they stop loading on {COMPAT_REMOVAL}")

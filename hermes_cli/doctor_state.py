@@ -71,25 +71,25 @@ def _render_state_db_stats(stats: dict, holders=None, host_note: str = "") -> li
     stats = stats or {}
     logical, wal, freelist = (stats.get(k) for k in ("logical_size_bytes", "wal_size_bytes", "freelist_count"))
     size_bits = _bits(
-        (logical, lambda: f"logical size {_human_bytes(logical)}"),
-        (stats.get("page_count"), lambda: f"{stats['page_count']:,} pages"),
-        (freelist, lambda: f"{freelist:,} free"),
+        (logical, lambda: f"占用 {_human_bytes(logical)}"),
+        (stats.get("page_count"), lambda: f"{stats['page_count']:,} 页"),
+        (freelist, lambda: f"{freelist:,} 页空闲"),
         (wal, lambda: f"WAL {_human_bytes(wal)}"),
     )
     if size_bits:
         lines.append(("info", "state.db " + ", ".join(size_bits), ""))
     row_bits = _bits(
-        (stats.get("messages"), lambda: f"{stats['messages']:,} messages"),
-        (stats.get("sessions"), lambda: f"{stats['sessions']:,} sessions"),
+        (stats.get("messages"), lambda: f"{stats['messages']:,} 条消息"),
+        (stats.get("sessions"), lambda: f"{stats['sessions']:,} 个会话"),
         (stats.get("journal_mode") or None, lambda: f"journal_mode={stats['journal_mode']}"),
-        (holders, lambda: f"{holders} process(es) holding the DB open{host_note}"),
+        (holders, lambda: f"{holders} 个进程打开着这个库{host_note}"),
     )
     if row_bits:
         lines.append(("info", ", ".join(row_bits), ""))
     fts = stats.get("fts_tables")
     if fts:
         present = [t for t, ok in fts.items() if ok]
-        lines.append(("info", "FTS tables: " + (", ".join(present) if present else "none"), ""))
+        lines.append(("info", "全文检索表：" + (", ".join(present) if present else "无"), ""))
     deferral = stats.get("fts_rebuild_deferral")
     if isinstance(deferral, dict):
         pids = deferral.get("holder_pids") or "unknown"
@@ -126,43 +126,43 @@ def _check_directory_structure(should_fix: bool, f: Finding) -> None:
     """HERMES_HOME, expected subdirs, SOUL.md, and the enabled built-in memory files."""
     from hermes_cli.doctor import HERMES_HOME, _DHH
     hermes_home = HERMES_HOME
-    ensure_dir(f, should_fix, hermes_home, f"{_DHH} directory exists", f"Created {_DHH} directory", f"{_DHH} not found")
+    ensure_dir(f, should_fix, hermes_home, f"{_DHH} 目录存在", f"已创建 {_DHH} 目录", f"找不到 {_DHH}")
     _memory_enabled, _user_profile_enabled = _memory_store_flags(hermes_home)
     memory_on = bool(_memory_enabled or _user_profile_enabled)
     # The built-in file store neither creates nor consumes memories/ when both targets are disabled.
     for subdir_name in ["cron", "sessions", "logs", "skills"] + (["memories"] if memory_on else []):
-        ensure_dir(f, should_fix, hermes_home / subdir_name, f"{_DHH}/{subdir_name}/ exists",
-                   f"Created {_DHH}/{subdir_name}/", f"{_DHH}/{subdir_name}/ not found")
+        ensure_dir(f, should_fix, hermes_home / subdir_name, f"{_DHH}/{subdir_name}/ 存在",
+                   f"已创建 {_DHH}/{subdir_name}/", f"找不到 {_DHH}/{subdir_name}/")
     _check_scratch_dir(hermes_home, _DHH)
     # SOUL.md persona file
     soul_path = hermes_home / "SOUL.md"
     if soul_path.exists():
         lines = soul_path.read_text(encoding="utf-8").strip().splitlines()
         if any(l.strip() and not l.strip().startswith(("<!--", "-->", "#")) for l in lines):
-            check_ok(f"{_DHH}/SOUL.md exists (persona configured)")
+            check_ok(f"{_DHH}/SOUL.md 存在（已配置人格）")
         else:  # template comments only (no real content)
-            check_info(f"{_DHH}/SOUL.md exists but is empty — edit it to customize personality")
+            check_info(f"{_DHH}/SOUL.md 存在但是空的 —— 编辑它可以定制人格")
     else:
-        check_warn(f"{_DHH}/SOUL.md not found", "(create it to give Hermes a custom personality)")
+        check_warn(f"找不到 {_DHH}/SOUL.md", "（创建它可以给 Coco 定制人格）")
         if should_fix:
             soul_path.parent.mkdir(parents=True, exist_ok=True)
             soul_path.write_text("# Hermes Agent Persona\n\n<!-- Edit this file to customize how Hermes communicates. -->\n\n"
                                  "You are Hermes, a helpful AI assistant.\n", encoding="utf-8")
-            check_ok(f"Created {_DHH}/SOUL.md with basic template")
+            check_ok(f"已用基础模板创建 {_DHH}/SOUL.md")
             f.fixed += 1
     # Only enabled built-in stores: users can disable either legacy file target, and stale migration files
     # must not read as active memory usage.
     memories_dir = hermes_home / "memories"
     if not memory_on:
-        return check_info("Built-in memory files disabled by config")
+        return check_info("记忆文件已被配置关掉")
     existed = memories_dir.exists()
-    ensure_dir(f, should_fix, memories_dir, f"{_DHH}/memories/ directory exists", f"Created {_DHH}/memories/",
+    ensure_dir(f, should_fix, memories_dir, f"{_DHH}/memories/ 目录存在", f"已创建 {_DHH}/memories/",
                f"{_DHH}/memories/ not found")
     for fname in [n for on, n in ((_memory_enabled, "MEMORY.md"), (_user_profile_enabled, "USER.md")) if on and existed]:
         if (memories_dir / fname).exists():
-            check_ok(f"{fname} exists ({len((memories_dir / fname).read_text(encoding='utf-8').strip())} chars)")
+            check_ok(f"{fname} 存在（{len((memories_dir / fname).read_text(encoding='utf-8').strip())} 字符）")
         else:
-            check_info(f"{fname} not created yet (will be created when the agent first writes a memory)")
+            check_info(f"{fname} 还没创建（第一次写记忆时会自动建）")
 
 
 # Cache-root entries at least this big that no pruner covers get a doctor warning.
@@ -196,7 +196,7 @@ def _check_scratch_dir(hermes_home: Path, _DHH: str) -> None:
         SCRATCH_DIR_MARKER_ENV, SCRATCH_MAX_IDLE_HOURS, get_scratch_dir, scratch_dir_usage_bytes)
     scratch = get_scratch_dir(hermes_home, prune=False)
     size = _human_bytes(scratch_dir_usage_bytes(scratch))
-    check_ok(f"{_DHH}/cache/scratch/ is the scratch dir (TMPDIR; {size}, entries pruned after {SCRATCH_MAX_IDLE_HOURS}h idle)")
+    check_ok(f"{_DHH}/cache/scratch/ 是临时目录（TMPDIR；{size}，闲置 {SCRATCH_MAX_IDLE_HOURS} 小时后自动清理）")
     for name, nbytes in unpruned_cache_hogs(hermes_home):
         check_warn(
             f"{_DHH}/cache/{name}/ is {_human_bytes(nbytes)} and outside every pruner "
@@ -205,7 +205,7 @@ def _check_scratch_dir(hermes_home: Path, _DHH: str) -> None:
         )
     tmpdir = os.environ.get("TMPDIR", "")
     if tmpdir and tmpdir != os.environ.get(SCRATCH_DIR_MARKER_ENV, ""):
-        check_info(f"TMPDIR={tmpdir} is set by you or the OS, so Hermes leaves it alone")
+        check_info(f"TMPDIR={tmpdir} 是你或系统设的，Coco 不会去动它")
 
 
 def _session_count(state_db_path: Path):
@@ -230,8 +230,8 @@ def _write_health_reason(state_db_path: Path, *, should_fix: bool):
     if not _live_writer_holds_db(state_db_path):
         return _db_opens_cleanly(state_db_path)
     if not should_fix and state_db_path.stat().st_size > _WRITE_PROBE_SNAPSHOT_MAX_BYTES:
-        check_info("state.db write-health probe skipped: store is held by a live writer and larger than 1 GB "
-                   "(run 'hermes doctor --fix' to probe it)")
+        check_info("跳过 state.db 的写入体检：库正被写入进程占用且大于 1 GB "
+                   "（跑「coco doctor --fix」可以强制检查）")
         return None
     import sqlite3
     import tempfile
@@ -283,7 +283,7 @@ def _repair_state_db(f: Finding, should_fix: bool, state_db_path: Path, kind: st
     from hermes_state_repair import repair_state_db_schema
     report = repair_state_db_schema(state_db_path)
     if not report.get("repaired"):
-        check_warn(not_fixed_label, f"({report.get('error')}; backup: {report.get('backup_path')})")
+        check_warn(not_fixed_label, f"（{report.get('error')}；备份：{report.get('backup_path')}）")
         return f.issues.append(failed_issue)
     if "{count}" in ok_label:
         try:
@@ -291,7 +291,7 @@ def _repair_state_db(f: Finding, should_fix: bool, state_db_path: Path, kind: st
         except Exception:
             ok_label = ok_label.format(count="?")
     backup_name = Path(report["backup_path"]).name if report.get("backup_path") else "n/a"
-    check_ok(ok_label, f"(strategy: {report.get('strategy')}; backup: {backup_name})")
+    check_ok(ok_label, f"（策略：{report.get('strategy')}；备份：{backup_name}）")
     f.fixed += 1
 
 
@@ -300,8 +300,7 @@ def _report_structural_damage(f: Finding, should_fix: bool, state_db_path: Path,
     from hermes_state_repair import state_db_has_structural_damage
     if not state_db_has_structural_damage(state_db_path):
         return False
-    check_warn(f"{_DHH}/state.db has structural corruption (canonical tables/indexes damaged, "
-               "not the FTS index)", f"({reason})")
+    check_warn(f"{_DHH}/state.db 结构性损坏（核心表/索引坏了，不是 FTS 索引）", f"（{reason}）")
     _repair_state_db(f, should_fix, state_db_path, "structural")
     return True
 
@@ -312,17 +311,17 @@ def _classify_unreadable_state_db(f: Finding, should_fix: bool, state_db_path: P
     if _report_structural_damage(f, should_fix, state_db_path, _DHH, exc):
         return
     if not is_malformed_db_error(exc):
-        return check_warn(f"{_DHH}/state.db exists but has issues: {exc}")
+        return check_warn(f"{_DHH}/state.db 存在但有问题：{exc}")
     # sqlite_master itself is malformed (e.g. duplicate messages_fts): every statement fails before it runs,
     # so this is NOT a plain FTS rebuild — repair sqlite_master in place (backup first).
-    check_warn(f"{_DHH}/state.db schema is malformed (sessions hidden until repaired)", f"({exc})")
+    check_warn(f"{_DHH}/state.db 表结构异常（修好之前会话会被隐藏）", f"（{exc}）")
     _repair_state_db(f, should_fix, state_db_path, "schema")
 
 
 def _state_db_health(f: Finding, should_fix: bool, state_db_path: Path, _DHH: str) -> None:
     """Session count + FTS write-health probe; malformed-schema path when even COUNT(*) fails."""
     try:
-        check_ok(f"{_DHH}/state.db exists ({_session_count(state_db_path)} sessions)")
+        check_ok(f"{_DHH}/state.db 存在（{_session_count(state_db_path)} 个会话）")
         # COUNT(*) succeeds even when the FTS index is corrupt and every write fails through the triggers.
         _write_reason = _write_health_reason(state_db_path, should_fix=should_fix)
     except Exception as e:
@@ -330,14 +329,14 @@ def _state_db_health(f: Finding, should_fix: bool, state_db_path: Path, _DHH: st
     if _write_reason is not None:
         if _report_structural_damage(f, should_fix, state_db_path, _DHH, _write_reason):
             return
-        check_warn(f"{_DHH}/state.db fails a write-health probe (FTS index may be corrupt)", f"({_write_reason})")
+        check_warn(f"{_DHH}/state.db 写入体检不通过（FTS 索引可能坏了）", f"（{_write_reason}）")
         _repair_state_db(f, should_fix, state_db_path, "fts")
 
 
 def _state_db_stats(issues: list, state_db_path: Path) -> None:
     """Health/stats snapshot: strictly read-only (mode=ro) so it is safe against a live DB held by
     the gateway; any failure degrades to one info line rather than failing doctor."""
-    with warn_on_error("state.db stats unavailable ({e})", "", report=lambda t, _d: check_info(t)):
+    with warn_on_error("取不到 state.db 统计（{e}）", "", report=lambda t, _d: check_info(t)):
         from hermes_state_dbfile import collect_state_db_stats, count_db_holders
         rows = _render_state_db_stats(collect_state_db_stats(state_db_path), holders=count_db_holders(state_db_path),
                                       host_note=host_gateway_note())
@@ -347,7 +346,7 @@ def _state_db_stats(issues: list, state_db_path: Path) -> None:
                 continue
             check_warn(_text, _detail)
             if "auto_prune" in _detail:
-                issues.append("state.db is large — enable sessions.auto_prune in config.yaml"
+                issues.append("state.db 偏大 —— 可以在 config.yaml 里打开 sessions.auto_prune"
                               + (" and run 'hermes sessions optimize-storage' offline (gateway stopped)" if "optimize-storage" in _detail else ""))
 
 
@@ -371,23 +370,23 @@ def _state_db_wal(f: Finding, should_fix: bool, state_db_path: Path) -> None:
             if _live_writer_holds_db(state_db_path):
                 # A large WAL is normal while Desktop or the gateway is running; a bare "run --fix" here sent
                 # users straight into the second-writer trap (#110054).
-                check_warn(title, "(normal while Desktop or the gateway is running, or state.db cannot be "
+                check_warn(title, "（桌面端或网关在跑时属正常，或者 state.db 读不了"
                                   "inspected — checkpoint only with them stopped)")
                 return f.issues.append(_SKIP)
-            check_warn(title, "(may indicate missed checkpoints)")
+            check_warn(title, "（可能是漏了检查点）")
             if not should_fix:
                 return f.issues.append(
                     "Large WAL file — stop the profile's gateway, then run 'hermes doctor --fix' to checkpoint")
             with _exclusive_repair_db_guard(state_db_path) as (guard, guard_error):
                 if guard is None:
-                    check_warn("WAL checkpoint skipped: could not take exclusive ownership of state.db",
+                    check_warn("跳过 WAL 检查点：拿不到 state.db 的独占所有权",
                                f"({guard_error}; stop the profile's gateway and re-run 'hermes doctor --fix')")
                     return f.issues.append(_SKIP)
                 guard.execute("PRAGMA wal_checkpoint(PASSIVE)")
-            check_ok(f"WAL checkpoint performed ({size // 1024}K → {wal_size() // 1024}K)")
+            check_ok(f"已做 WAL 检查点（{size // 1024}K → {wal_size() // 1024}K）")
             f.fixed += 1
         elif size > 10 * 1024 * 1024:  # 10 MB
-            check_info(f"WAL file is {size // (1024*1024)} MB (normal for active sessions)")
+            check_info(f"WAL 文件 {size // (1024*1024)} MB（会话活跃时属正常）")
 
 
 def _retired_wal_holders(f: Finding, state_db_path: Path, _DHH: str) -> bool:
@@ -401,12 +400,11 @@ def _retired_wal_holders(f: Finding, state_db_path: Path, _DHH: str) -> bool:
     if not pids:
         return False
     rendered = ", ".join(describe_holder_pid(pid) for pid in pids)
-    check_warn(f"{_DHH}/state.db: {len(pids)} process(es) still hold a retired WAL generation ({rendered})",
-               "(every new session refuses to open until they exit; health/stats probes skipped)")
-    f.issues.append(f"state.db retired WAL generation held by {rendered}{host_gateway_note()} — stop the host "
-                    f"gateway, dashboard and cron writers among them ('hermes {profile_cli_selector()}gateway "
-                    "stop' stops the ONE host process serving every profile, quit the Desktop app), do not "
-                    "delete the WAL yourself, then rerun 'hermes doctor'")
+    check_warn(f"{_DHH}/state.db：还有 {len(pids)} 个进程占着已废弃的 WAL 版本（{rendered}）",
+               "（它们不退出，新会话就打不开；健康检查与统计也会跳过）")
+    f.issues.append(f"state.db 的旧 WAL 版本被 {rendered}{host_gateway_note()} 占着 —— 请把这些进程里的网关、"
+                    f"看板与定时写入都停掉（「coco {profile_cli_selector()}gateway stop」会停掉那个服务全部配置的唯一主进程；"
+                    "顺带退出桌面端），不要自己删 WAL，然后重跑「coco doctor」")
     return True
 
 
@@ -422,7 +420,7 @@ def _check_state_db(should_fix: bool, f: Finding) -> None:
         _state_db_health(f, should_fix, state_db_path, _DHH)
         _state_db_stats(f.issues, state_db_path)
     else:
-        check_info(f"{_DHH}/state.db not created yet (will be created on first session)")
+        check_info(f"{_DHH}/state.db 还没创建（第一次会话时自动建）")
     _state_db_wal(f, should_fix, state_db_path)
 
 
@@ -453,22 +451,22 @@ def _gh_authenticated() -> bool:
 def _check_skills_hub(should_fix: bool, f: Finding) -> None:
     from hermes_cli.doctor import HERMES_HOME, _DHH
     hub_dir = HERMES_HOME / "skills" / ".hub"
-    if check_bool(hub_dir.exists(), "Skills Hub directory exists", ("Skills Hub directory not initialized", "(run: hermes skills list)")):
+    if check_bool(hub_dir.exists(), "技能源目录存在", ("技能源目录还没初始化", "（跑：coco cli skills list）")):
         lock_file = hub_dir / "lock.json"
         if lock_file.exists():
             with warn_on_error("Lock file", "(corrupted or unreadable)"):
                 import json
                 count = len(json.loads(lock_file.read_text(encoding="utf-8")).get("installed", {}))
-                check_ok(f"Lock file OK ({count} hub-installed skill(s))")
+                check_ok(f"锁文件正常（{count} 个从技能源装的技能）")
         quarantine = hub_dir / "quarantine"
         q_count = sum(1 for d in quarantine.iterdir() if d.is_dir()) if quarantine.exists() else 0
         if q_count > 0:
-            check_warn(f"{q_count} skill(s) in quarantine", "(pending review)")
+            check_warn(f"{q_count} 个技能在隔离区", "（待复核）")
     from hermes_cli.config import get_env_value
     if get_env_value("GITHUB_TOKEN") or get_env_value("GH_TOKEN"):
-        check_ok("GitHub token configured", "(validity checked under API Connectivity)")
+        check_ok("GitHub 令牌已配置", "（有效性在「模型服务连通性」里检查）")
     else:
-        check_bool(_gh_authenticated(), ("GitHub authenticated via gh CLI", "(full API access — no GITHUB_TOKEN needed)"),
+        check_bool(_gh_authenticated(), ("已通过 gh CLI 登录 GitHub", "（完整 API 权限 —— 不需要配 GITHUB_TOKEN）"),
                    ("No GITHUB_TOKEN", f"(60 req/hr rate limit — set in {_DHH}/.env for better rates)"))
 
 
@@ -481,17 +479,17 @@ def _memory_provider_honcho(issues: list) -> None:
         # Config file missing — env-var fallback may still have resolved it.
         check_bool(hcfg.api_key or hcfg.base_url,
                    ("Honcho configured via environment variables", f"config file {cfg_path} not found, using HONCHO_API_KEY env var"),
-                   ("Honcho config not found", "run: hermes memory setup"))
+                   ("Honcho config not found", "跑：coco cli memory setup"))
     elif not hcfg.enabled:
-        check_info(f"Honcho disabled (set enabled: true in {cfg_path} to activate)")
+        check_info(f"Honcho 没启用（在 {cfg_path} 里设 enabled: true 可打开）")
     elif not (hcfg.api_key or hcfg.base_url):
-        _fail_and_issue("Honcho API key or base URL not set", "run: hermes memory setup",
+        _fail_and_issue("Honcho API key or base URL not set", "跑：coco cli memory setup",
                         "No Honcho API key — run 'hermes memory setup'", issues)
     else:
         client.reset_honcho_client()
         try:
             client.get_honcho_client(hcfg)
-            check_ok("Honcho connected", f"workspace={hcfg.workspace_id} mode={hcfg.recall_mode} freq={hcfg.write_frequency}")
+            check_ok("Honcho 已连接", f"工作区={hcfg.workspace_id} 模式={hcfg.recall_mode} 频率={hcfg.write_frequency}")
         except Exception as _e:
             _fail_and_issue("Honcho connection failed", str(_e), f"Honcho unreachable: {_e}", issues)
 
@@ -500,8 +498,8 @@ def _memory_provider_mem0(issues: list) -> None:
     from plugins.memory import import_provider_module
     mem0_cfg = import_provider_module("mem0")._load_config()
     if mem0_cfg.get("api_key", ""):
-        check_ok("Mem0 API key configured")
-        check_info(f"user_id={mem0_cfg.get('user_id', '?')}  agent_id={mem0_cfg.get('agent_id', '?')}")
+        check_ok("Mem0 的密钥已配置")
+        check_info(f"用户={mem0_cfg.get('user_id', '?')}  智能体={mem0_cfg.get('agent_id', '?')}")
     else:
         _fail_and_issue("Mem0 API key not set", "(set MEM0_API_KEY in .env or run hermes memory setup)",
                         "Mem0 is set as memory provider but API key is missing", issues)
@@ -521,11 +519,11 @@ def _memory_provider_generic(name: str) -> None:
     from plugins.memory import load_memory_provider
     _provider = load_memory_provider(name)
     if _provider and _provider.is_available():
-        check_ok(f"{name} provider active")
+        check_ok(f"{name} 记忆服务已启用")
     elif _provider:
-        check_warn(f"{name} configured but not available", "run: hermes memory status")
+        check_warn(f"{name} 配置了但不可用", "跑：coco cli memory status")
     else:
-        check_warn(f"{name} plugin not found", "run: hermes memory setup")
+        check_warn(f"找不到 {name} 插件", "跑：coco cli memory setup")
 
 
 @doctor_check()
@@ -534,18 +532,18 @@ def _check_memory_provider(should_fix: bool, f: Finding) -> None:
     from agent.memory_provider import is_core_memory_provider
     name = _doctor_memory_config(HERMES_HOME).get("provider", "")
     if is_core_memory_provider(name):
-        check_ok("Built-in memory active", "(no external provider configured — this is fine)")
+        check_ok("内置记忆已启用", "（没配外部记忆服务，这样就行）")
         return
     checker, missing_row, missing_issue, label = _MEMORY_PROVIDER_CHECKS.get(name, (None, None, None, name))
     try:
         checker(f.issues) if checker else _memory_provider_generic(name)
     except ImportError as _e:
         if missing_row is None:
-            check_warn(f"{label} check failed", str(_e))
+            check_warn(f"{label} 检查失败", str(_e))
         else:
             _fail_and_issue(*missing_row, missing_issue, f.issues)
     except Exception as _e:
-        check_warn(f"{label} check failed", str(_e))
+        check_warn(f"{label} 检查失败", str(_e))
 
 
 @doctor_check("")  # best-effort: profile enumeration must never break doctor
@@ -555,15 +553,15 @@ def _check_profiles(should_fix: bool, f: Finding) -> None:
     named_profiles = [p for p in list_profiles() if not p.is_default]
     if not named_profiles:
         return
-    _section("Profiles")
-    check_ok(f"{len(named_profiles)} profile(s) found")
+    _section("配置档（profiles）")
+    check_ok(f"找到 {len(named_profiles)} 个配置档")
     wrapper_dir = _get_wrapper_dir()
     for p in named_profiles:
         parts = [text for cond, text in (
             (p.gateway_running, "gateway running"), (p.model, (p.model or "")[:30]),
             (not (p.path / "config.yaml").exists(), "⚠ missing config"), (not (p.path / ".env").exists(), "no .env"),
             (not (wrapper_dir / p.name).exists(), "no alias")) if cond]
-        check_ok(f"  {p.name}: {', '.join(parts) if parts else 'configured'}")
+        check_ok(f"  {p.name}：{', '.join(parts) if parts else '已配置'}")
     # Orphan wrappers
     if wrapper_dir.is_dir():
         for wrapper in wrapper_dir.iterdir():
@@ -572,10 +570,10 @@ def _check_profiles(should_fix: bool, f: Finding) -> None:
             with warn_on_error(""):
                 _m = _re.search(r"hermes -p (\S+)", wrapper.read_text(encoding="utf-8"))
                 if _m and not profile_exists(_m.group(1)):
-                    check_warn(f"Orphan alias: {wrapper.name} → profile '{_m.group(1)}' no longer exists")
+                    check_warn(f"多余的命令别名：{wrapper.name} → 指向的配置档「{_m.group(1)}」已不存在")
     # Same helper as the multiplex migration preflight, so doctor names the duplicates that make
     # `hermes gateway migrate --multiplex` refuse (and made pre-multiplex standalone gateways race).
     from hermes_cli.gateway_migrate import duplicate_credential_findings
     for line in duplicate_credential_findings():
-        check_warn("Duplicate platform credential across profiles", f"({line})")
+        check_warn("多个配置档用了同一套平台凭据", f"（{line}）")
         f.manual_issues.append(line)

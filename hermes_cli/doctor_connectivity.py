@@ -137,7 +137,7 @@ def _probe_openrouter() -> ProbeResult:
     name = "OpenRouter API"
     key = os.getenv("OPENROUTER_API_KEY")
     if not key:
-        return _row(name, "warn", "(not configured)")
+        return _row(name, "warn", "（未配置）")
     try:
         import httpx
         r = httpx.get(OPENROUTER_MODELS_URL, headers={"Authorization": f"Bearer {key}"}, timeout=10)

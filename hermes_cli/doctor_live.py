@@ -106,14 +106,14 @@ def _keyed_probe(name: str, url: str, env_var: str, scheme: str, timeout: float)
     """Metadata GET authenticated by one env var (never a generation call)."""
     key = os.getenv(env_var, "").strip()
     if not key:
-        return ProbeResult(name, "skip", "(not configured)")
+        return ProbeResult(name, "skip", "（未配置）")
     resp = _http_get(url, headers={"Authorization": f"{scheme} {key}"}, timeout=timeout)
     return _classify_http(name, resp, env_var)
 
 
 def _probe_browser(timeout: float) -> ProbeResult:
     if not _browser_available():
-        return ProbeResult("Browser", "skip", "(not configured)")
+        return ProbeResult("Browser", "skip", "（未配置）")
     ok, detail = _launch_browser_probe(timeout)
     return ProbeResult("Browser", "pass" if ok else "fail", f"({detail})")
 

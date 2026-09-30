@@ -345,8 +345,12 @@
 - **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回；
   锚点失效会报 `ANCHOR`（需人工按本条重做并更新表）。同批被改动文案带出的官方用例断言更新在
   `tests/hermes_cli/test_doctor*.py`（断言本来就是英文原文，一并进表）。
-- **还没翻的**：`doctor_config.py`（配置检查）与 `doctor_state.py`（目录/库检查）里那几十行明细，
-  以及 macOS / Windows / Termux 专属分支的部分细节。
+- **配置检查 / 目录与库检查两块（同批续做）**：`doctor_config.py`（配置文件、过时配置项、
+  托管范围、xAI 下线、插件导入路径）、`doctor_state.py`（目录结构、SOUL.md、记忆文件、state.db 统计
+  与 WAL 检查、技能源、记忆服务、配置档），以及 `doctor.py` 的登录状态行、`auth_codex.py` /
+  `auth_xai.py` 的凭据提示、`doctor_connectivity.py` / `doctor_live.py` 的「未配置」。
+  至此 `coco doctor` 输出除包名/工具名（Python、OpenAI SDK、git、工具 id 等，翻了反而看不懂）外全中文。
+- **还没翻的**：macOS / Windows / Termux 专属分支的个别细节（Linux 上不出现）。
 
 ### 24 `coco` 命令文案里的"推荐/不建议"改中文
 

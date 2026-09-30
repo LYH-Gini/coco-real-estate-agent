@@ -35,7 +35,7 @@ logger = logging.getLogger("hermes_cli.auth")
 # ``hermes auth`` from a named profile re-signs the ROOT store (93889b770da, #114012).
 _MISSING_ACCESS_TOKEN_MSG = "Codex auth is missing access_token. Run `{relogin}` to re-authenticate."
 _MISSING_REFRESH_TOKEN_MSG = "Codex auth is missing refresh_token. Run `{relogin}` to re-authenticate."
-_NO_CREDENTIALS_MSG = "No Codex credentials stored. Run `{relogin}` to authenticate."
+_NO_CREDENTIALS_MSG = "还没存 Codex 的凭据。跑 `{relogin}` 完成登录。"
 
 
 def _codex_relogin_command() -> str:

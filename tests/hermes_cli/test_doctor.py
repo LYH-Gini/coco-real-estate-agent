@@ -341,7 +341,7 @@ class TestDoctorMemoryProviderSection:
     def test_no_provider_shows_builtin_ok(self, monkeypatch, tmp_path):
         out = self._run_doctor_and_capture(monkeypatch, tmp_path, provider="")
         assert "记忆存储" in out
-        assert "Built-in memory active" in out
+        assert "内置记忆已启用" in out
         # Should NOT mention Honcho or Mem0 errors
         assert "Honcho API key" not in out
         assert "Mem0" not in out
@@ -370,9 +370,9 @@ class TestDoctorMemoryProviderSection:
             stale_builtin_files=True,
         )
 
-        assert ("MEMORY.md exists" in out) is memory_enabled
+        assert ("MEMORY.md 存在" in out) is memory_enabled
         assert "USER.md exists" not in out
-        assert ("Built-in memory files disabled by config" in out) is not memory_enabled
+        assert ("记忆文件已被配置关掉" in out) is not memory_enabled
 
 
 
@@ -607,7 +607,7 @@ def test_run_doctor_accepts_hermes_provider_ids_that_catalog_aliases(
     assert f"model.provider '{provider}' is unknown" not in out
     if provider in {"ai-gateway", "opencode-zen", "kilocode", "nvidia"}:
         assert (
-            f"model.default '{default_model}' uses a vendor/model slug but provider is '{provider}'"
+            f"model.default「{default_model}」写成了「厂商/模型」格式，但 provider 是「{provider}」"
             not in out
         )
 
@@ -653,7 +653,7 @@ def test_run_doctor_accepts_vendor_slugs_for_named_custom_provider(monkeypatch, 
     assert "model.provider 'custom:hpc-ai' is not a recognised provider" not in out
     assert "model.provider 'custom:hpc-ai' is unknown" not in out
     assert (
-        "model.default 'deepseek/deepseek-v4-flash' uses a vendor/model slug but provider is "
+        "model.default「deepseek/deepseek-v4-flash」写成了「厂商/模型」格式，但 provider 是 "
         "'custom:hpc-ai'"
         not in out
     )
@@ -706,8 +706,8 @@ def test_run_doctor_vendor_slug_policy_for_openai_api_endpoint(
         doctor_mod.run_doctor(Namespace(fix=False))
 
     warning = (
-        "model.default 'nvidia/z-ai/glm-5.2' uses a vendor/model slug "
-        "but provider is 'openai-api'"
+        "model.default「nvidia/z-ai/glm-5.2」写成了「厂商/模型」格式，"
+        "但 provider 是「openai-api」"
     )
     assert (warning in buf.getvalue()) is expects_warning
 
@@ -898,7 +898,7 @@ def test_run_doctor_kimi_cn_env_is_detected_and_probe_is_null_safe(monkeypatch, 
         doctor_mod.run_doctor(Namespace(fix=False))
     out = buf.getvalue()
 
-    assert "API key or custom endpoint configured" in out
+    assert "密钥或自定义接口已配置" in out
     assert "Kimi / Moonshot (China)" in out
     assert "str expected, not NoneType" not in out
     assert any(url == "https://api.moonshot.cn/v1/models" for url, _, _ in calls)
@@ -1306,7 +1306,7 @@ class TestDoctorStaleMaxIterationsDrift:
             os_environ_value=400,  # bridge contaminated os.environ
         )
         assert "HERMES_MAX_ITERATIONS=90" in out
-        assert "shadows" in out
+        assert "会盖" in out
         # Warn-only must NOT mutate .env.
         assert "HERMES_MAX_ITERATIONS=90" in (hermes_home / ".env").read_text(encoding="utf-8")
 
@@ -1315,7 +1315,7 @@ class TestDoctorStaleMaxIterationsDrift:
             monkeypatch, tmp_path, fix=True, ghost=90, cfg_turns=400,
             os_environ_value=400,
         )
-        assert "Removed stale HERMES_MAX_ITERATIONS" in out
+        assert "已从 .env 删掉残留的 HERMES_MAX_ITERATIONS" in out
         env_after = (hermes_home / ".env").read_text(encoding="utf-8")
         assert "HERMES_MAX_ITERATIONS" not in env_after
         assert "OPENAI_API_KEY=sk-test" in env_after  # other keys preserved
@@ -1325,7 +1325,7 @@ class TestDoctorStaleMaxIterationsDrift:
         out, _ = self._run_config_section(
             monkeypatch, tmp_path, fix=False, ghost=None, cfg_turns=400,
         )
-        assert "shadows" not in out
+        assert "会盖" not in out
 
 
 class TestDoctorLegacyCustomProvidersResidue:

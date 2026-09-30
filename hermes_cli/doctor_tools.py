@@ -55,7 +55,7 @@ def _is_kanban_worker_env_gate(item: dict) -> bool:
 def _doctor_tool_availability_detail(toolset: str) -> str:
     """Optional explanatory suffix for toolsets whose doctor status needs context."""
     if toolset == "kanban" and not os.environ.get("HERMES_KANBAN_TASK"):
-        return "(runtime-gated; loaded only for dispatcher-spawned workers)"
+        return "（按需加载：只在派发的工作进程里启用）"
     return ""
 
 
@@ -85,7 +85,7 @@ def _doctor_web_capability_rows() -> list[tuple[str, str, str]]:
             continue
         name = getattr(provider, "name", None) or type(provider).__name__
         rows.append(("ok", capability, f"({name})") if _provider_is_ready(provider)
-                    else ("warn", capability, f"({name} selected; provider not configured)"))
+                    else ("warn", capability, f"（选了 {name}，但服务商没配）"))
     return rows
 
 
@@ -475,7 +475,7 @@ def _check_tool_availability(should_fix: bool, f: Finding) -> None:
         (check_ok if status == "ok" else check_warn)(label, detail)
     for item in unavailable:
         env_vars = item.get("missing_vars") or item.get("env_vars") or []
-        detail = f"(missing {', '.join(env_vars)})" if env_vars else _TOOLSET_SETUP_HINTS.get(item["name"], "（系统依赖没装齐）")
+        detail = f"（缺 {', '.join(env_vars)}）" if env_vars else _TOOLSET_SETUP_HINTS.get(item["name"], "（系统依赖没装齐）")
         check_warn(item["name"], detail)
     # Only toolsets enabled for the CLI count toward the summary; default-off or
     # disabled toolsets may warn above but must not pollute it.
