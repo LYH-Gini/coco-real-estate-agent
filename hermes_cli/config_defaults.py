@@ -834,7 +834,9 @@ DEFAULT_CONFIG = {
         # Background self-improvement notices in chat: "off" (review still runs) | "on" (generic "💾
         # Memory updated") | "verbose" (content preview). Per-platform via
         # display.platforms.<platform>.memory_notifications.
-        "memory_notifications": "on",
+        # Coco 定制（2026-09-30）：默认关掉 —— 经纪人不该看到「自我改进回顾：技能…已完成补丁更新」
+        # 这类内部动作（后台复盘照常跑，只是不在对话里播报）；要看的人自行改回 on/verbose。
+        "memory_notifications": "off",
         # Gateway notices when a terminal(background=true) process finishes: "concise" (one line;
         # failures append an output tail) | "all" (running updates + final raw output) | "result"
         # (final raw only) | "error" (raw only on non-zero exit) | "off".

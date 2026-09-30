@@ -390,7 +390,8 @@ try:
             f"（轮次 {_eff.get('agent.max_turns')}、压缩阈值 {_eff.get('compression.threshold')}、"
             f"保留最近 {_eff.get('compression.protect_last_n')} 条、"
             f"网关卫生 {_eff.get('compression.hygiene_hard_message_limit')}、"
-            f"时区 {_eff.get('timezone')}、清空对话确认框 {'开' if _eff.get('approvals.destructive_slash_confirm') else '关'}）"
+            f"时区 {_eff.get('timezone')}、清空对话确认框 {'开' if _eff.get('approvals.destructive_slash_confirm') else '关'}"
+            f"、自我改进播报 {'开' if _eff.get('display.memory_notifications') not in (None, 'off') else '关'}）"
         )
     elif _sum["level"] == "warn":
         warn(_sum["message"], _sum["hint"])

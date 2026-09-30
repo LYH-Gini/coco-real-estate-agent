@@ -24,6 +24,7 @@ def test_standard_values_are_the_agreed_ones():
         "approvals.destructive_slash_confirm": False,
         "sessions.retention_days": 3650,   # 2026-09-26 拍板：会话正文不再 90 天自动删
         "display.platforms.feishu.tool_progress": "off",   # 2026-09-27 拍板：飞书不显示工具进展行
+        "display.memory_notifications": "off",   # 2026-09-30 拍板：不在对话里播报自我改进
     }
 
 
@@ -187,3 +188,15 @@ def test_apply_preserves_without_force(monkeypatch, tmp_path):
     monkeypatch.setattr(hcfg, "set_config_value", lambda key, value: called.append(key))
     assert align.apply() == []
     assert called == []
+
+
+def test_memory_notifications_defaults_off_and_is_reclaimable():
+    """自我改进播报默认关（2026-09-30 拍板：经纪人不该看到「技能…已完成补丁更新」）
+
+    两头都要守：① 代码默认值 = off（新装即生效）；② 官方默认 on 要进 OFFICIAL_DEFAULTS，
+    否则官方流程把它写回 on 时会被当成"经纪人自己改的"保留下来（就是那次"永远修不好的 WARN"）。
+    """
+    from hermes_cli.config_defaults import DEFAULT_CONFIG
+    assert DEFAULT_CONFIG["display"]["memory_notifications"] == "off"
+    assert align.STANDARD["display.memory_notifications"] == "off"
+    assert "on" in align.OFFICIAL_DEFAULTS["display.memory_notifications"]

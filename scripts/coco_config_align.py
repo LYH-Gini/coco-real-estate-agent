@@ -52,6 +52,10 @@ STANDARD: "dict[str, object]" = {
     # 「已结束且 90 天没动静」的会话正文与磁盘转录（hermes_state_maintenance.prune_sessions）。
     # Coco 是单人/少人用，state.db 增长极慢，没必要为了省几 MB 丢掉历史对话。
     "sessions.retention_days": 3650,
+    # 自我改进播报（2026-09-30 拍板）：官方默认 on —— 会在对话里播报「💾 自我改进回顾：技能…
+    # 已完成补丁更新」这类内部动作，对经纪人是噪音、也暴露内部机制；关掉后后台复盘照常跑，
+    # 只是不再往对话里发。要看的实例可自行改回 on / verbose。
+    "display.memory_notifications": "off",
 }
 
 # 官方 Hermes 的默认值 / 官方设置向导会写进去的值（权威来源：官方 v2026.9.14 的
@@ -72,6 +76,7 @@ OFFICIAL_DEFAULTS: "dict[str, tuple]" = {
     "display.platforms.feishu.tool_progress": ("new",),  # 官方飞书档默认 new（每工具一条）
     "cron.catch_up_missed": (True,),                  # 官方默认 True（错过会补发一次）
     "sessions.retention_days": (90,),                 # 官方默认 90 天（到期真删会话正文）
+    "display.memory_notifications": ("on",),          # 官方默认 on（会在对话里播报自我改进）
 }
 
 

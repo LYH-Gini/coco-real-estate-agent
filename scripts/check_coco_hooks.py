@@ -72,10 +72,12 @@ CONTENT_CHECKS = [
         "05",
         "上下文压缩阈值",
         "hermes_cli/config_defaults.py",
-        [r'"threshold"\s*:\s*0\.8', r'"destructive_slash_confirm"\s*:\s*False'],
+        [r'"threshold"\s*:\s*0\.8', r'"destructive_slash_confirm"\s*:\s*False',
+         r'"memory_notifications"\s*:\s*"off"'],
         "压缩阈值回到官方默认 0.50（会提前压缩、丢失更多上下文）；"
-        "或清空对话类命令又弹回确认框（经纪人不会输入 /always，会卡住开新会话）。"
-        "处理：改回 0.8（含 protect_last_n=40）与 destructive_slash_confirm=False。",
+        "或清空对话类命令又弹回确认框（经纪人不会输入 /always，会卡住开新会话）；"
+        "或自我改进播报又开了（经纪人会看到「自我改进回顾：技能…已完成补丁更新」这类内部动作）。"
+        "处理：改回 0.8（含 protect_last_n=40）、destructive_slash_confirm=False、memory_notifications=off。",
     ),
     (
         "06",
