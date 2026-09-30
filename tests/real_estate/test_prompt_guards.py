@@ -265,6 +265,21 @@ class TestOutwardWordingNamedExamples:
         assert "点名禁掉这三种写法" in MANUAL
         assert "客户阶段与状态一律说中文" in MANUAL
 
+    def test_prompt_forbids_double_followup_records(self):
+        """一句话别落两条（2026-09-30 实测：一次请求落了跟进 + 提醒各一条、时间相同）"""
+        assert "【记跟进不要重复落两条】" in PROMPT
+        assert "再另外调 `schedule_reminder`" in PROMPT
+        assert "才用 `schedule_reminder`" in PROMPT
+
+    def test_prompt_answers_only_what_was_asked(self):
+        """问逾期就答逾期，别顺带跑早报（实测：问逾期，回了整套早报）"""
+        assert "【问什么答什么，别顺带跑别的汇总】" in PROMPT
+        assert "顺手把早报、午间检查、周报" in PROMPT
+
+    def test_manual_has_both_rules(self):
+        assert "记跟进不要重复落两条" in MANUAL
+        assert "问什么答什么，别顺带跑别的汇总" in MANUAL
+
     def test_prompt_forbids_system_as_subject(self):
         """不把"系统"当主语（2026-09-29 实测：「系统提示客户很可能在别处看到了更便宜的房子」）"""
         assert "不把\"系统\"当主语" in PROMPT
