@@ -7,6 +7,7 @@
 import json
 import os
 import sys
+import traceback
 from datetime import datetime
 from pathlib import Path
 
@@ -94,3 +95,25 @@ def parse_dt(value):
         return datetime.fromisoformat(str(value).replace("Z", ""))
     except Exception:
         return None
+
+
+def failure_note(what: str) -> str:
+    """脚本没跑起来时给经纪人的那一句（成品文案，别再往里拼技术细节）"""
+    return f"⚠️ 这次的{what}没跑起来，稍后会自动再试；一直这样就跟我说一声，我去看日志。"
+
+
+def report_failure(state_name: str, what: str, exc: Exception) -> str:
+    """把技术细节写进日志，返回给经纪人的一句人话。
+
+    为什么必须分开：脚本的 stdout 会被官方调度器直接投递给经纪人 —— 原始报错里带着
+    运维命令（systemctl / EnvironmentFile）、内部路径和事故名，他看不懂也不该看到。
+    """
+    log = state_path(state_name).with_suffix(".error.log")
+    try:
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with open(log, "a", encoding="utf-8") as f:
+            f.write(f"[{datetime.now().isoformat()}] {type(exc).__name__}: {exc}\n")
+            f.write(traceback.format_exc() + "\n")
+    except Exception:
+        pass
+    return failure_note(what)
