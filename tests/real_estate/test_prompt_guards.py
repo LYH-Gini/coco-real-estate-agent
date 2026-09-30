@@ -312,6 +312,21 @@ class TestOutwardWordingNamedExamples:
         assert "明细的归属必须逐条照工具返回" in PROMPT
         assert "明细归属（2026-09-30 加）" in MANUAL
 
+    def test_prompt_forbids_silent_stage_advance(self):
+        """只加备注就别推进节点（实测：一句"加备注"把签约推成了贷款审批）"""
+        assert "只加备注就别推进节点" in PROMPT
+        assert "只加备注就别推进节点" in MANUAL
+
+    def test_prompt_separates_rental_from_available(self):
+        """在租 ≠ 在售（实测：给租房客户报"在租房源共 24 套"，在租只有 5 套）"""
+        assert "不许混着说" in PROMPT
+        assert "不许混着说" in MANUAL
+
+    def test_prompt_requires_range_separator(self):
+        """数值区间要带分隔符（实测："首套 15%20% 最低首付"漏了 ~）"""
+        assert "写数值区间必须带分隔符" in PROMPT
+        assert "别把上下限连成" in MANUAL
+
     def test_prompt_forbids_system_as_subject(self):
         """不把"系统"当主语（2026-09-29 实测：「系统提示客户很可能在别处看到了更便宜的房子」）"""
         assert "不把\"系统\"当主语" in PROMPT
