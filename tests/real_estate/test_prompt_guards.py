@@ -274,3 +274,33 @@ class TestOutwardWordingNamedExamples:
         assert "不把\"系统\"当主语" in MANUAL
         assert "系统提示 / 系统判断" in MANUAL
 
+
+class TestNoInstanceSpecificExamples:
+    """产品文案中立：示例里不出现真实城市/片区/小区名（2026-09-30）
+
+    起因：经纪人实测时 Coco 凭空说了"某某地暂无可匹配的存量"，而那个地方整个对话里
+    从没出现过 —— 手册「使用示例」当时用的正是某座城市的真实片区与小区名，
+    模型就把示例里的城市当成了"库里的现实"。给每个经纪人用的同一份文案，
+    示例必须是占位符（XX市 / XX区 / 某小区）。
+    """
+
+    # 曾经出现在示例里的城市/片区/小区名（别再写回去）
+    PLACE_WORDS = ("北京", "海口", "朝阳", "望京", "通州", "恒大", "美丽沙", "海阔天", "美兰")
+
+    def test_prompt_has_no_real_place_names(self):
+        for w in self.PLACE_WORDS:
+            assert w not in PROMPT, f"提示词里出现了具体地名「{w}」"
+
+    def test_manual_has_no_real_place_names(self):
+        for w in self.PLACE_WORDS:
+            assert w not in MANUAL, f"操作手册里出现了具体地名「{w}」"
+
+    def test_prompt_forbids_unverified_stock_claims(self):
+        assert "【不许给没查过的库存结论】" in PROMPT
+        assert "不许提资料里没出现过的城市" in PROMPT
+        assert "示例里的城市" in PROMPT
+
+    def test_manual_has_the_same_rule(self):
+        assert "不许给没查过的库存结论" in MANUAL
+        assert "示例里的城市/区域不是库里的数据" in MANUAL
+
