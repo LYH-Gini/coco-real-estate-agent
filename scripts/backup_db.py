@@ -577,7 +577,7 @@ class DatabaseBackup:
         self._log("迁移恢复完成: 数据库 + 图片 + 加密密钥 全部成功")
         print("============================================")
         print("迁移恢复完成！请执行以下步骤：")
-        print("  1. sudo systemctl restart hermes-agent")
+        print("  1. coco restart")
         print("  2. 给智能体发送\"你好\"，定时任务会自动注册")
         print("============================================")
         return True
@@ -653,7 +653,7 @@ def main():
         else:
             print(f"共 {len(backups)} 个备份：")
             for b in backups:
-                print(f"  {b['filename']} ({b['size']} bytes) - {b['created']}")
+                print(f"  {b['filename']}（{b['size']} 字节）- {b['created']}")
     elif args.action == "status":
         status = backup_mgr.get_status()
         print("备份状态：")

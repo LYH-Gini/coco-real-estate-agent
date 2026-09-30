@@ -115,7 +115,7 @@ def _print_preview(preview, force=False):
 
 def _confirm(message):
     print(f"\n{message}")
-    print("Type 'yes' to confirm: ", end="")
+    print("输入 yes 确认：", end="")
     try:
         answer = input()
     except EOFError:

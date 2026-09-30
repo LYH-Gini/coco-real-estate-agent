@@ -156,7 +156,7 @@ fi
 if [[ "$DRY_RUN" != "1" && "$ASSUME_YES" != "1" ]]; then
     echo ""
     printf "如果这台机器上有要保留的数据，请先确认备份包已拷到本机之外。\n"
-    printf "Type 'yes' to confirm: "
+    printf "输入 yes 确认："
     read -r answer || answer=""
     if [[ "$(echo "${answer:-}" | tr -d '[:space:]' | tr 'A-Z' 'a-z')" != "yes" ]]; then
         echo "已取消，未做任何修改。"; exit 0

@@ -59,7 +59,7 @@ need_venv() {
 
 # 危险操作先确认（输 yes）
 confirm_yes() {   # $1=提示
-  printf "%s\nType 'yes' to confirm: " "$1"
+  printf "%s\n输入 yes 确认：" "$1"
   local answer=""
   read -r answer || answer=""
   if [[ "$(echo "${answer:-}" | tr -d '[:space:]' | tr 'A-Z' 'a-z')" != "yes" ]]; then
