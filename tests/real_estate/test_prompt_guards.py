@@ -280,6 +280,23 @@ class TestOutwardWordingNamedExamples:
         assert "记跟进不要重复落两条" in MANUAL
         assert "问什么答什么，别顺带跑别的汇总" in MANUAL
 
+    def test_prompt_intake_lists_id_number(self):
+        """"未提供"清单要含身份证（2026-09-30 实测：列了微信/生日却漏了身份证）"""
+        assert "可选字段（微信/身份证/面积偏好" in PROMPT
+        assert "别漏掉身份证" in PROMPT
+        assert "微信/身份证/面积/装修/等级/回访/备注等" in MANUAL
+
+    def test_prompt_forbids_low_intent_labeling(self):
+        """C 级只是默认档，不许说成"低意向"（实测："暂按低意向起步"）"""
+        assert "等级照实说" in PROMPT
+        assert "不等于\"客户不感兴趣\"" in PROMPT
+        assert "等级照实说" in MANUAL
+
+    def test_prompt_requires_list_count_to_match(self):
+        """说几套就列几套（实测：写"3 套"而表里只有 2 行）"""
+        assert "说几套就列几套" in PROMPT
+        assert "说几套就列几套" in MANUAL
+
     def test_prompt_forbids_system_as_subject(self):
         """不把"系统"当主语（2026-09-29 实测：「系统提示客户很可能在别处看到了更便宜的房子」）"""
         assert "不把\"系统\"当主语" in PROMPT
