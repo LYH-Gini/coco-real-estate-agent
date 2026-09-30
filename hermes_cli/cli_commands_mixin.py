@@ -861,7 +861,7 @@ class CLICommandsMixin:
                 self._session_db = None
         if restore_quick_snapshot(snap_id):
             _pr(f"  Restored state from: {snap_id}",
-                "  Restart recommended for gateway/dashboard processes to pick up state.db changes.")
+                "  建议重启网关/看板进程，让它们读新的 state.db。")
         else:
             print(f"  Snapshot not found: {snap_id}")
 

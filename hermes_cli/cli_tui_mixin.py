@@ -484,13 +484,13 @@ class CLITuiMixin:
                     other_text = (answer_meta.get(entry["qid"]) or {}).get("other_text") or ""
                     other_suffix = f"Other: {other_text}" if other_text else None
                     if freetext:
-                        other_label = f"  ❯ {mid}. " + (other_suffix or "Other (type below)")
+                        other_label = f"  ❯ {mid}. " + (other_suffix or "其他（在下面输入）")
                         other_style = 'class:clarify-active-other'
                     elif selected == other_idx:
-                        other_label = f"  ❯ {mid}. " + (other_suffix or "Other (type your answer)")
+                        other_label = f"  ❯ {mid}. " + (other_suffix or "其他（我来补充）")
                         other_style = 'class:clarify-selected'
                     else:
-                        other_label = f"    {mid}. " + (other_suffix or "Other (type your answer)")
+                        other_label = f"    {mid}. " + (other_suffix or "其他（我来补充）")
                         other_style = 'class:clarify-choice'
                     for wrapped in _wrap_panel_text(other_label, width, subsequent_indent="      "):
                         rows.append((other_style, wrapped))
@@ -538,7 +538,7 @@ class CLITuiMixin:
             return f"{cursor} {cb}{_num_prefix(i)}. {text}"
 
         choice_labels = [_label(i, c) for i, c in enumerate(choices)]
-        other_label = _label(other_idx, "Other (type below)" if freetext else "Other (type your answer)")
+        other_label = _label(other_idx, "其他（在下面输入）" if freetext else "其他（我来补充）")
 
         preview_lines = wrap(question, 60)
         preview_lines.extend(w for _i, w in _wrap_rows(wrap, choice_labels + [other_label], 60, "    "))

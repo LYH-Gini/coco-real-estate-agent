@@ -85,7 +85,7 @@ def register_cli(parent_parser: argparse.ArgumentParser) -> None:
         ("status", "Show config + binary + token validation status", cmd_status, ()),
         ("token", "Rotate the access token: validate a new one and store it in .env", cmd_token, (
             arg("--access-token", "Provide the new token non-interactively (default: masked prompt)"),
-            flag("--no-verify", "Store without probing Bitwarden first (not recommended)"),
+            flag("--no-verify", "不先探测 Bitwarden 直接存（不建议）"),
         )),
         ("sync", "Fetch secrets now and report what changed", cmd_sync, (
             flag("--apply", "Actually export the secrets into the current shell's env (default: dry-run)"),

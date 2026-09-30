@@ -468,7 +468,7 @@ def _setup_weixin():
 
     print()
     access_choices = [
-        "Use DM pairing approval (recommended)", "Allow all direct messages", "Only allow listed user IDs",
+        "用私聊配对审批（推荐）", "允许所有私聊", "只允许名单里的用户 ID",
         "Disable direct messages",
     ]
     access_idx = _gw().prompt_choice("  How should direct messages be authorized?", access_choices, 0)
@@ -490,7 +490,7 @@ def _setup_weixin():
     print()
     _gw()._print_info_lines(*_WEIXIN_GROUP_NOTE)
     group_choices = [
-        "Disable group chats (recommended)", "Allow all group chats", "Only allow listed group chat IDs",
+        "关闭群聊（推荐）", "允许所有群聊", "只允许名单里的群 ID",
     ]
     group_idx = _gw().prompt_choice("  How should group chats be handled?", group_choices, 0)
     if group_idx == 0:
@@ -523,7 +523,7 @@ def _setup_qqbot():
         return
 
     print()
-    method_choices = ["Scan QR code to add bot automatically (recommended)", "Enter existing App ID and App Secret manually"]
+    method_choices = ["扫码自动添加机器人（推荐）", "手动填写已有的 App ID 与 App Secret"]
     credentials = None
     if _gw().prompt_choice("  How would you like to set up QQ Bot?", method_choices, 0) == 0:
         try:
@@ -559,7 +559,7 @@ def _setup_qqbot():
     user_openid = credentials.get("user_openid", "")
 
     print()
-    access_choices = ["Use DM pairing approval (recommended)", "Allow all direct messages", "Only allow listed user OpenIDs"]
+    access_choices = ["用私聊配对审批（推荐）", "允许所有私聊", "只允许名单里的用户 OpenID"]
     access_idx = _gw().prompt_choice("  How should direct messages be authorized?", access_choices, 0)
     if access_idx == 0:
         _gw().save_env_value("QQ_ALLOW_ALL_USERS", "false")

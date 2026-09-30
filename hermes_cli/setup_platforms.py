@@ -123,7 +123,7 @@ def _obtain_telegram_token():
     """Return (token, setup_result); auto flow first when chosen, else manual paste."""
     from hermes_cli.setup import _info, print_error, prompt
     _info("How would you like to create your Telegram bot?", None,
-          "  [1] Automatic (recommended)",
+          "  [1] 自动（推荐）",
           "      Scan a QR code → confirm in Telegram → done.",
           "      No token copy-paste needed.", None,
           "  [2] Manual",

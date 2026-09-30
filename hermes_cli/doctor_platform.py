@@ -454,8 +454,8 @@ def _check_python_environment(should_fix: bool, f: Finding) -> None:
     v, label = sys.version_info, f"Python {'.'.join(map(str, sys.version_info[:3]))}"
     if v < (3, 8):
         _fail_and_issue(label, "(3.10+ required)", "Upgrade Python to 3.10+", f.issues)
-    elif check_bool(v >= (3, 10), label, (label, "(3.10+ recommended)")) and v < (3, 11):
-        check_warn("Python 3.11+ recommended for RL Training tools (tinker requires >= 3.11)")
+    elif check_bool(v >= (3, 10), label, (label, "(建议 3.10+)")) and v < (3, 11):
+        check_warn("RL 训练类工具建议 Python 3.11+（tinker 要求 >= 3.11）")
     # Linked SQLite: version + source id matter independently of the Python minor (uv's
     # python-build-standalone can keep a vulnerable SQLite across upgrades).
     with warn_on_error("SQLite version probe failed: {e}", ""):
@@ -468,7 +468,7 @@ def _check_python_environment(should_fix: bool, f: Finding) -> None:
         if src:
             check_info(f"SQLite source id: {(src[:48] + '…') if len(src) > 48 else src}")
         _report_database_journal_modes()
-    check_bool(sys.prefix != sys.base_prefix, "Virtual environment active", ("Not in virtual environment", "(recommended)"))
+    check_bool(sys.prefix != sys.base_prefix, "Virtual environment active", ("Not in virtual environment", "(推荐)"))
     # macOS TCC interpreter anchor (#95596): dylib-complete re-land of the mechanism reverted in #95563.
     # Silent on non-macOS.
     check_macos_tcc_anchor(should_fix=should_fix)

@@ -117,7 +117,7 @@ def _run_first_time_quick_setup(config: dict, hermes_home, is_existing: bool):
     # Step 4: Offer messaging gateway setup
     print()
     gateway_choice = prompt_choice("Connect a messaging platform? (Telegram, Discord, etc.)", [
-        "Set up messaging now (recommended)", "Skip — set up later with 'hermes setup gateway'",
+        "现在就接消息通道（推荐）", "先跳过 —— 之后用 'coco setup gateway' 再接",
     ], 0)
     if gateway_choice == 0:
         setup_gateway(config)

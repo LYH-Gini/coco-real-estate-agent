@@ -172,7 +172,7 @@ def _model_flow_bedrock(config, current_model=""):
     region = region_input or current_region
 
     # 2b. Authentication mode
-    _say("  Choose authentication method:", "", "    1. IAM credential chain (recommended)",
+    _say("  Choose authentication method:", "", "    1. IAM 凭据链（推荐）",
          "       Works with EC2 instance roles, SSO, env vars, aws configure", "    2. Bedrock API Key",
          "       Enter your Bedrock API Key directly — also supports",
          "       team scenarios where an admin distributes keys", "")

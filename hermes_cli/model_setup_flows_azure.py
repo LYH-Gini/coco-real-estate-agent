@@ -187,7 +187,7 @@ def _model_flow_azure_foundry(config, current_model=""):
     # Step 2: authentication mode
     _say("", "Authentication:", "  1. API key                  (AZURE_FOUNDRY_API_KEY in .env)",
          "  2. Microsoft Entra ID       (managed identity / workload identity / az login)",
-         "     Recommended by Microsoft. Works for both OpenAI-style and Anthropic-style endpoints.",
+         "     微软推荐的方式，兼容 OpenAI 风格与 Anthropic 风格的端点。",
          "     Requires the 'Azure AI User' role on the Foundry resource.")
     _auth_default = "2" if cur.auth_mode == "entra_id" else "1"
     auth_choice = _ask(f"Authentication mode [1/2] ({_auth_default}): ", raw=True)

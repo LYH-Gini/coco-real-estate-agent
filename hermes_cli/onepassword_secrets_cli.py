@@ -67,7 +67,7 @@ def register_cli(parent_parser: argparse.ArgumentParser) -> None:
         ("status", "Show config + op binary + references", cmd_status, ()),
         ("token", "Rotate the service-account token: validate and store it in .env", cmd_token, (
             arg("--token", "Provide the new token non-interactively (default: masked prompt)"),
-            flag("--no-verify", "Store without probing 1Password first (not recommended)"),
+            flag("--no-verify", "不先探测 1Password 直接存（不建议）"),
         )),
         ("set", "Map an env var to an op:// reference", cmd_set, (
             arg("env_var", "Environment variable name, e.g. OPENAI_API_KEY"),

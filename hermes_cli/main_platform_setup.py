@@ -34,7 +34,7 @@ def _whatsapp_choose_mode(get_env_value, save_env_value):
         print(f"\n✓ Mode: {mode_label}")
         return current_mode
     _say("", "How will you use WhatsApp with Hermes?", "",
-         "  1. Separate bot number (recommended)",
+         "  1. Separate bot number（推荐）",
          "     People message the bot's number directly — cleanest experience.",
          "     Requires a second phone number with WhatsApp installed on a device.", "",
          "  2. Personal number (self-chat)",

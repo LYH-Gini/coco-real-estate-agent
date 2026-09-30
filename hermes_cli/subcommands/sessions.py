@@ -144,7 +144,7 @@ def build_sessions_parser(subparsers, *, cmd_sessions: Callable) -> None:
     _flag(sessions_clean_markers, "--dry-run", default=False,
         help="Report the affected row count without writing")
     _flag(sessions_clean_markers, "--no-backup", default=False,
-        help="Skip the timestamped state.db backup taken before writing (not recommended)")
+        help="跳过写入前的带时间戳 state.db 备份（不建议）")
 
     sessions_optimize_storage = sessions_subparsers.add_parser("optimize-storage",
         help="Migrate the search index to the compact v23 layout (reclaims disk on large DBs)",
@@ -171,7 +171,7 @@ def build_sessions_parser(subparsers, *, cmd_sessions: Callable) -> None:
             "preserved and the FTS search index is rebuilt if needed.")
     _flag(sessions_repair, "--check-only",
         help="Only report whether the database opens cleanly; do not modify it")
-    _flag(sessions_repair, "--no-backup", help="Skip the timestamped backup copy (not recommended)")
+    _flag(sessions_repair, "--no-backup", help="跳过带时间戳的备份副本（不建议）")
 
     sessions_set_journal_mode = sessions_subparsers.add_parser(
         "set-journal-mode", help="Convert state.db between journal_mode=WAL and DELETE offline (every holder stopped)",

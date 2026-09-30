@@ -12,7 +12,7 @@ from hermes_cli.subcommands._shared import add_accept_hooks_flag
 # would double-bind its platforms); `gateway run` carries its own broader --force text.
 _FORCE_SERVED_PROFILE_HELP = (
     "Start a separate gateway for this profile even when the default multiplexer already serves it "
-    "(not recommended: two pollers on one bot token, port conflicts)")
+    "（不建议：同一个机器人令牌会有两个轮询者，端口也容易冲突）")
 
 
 def _flag(parser, *names, help, **kw):
@@ -41,7 +41,7 @@ def build_gateway_parser(
     gateway_subparsers = gateway_parser.add_subparsers(dest="gateway_command")
 
     gateway_run = gateway_subparsers.add_parser(
-        "run", help="Run gateway in foreground (recommended for WSL, Docker, Termux)")
+        "run", help="前台运行网关（WSL / Docker / Termux 下推荐）")
     gateway_run.add_argument("-v", "--verbose", action="count", default=0,
         help="Increase stderr log verbosity (-v=INFO, -vv=DEBUG)")
     _flag(gateway_run, "-q", "--quiet", help="Suppress all stderr log output")

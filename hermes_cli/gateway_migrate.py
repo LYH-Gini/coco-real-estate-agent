@@ -770,7 +770,7 @@ _NOTHING_RECORDED = "no gateway was recorded; nothing to restore"
 
 def format_update_warning(plan: MigrationPlan, auto_blockers: list[str]) -> list[str]:
     return [
-        "⚠ Your profiles each run their own gateway. A single multiplexed gateway is the recommended",
+        "⚠ 每个 profile 各自跑一个网关。更推荐用单个多路复用网关：",
         "  setup, but this install cannot be migrated automatically yet:",
         *[f"    • {b}" for b in (*plan.blockers, *auto_blockers)],
         f"  After fixing the above, run:  {MIGRATE_COMMAND}",

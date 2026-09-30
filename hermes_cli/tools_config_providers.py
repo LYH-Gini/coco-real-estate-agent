@@ -607,7 +607,7 @@ def _configure_xai_imagine_storage(section_name: str, config: dict) -> None:
     _print_warning(
         "  xAI Imagine can store generated media and create reusable public URLs. "
         "xAI may bill for stored files and public URL hosting.")
-    choices = ["Enable public URLs without automatic expiry (recommended)", "Disable stored public URLs",
+    choices = ["开启公开链接、不自动过期（推荐）", "关闭保存的公开链接",
                "Enable public URLs for 2 days"]
     idx = _prompt_choice("  Stored public URLs:", choices, default=0)
     if idx == 1:
@@ -958,7 +958,7 @@ def _configure_vision_backend() -> None:
     print(color("  Pick any provider + model (like /model), or let it auto-detect.", Colors.DIM))
 
     choices = [
-        "Auto — use your main model / aggregator fallback (recommended)",
+        "自动 —— 用你的主模型 / 聚合服务兜底（推荐）",
         "Pick a provider and model",
         "Custom OpenAI-compatible endpoint — base URL, API key, model",
         "Skip"]

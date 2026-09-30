@@ -2624,7 +2624,7 @@ def _system_service_identity(run_as_user: str | None = None) -> tuple[str, str, 
         )
     if username == "root":
         print_warning("Installing gateway service to run as root.")
-        print_info("  This is fine for LXC/container environments but not recommended on bare-metal hosts.")
+        print_info("  这在 LXC/容器环境里没问题，但裸机主机上不建议这样做。")
 
     try:
         user_info = pwd.getpwnam(username)
@@ -3064,7 +3064,7 @@ def _print_system_scope_remediation(action: str) -> None:
     print_info("  Options:")
     print_info(f"    1. {action.capitalize()} it this time:")
     print_info(f"         sudo systemctl {action} {get_service_name()}")
-    print_info("    2. Switch to a per-user service (recommended for personal use):")
+    print_info("    2. 换成为当前用户运行的服务（个人自用推荐这个）：")
     print_info("         sudo coco gateway uninstall --system")
     print_info("         coco gateway install")
     print_info("         coco gateway start")
@@ -3892,8 +3892,7 @@ def _guard_supervised_gateway_conflict(force: bool = False) -> None:
     print("    coco gateway restart")
     print()
     print(
-        "  Pass --force to start a foreground gateway anyway (not recommended\n"
-        "  while the service is running)."
+        "  确实要前台起一个网关，就加 --force（不建议：服务还在跑的时候这样会冲突）。"
     )
     sys.exit(1)
 
@@ -4447,7 +4446,7 @@ def _maybe_redirect_run_to_s6_supervision(args) -> bool:
     print(
         "→ gateway is now running under s6 supervision (auto-restart on crash,\n"
         "  dashboard supervised alongside if HERMES_DASHBOARD is set).\n"
-        "  This is the recommended setup for the s6 container image — the\n"
+        "  这是 s6 容器镜像下推荐的方式 —— 网关崩了也会自动重启。\n"
         "  gateway will keep running even if it crashes.\n"
         "  Use `--no-supervise` (or HERMES_GATEWAY_NO_SUPERVISE=1) to opt out\n"
         "  and get the pre-s6 foreground behavior instead.",
@@ -4985,7 +4984,7 @@ def _cmd_restart(args):
 _STATUS_RUNNING_HINTS = {
     "termux": ("Termux note:", "  Android may stop background jobs when Termux is suspended"),
     "wsl": (
-        "WSL note:", "  The gateway is running in foreground/manual mode (recommended for WSL).",
+        "WSL 说明：", "  网关正以前台/手动方式运行（WSL 下推荐这样）。",
         "  Use tmux or screen for persistence across terminal closes.",
     ),
     "windows": ("To install as a Windows Scheduled Task (auto-start on login):", "  hermes gateway install"),

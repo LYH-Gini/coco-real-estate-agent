@@ -918,7 +918,7 @@ def _login_openai_codex(args, pconfig: ProviderConfig, *, force_new_login: bool 
             print("Found existing Codex CLI credentials at ~/.codex/auth.json")
             print("Hermes will create its own session to avoid conflicts with Codex CLI / VS Code.")
             if _prompt_yes_no(
-                "Import these credentials? (a separate login is recommended) [y/N]: ", default="n"):
+                "要导入这些凭据吗？（更建议单独登录一次）[y/N]: ", default="n"):
                 _save_codex_tokens(cli_tokens)
                 config_path = _update_config_for_provider("openai-codex", _codex_base_url())
                 print()
