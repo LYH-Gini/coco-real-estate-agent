@@ -77,7 +77,7 @@ tags: [real-estate, property, customer, followup, viewing, deal]
 2. 明确区分统计口径：本次批量新登记的客户数 vs 数据库全部客户数，两者分开标注，不要混算
 3. 明细列表必须逐条与输入一致，不得遗漏、不得重复
 
-**统计数字铁律（2026-08-29 加，治"口径混/口算"）**：汇报任何数字时——①"在售房源数"只能引用 `get_stats().available_properties`，**已售/已租不算在售**（"含 1 套已售"是错的）；②客户数、各类型/来源数量一律用工具返回的数据库 count，禁止口算；③写清口径（库内全部 / 本次新增 / 某类型），并带数字出处。真实案例：Coco 把"在售 95（含1已售）"报错，实际 available=87。**客户数口径（2026-09-23 加）**：客户数按"在跟"（活跃+暂缓）统计——`get_stats().total_customers` 与 `list_customers` 默认都不含已关闭客户，已关闭单列 `closed_customers`；`channel_stats` 的渠道来客数同理（已关闭单列 `closed`）。要看已关闭客户传 `list_customers(include_closed=true)`。
+**统计数字铁律（2026-08-29 加，治"口径混/口算"）**：汇报任何数字时——①"在售房源数"只能引用 `get_stats().available_properties`，**已售/已租不算在售**（"含 1 套已售"是错的）；②客户数、各类型/来源数量一律用工具返回的数据库 count，禁止口算；③写清口径（库内全部 / 本次新增 / 某类型），并带数字出处。真实案例：Coco 把"在售 95（含1已售）"报错，实际 available=87。**客户数口径（2026-09-23 加）**：客户数按"在跟"（活跃+暂缓）统计——`get_stats().total_customers` 与 `list_customers` 默认都不含已关闭客户，已关闭单列 `closed_customers`；`channel_stats` 的渠道来客数同理（已关闭单列 `closed`）。要看已关闭客户传 `list_customers(include_closed=true)`。**明细归属（2026-09-30 加）**：报告里写"某客户的反馈 / 某单的备注"时，客户名、单据编号、备注必须来自**同一条**工具返回记录，不许把 A 的备注安到 B 身上（实测：报告写"王强这单客户反馈楼层偏高"，而王强没有成交单）。
 
 ### 2. 添加房源
 
@@ -149,6 +149,8 @@ tags: [real-estate, property, customer, followup, viewing, deal]
 
 - 创建成交单：`start_deal`（客户 + 房源 + 价格 + 定金）
 - 推进节点：`advance_deal`（deposit定金→signing签约→loan贷款→transfer过户→finalized交房），每推进一个节点提醒用户下一步办理事项
+- **资金口径（2026-09-30 加）**：**定金 ≠ 首付** —— 首付＝成交价 − 贷款额，定金只是总价里先付的一部分；**不许**拿"成交价 − 定金"当首付（实测出现过"定金 5 万 → 客户首付 145 万"，又同时问要不要办商贷，自相矛盾）。首付/月供/贷款额一律用计算器工具算（`mortgage_calculator`/`loan_compare`）并说清口径；不会算就说"告诉我首付比例和年限我算一版"。
+- **成交单备注默认追加（2026-09-30 加）**：经纪人说"加一句 / 补一句"时只追加（原备注保留）；只有明确说"改成 / 覆盖 / 写错了"才用 `replace_notes=true` 整段替换。
 - 查询：`get_deal` / `list_deals` / `deal_stats`
 
 ### 6. 跟进与提醒

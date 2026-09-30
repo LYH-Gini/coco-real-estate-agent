@@ -297,6 +297,21 @@ class TestOutwardWordingNamedExamples:
         assert "说几套就列几套" in PROMPT
         assert "说几套就列几套" in MANUAL
 
+    def test_prompt_forbids_deposit_as_down_payment(self):
+        """定金不是首付（实测："定金 5 万 → 客户首付 145 万"，还同时问要不要办商贷）"""
+        assert "定金 ≠ 首付" in PROMPT
+        assert "定金 ≠ 首付" in MANUAL
+
+    def test_prompt_requires_append_for_deal_notes(self):
+        """"加一句"只追加、不覆盖（实测：一句"加一句"把原备注整段冲掉了）"""
+        assert "才允许整段替换" in PROMPT
+        assert "才用 `replace_notes=true` 整段替换" in MANUAL
+
+    def test_prompt_requires_detail_attribution(self):
+        """明细归属照工具返回（实测：把一位客户的备注安到另一位客户身上）"""
+        assert "明细的归属必须逐条照工具返回" in PROMPT
+        assert "明细归属（2026-09-30 加）" in MANUAL
+
     def test_prompt_forbids_system_as_subject(self):
         """不把"系统"当主语（2026-09-29 实测：「系统提示客户很可能在别处看到了更便宜的房子」）"""
         assert "不把\"系统\"当主语" in PROMPT
