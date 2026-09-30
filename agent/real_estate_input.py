@@ -136,6 +136,12 @@ CUSTOMER_TYPES = ("buy_new", "buy_second_hand", "rent")
 # 未细分（经纪人没说买新房还是买二手房）：匹配时不限类型，但必须能在筛选中被找到
 CUSTOMER_TYPE_UNSPECIFIED = "unspecified"
 
+# 给经纪人看的中文名（回执/列表/变更历史共用一张表；`buy` 是历史写法，归到"未细分"）
+CUSTOMER_TYPE_LABELS = {
+    "buy_new": "买一手房", "buy_second_hand": "买二手房",
+    "rent": "租房", CUSTOMER_TYPE_UNSPECIFIED: "未细分", "buy": "未细分",
+}
+
 _CUSTOMER_TYPE_ALIASES = {
     "buy_new": "buy_new", "buynew": "buy_new", "new": "buy_new",
     "一手房": "buy_new", "新房": "buy_new", "买一手": "buy_new", "买一手房": "buy_new", "买新房": "buy_new",

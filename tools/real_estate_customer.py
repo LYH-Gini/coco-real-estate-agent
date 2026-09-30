@@ -6,11 +6,11 @@ import json
 from agent.real_estate_display import (attach_key_warning, dedup_key_mismatch_payload,
                                        mask_contacts, safe_contact)
 from agent.real_estate_money import fmt_budget, fmt_wan
-from agent.real_estate_input import (STAGES, STAGE_LABELS, clamp_limit, clean_tags,
-                                     money_limit_problem, norm_birthday, norm_customer_type,
-                                     norm_id, norm_id_number, norm_money, norm_phone,
-                                     norm_stage, norm_tags,
-                                     norm_tier, stage_options_text)
+from agent.real_estate_input import (CUSTOMER_TYPE_LABELS, STAGES, STAGE_LABELS, clamp_limit,
+                                     clean_tags, money_limit_problem, norm_birthday,
+                                     norm_customer_type, norm_id, norm_id_number, norm_money,
+                                     norm_phone, norm_stage, norm_tags, norm_tier,
+                                     stage_options_text)
 from tools.registry import registry
 
 # "够不着"的硬冲突理由：匹配结果全是这些时，不能说"有 N 套可能符合需求"
@@ -397,8 +397,7 @@ _CHANGE_FIELD_LABELS = {
     "customer_type": "客户类型", "birthday": "生日", "tags": "标签",
 }
 _CHANGE_STATUS_LABELS = _STATUS_LABELS  # 变更历史与客户回执共用一张表（一处定义）
-_CHANGE_TYPE_LABELS = {"buy_new": "买一手房", "buy_second_hand": "买二手房", "rent": "租房",
-                       "unspecified": "未细分", "buy": "未细分"}
+_CHANGE_TYPE_LABELS = CUSTOMER_TYPE_LABELS  # 与共用模块同一张表（一处定义）
 
 _DISPLAY_MAX_LEN = 40
 
