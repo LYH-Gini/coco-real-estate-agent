@@ -24,7 +24,7 @@ from hermes_cli import doctor_platform
 VULNERABLE = (3, 50, 4)
 FIXED_VERSIONS = [(3, 51, 3), (3, 52, 0), (3, 50, 7), (3, 44, 6)]
 
-EXPOSED_TEXT = "exposed to the WAL-reset bug"
+EXPOSED_TEXT = "SQLite 升级前有 WAL 重置风险"
 
 
 def _make_db(path, journal_mode=None):
@@ -219,9 +219,9 @@ class TestLiveConnectionSafety:
             conn.close()
 
         out = capsys.readouterr().out
-        assert "state.db: journal mode could not be read" in out
+        assert "state.db：读不到日志模式" in out
         assert "database is open in this process" in out
-        assert "cannot rule out WAL exposure" in out
+        assert "没法排除 WAL 风险" in out
 
     def test_an_untracked_lock_holder_does_not_block_the_probe(self, tmp_path):
         """Only this process's *registered* connections gate the read.
@@ -295,7 +295,7 @@ class TestReportDatabaseJournalModes:
         doctor_platform._report_database_journal_modes(tmp_path, (3, 51, 3))
 
         out = capsys.readouterr().out
-        assert "state.db is in WAL mode on a cross-VM filesystem" in out
+        assert "state.db 在跨虚拟机文件系统（virtiofs/9p）上是 WAL 模式" in out
         assert "hermes sessions set-journal-mode delete" in out
 
     def test_vulnerable_runtime_wal_db_is_exposed(self, tmp_path, capsys):
@@ -304,7 +304,7 @@ class TestReportDatabaseJournalModes:
         doctor_platform._report_database_journal_modes(tmp_path, VULNERABLE)
 
         out = capsys.readouterr().out
-        assert "state.db is in WAL mode" in out
+        assert "state.db 是 WAL 模式" in out
         assert EXPOSED_TEXT in out
 
     def test_vulnerable_runtime_rollback_db_is_listed_not_exposed(self, tmp_path, capsys):
@@ -313,7 +313,7 @@ class TestReportDatabaseJournalModes:
         doctor_platform._report_database_journal_modes(tmp_path, VULNERABLE)
 
         out = capsys.readouterr().out
-        assert "state.db: rollback journal mode" in out
+        assert "state.db：回滚日志模式" in out
         assert EXPOSED_TEXT not in out
 
     @pytest.mark.parametrize("version", FIXED_VERSIONS)
@@ -323,7 +323,7 @@ class TestReportDatabaseJournalModes:
         doctor_platform._report_database_journal_modes(tmp_path, version)
 
         out = capsys.readouterr().out
-        assert "state.db: WAL journal mode" in out
+        assert "state.db：WAL 日志模式" in out
         assert EXPOSED_TEXT not in out
         assert "⚠" not in out
 
@@ -338,10 +338,10 @@ class TestReportDatabaseJournalModes:
         doctor_platform._report_database_journal_modes(tmp_path, VULNERABLE)
 
         out = capsys.readouterr().out
-        assert "state.db is in WAL mode" in out
-        assert "projects.db: rollback journal mode" in out
-        assert "kanban.db: rollback journal mode" in out
-        assert "kanban/boards/myboard/kanban.db is in WAL mode" in out
+        assert "state.db 是 WAL 模式" in out
+        assert "projects.db：回滚日志模式" in out
+        assert "kanban.db：回滚日志模式" in out
+        assert "kanban/boards/myboard/kanban.db 是 WAL 模式" in out
 
     def test_missing_databases_are_skipped(self, tmp_path, capsys):
         doctor_platform._report_database_journal_modes(tmp_path, VULNERABLE)
@@ -362,7 +362,7 @@ class TestReportDatabaseJournalModes:
             holder.close()
 
         out = capsys.readouterr().out
-        assert "state.db: rollback journal mode" in out
+        assert "state.db：回滚日志模式" in out
 
     @pytest.mark.skipif(os.name == "nt", reason="chmod is a no-op on Windows")
     @pytest.mark.skipif(os.geteuid() == 0, reason="root ignores file permissions")
@@ -376,8 +376,8 @@ class TestReportDatabaseJournalModes:
             os.chmod(db, 0o644)
 
         out = capsys.readouterr().out
-        assert "state.db: journal mode could not be read" in out
-        assert "cannot rule out WAL exposure" in out
+        assert "state.db：读不到日志模式" in out
+        assert "没法排除 WAL 风险" in out
 
     def test_corrupt_database_does_not_crash(self, tmp_path, capsys):
         (tmp_path / "state.db").write_bytes(b"garbage bytes, not sqlite" * 8)
@@ -385,7 +385,7 @@ class TestReportDatabaseJournalModes:
         doctor_platform._report_database_journal_modes(tmp_path, VULNERABLE)
 
         out = capsys.readouterr().out
-        assert "state.db: journal mode could not be read" in out
+        assert "state.db：读不到日志模式" in out
 
     def test_read_error_is_informational_on_fixed_runtime(self, tmp_path, capsys):
         (tmp_path / "state.db").write_bytes(b"garbage bytes, not sqlite" * 8)
@@ -393,8 +393,8 @@ class TestReportDatabaseJournalModes:
         doctor_platform._report_database_journal_modes(tmp_path, (3, 51, 3))
 
         out = capsys.readouterr().out
-        assert "state.db: journal mode could not be read" in out
-        assert "cannot rule out WAL exposure" not in out
+        assert "state.db：读不到日志模式" in out
+        assert "没法排除 WAL 风险" not in out
         assert "⚠" not in out
 
     def test_report_creates_no_wal_sidecars(self, tmp_path, capsys):
@@ -421,10 +421,10 @@ class TestConfiguredDeleteNeverApplied:
         doctor_platform._report_database_journal_modes(tmp_path, version)
 
         out = capsys.readouterr().out
-        assert "state.db is in WAL mode" in out and "despite database.journal_mode=delete" in out
+        assert "state.db 仍是 WAL 模式" in out and "database.journal_mode=delete" in out
         assert "never live-downgraded" in out and "hermes sessions set-journal-mode delete" in out
-        assert "state.db: WAL journal mode" not in out
-        assert ("To clear the exposure:" in out) is exposed
+        assert "state.db：WAL 日志模式" not in out
+        assert ("消除风险的办法：" in out) is exposed
 
     @pytest.mark.skipif(sys.platform == "win32", reason="holder scan has no Windows backend")
     def test_wal_db_under_configured_delete_names_its_holders(self, tmp_path, capsys, monkeypatch):
@@ -448,7 +448,7 @@ class TestConfiguredDeleteNeverApplied:
             holder.wait(timeout=30)
 
         out = capsys.readouterr().out
-        assert f"state.db is held by PID {holder.pid}" in out and "state.db" in out.split("held by PID")[1]
+        assert f"state.db 正被占用：PID {holder.pid}" in out and "state.db" in out.split("正被占用：PID")[1]
         assert "no other process holds it" not in out and "cannot prove" not in out
 
     def test_partial_holder_scan_is_never_an_all_clear(self, tmp_path, capsys, monkeypatch):
@@ -460,7 +460,7 @@ class TestConfiguredDeleteNeverApplied:
         doctor_platform._report_database_journal_modes(tmp_path, (3, 51, 3))
 
         out = capsys.readouterr().out
-        assert "cannot prove the database is quiet" in out and "open-file scan unavailable" in out
+        assert "没法确认数据库此刻是安静的" in out and "open-file scan unavailable" in out
         assert "no other process holds it" not in out and "held by PID" not in out
 
     def test_configured_wal_keeps_the_informational_line(self, tmp_path, capsys, monkeypatch):
@@ -470,7 +470,7 @@ class TestConfiguredDeleteNeverApplied:
         doctor_platform._report_database_journal_modes(tmp_path, (3, 51, 3))
 
         out = capsys.readouterr().out
-        assert "state.db: WAL journal mode" in out
+        assert "state.db：WAL 日志模式" in out
         assert "despite" not in out
 
 
@@ -481,8 +481,8 @@ class TestSizeAndRepairHint:
         doctor_platform._report_database_journal_modes(tmp_path, VULNERABLE)
         out = capsys.readouterr().out
         # _format_size picks the unit (a fresh test DB is KB-scale).
-        assert re.search(r"\(\d[\d.]* [KMGT]?B\)", out)
-        assert "To clear the exposure:" in out
+        assert re.search(r"（(\d[\d.]* [KMGT]?B)）", out)
+        assert "消除风险的办法：" in out
 
     def test_no_repair_hint_when_nothing_is_exposed(self, tmp_path, capsys):
         _make_db(tmp_path / "state.db", journal_mode="DELETE")

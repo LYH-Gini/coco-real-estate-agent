@@ -338,9 +338,15 @@
 - **顺带修掉两个假问题**：① 体检总报"缺 `~/.local/bin/hermes` 软链"—— 我们按设计移除了 hermes 命令，
   照官方查 hermes 会**每次体检都报一个永远修不好的问题**，`--fix` 还会把 hermes 命令装回来；
   现在 Coco 安装只查 `coco` 链接。② 汇总里的"跑 `hermes setup` 配密钥"改成 `coco setup`。
+- **逐项明细行（同批续做）**：`doctor_platform.py` / `doctor_tools.py` 里体检输出的每一行
+  （Python 环境 / 依赖包 / 目录结构 / 外部工具 / 库日志模式 / 命令入口 / 工具可用性等）也改成了中文，
+  含 `(system dependency not met)`→`（系统依赖没装齐）`、`(optional, not installed)`→`（可选，未安装）`、
+  `Could not warm npx cache …`、`Lightpanda selected but binary not found` 等。
 - **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回；
-  锚点失效会报 `ANCHOR`（需人工按本条重做并更新表）。同一批的断言更新在
-  `tests/hermes_cli/test_doctor.py` / `test_doctor_exit_status.py`（也算进表里）。
+  锚点失效会报 `ANCHOR`（需人工按本条重做并更新表）。同批被改动文案带出的官方用例断言更新在
+  `tests/hermes_cli/test_doctor*.py`（断言本来就是英文原文，一并进表）。
+- **还没翻的**：`doctor_config.py`（配置检查）与 `doctor_state.py`（目录/库检查）里那几十行明细，
+  以及 macOS / Windows / Termux 专属分支的部分细节。
 
 ### 24 `coco` 命令文案里的"推荐/不建议"改中文
 

@@ -120,7 +120,7 @@ def _enabled_cli_toolsets_for_doctor() -> set[str] | None:
 # `requires_env`, so the generic branch would call a missing credential a "system dependency".
 # Name the real fix instead (#9516).
 _TOOLSET_SETUP_HINTS: dict[str, str] = {
-    "image_gen": "(image generation unavailable — check the provider selection and its key or SDK with 'hermes tools')",
+    "image_gen": "（图片生成不可用 —— 在「coco tools」里检查服务商选择与对应的密钥或 SDK）",
 }
 
 
@@ -140,7 +140,7 @@ def _check_git_and_rg(should_fix: bool, f: Finding) -> None:
     check_bool(_safe_which("git"), "git", ("git not found", "(optional)"))
     if not check_bool(_safe_which("rg"), ("ripgrep (rg)", "(faster file search)"),
                       ("ripgrep (rg) not found", "(file search uses grep fallback)")):
-        check_info(f"Install for faster search: {_system_package_install_cmd('ripgrep')}")
+        check_info(f"想搜得更快可以装：{_system_package_install_cmd('ripgrep')}")
 
 
 _BUILTIN_TERMINAL_BACKENDS = {"local", "docker", "singularity", "modal", "managed_modal", "daytona", "vercel_sandbox", "ssh"}
@@ -167,9 +167,9 @@ def _check_docker_backend(terminal_env: str, running_in_container: bool, issues:
     elif docker_exe:
         check_ok(docker_runtime_name(docker_exe), "(optional)")
     elif _is_termux():
-        check_info("Docker backend is not available inside Termux (expected on Android)")
+        check_info("Termux 里用不了 Docker（Android 上属正常）")
     elif not running_in_container:  # in-container case already explained by the caller
-        check_warn("Docker/Podman not found", "(optional)")
+        check_warn("没装 Docker/Podman", "(optional)")
 
 
 def _check_ssh_backend(issues: list[str]) -> None:
@@ -225,9 +225,9 @@ def _check_vercel_backend(issues: list[str]) -> None:
     else:
         _fail_and_issue("Vercel auth not configured", f"({auth_status.label})", "Configure Vercel Sandbox auth with VERCEL_TOKEN, VERCEL_PROJECT_ID, and VERCEL_TEAM_ID", issues)
     for line in auth_status.detail_lines:
-        check_info(f"Vercel auth {line}")
+        check_info(f"Vercel 登录 {line}")
     persistent = os.getenv("TERMINAL_CONTAINER_PERSISTENT", "true").lower() in {"1", "true", "yes", "on"}
-    check_info("Vercel persistence: snapshot filesystem only; live processes do not survive sandbox recreation"
+    check_info("Vercel 持久化：只快照文件系统；沙箱重建后运行中的进程不会保留"
                if persistent else "Vercel persistence: ephemeral filesystem")
 
 
@@ -261,7 +261,7 @@ def _check_terminal_backend(should_fix: bool, f: Finding) -> None:
     # In our container docker-in-docker isn't set up, so local is intended: skip the noisy "Docker/Podman not found"
     # warning. An explicit TERMINAL_ENV=docker (mounted docker.sock) still gets checked.
     if running_in_container and terminal_env != "docker":
-        check_info("Running inside a container — using local terminal backend (docker-in-docker is not configured by default)")
+        check_info("跑在容器里 —— 用本机终端后端（默认没配 docker-in-docker）")
         terminal_env = "local"
     _check_docker_backend(terminal_env, running_in_container, f.issues)
     if terminal_env in _BACKEND_CHECKS:
@@ -284,31 +284,31 @@ def _check_agent_browser(should_fix: bool) -> bool:
     except Exception:
         resolved = None
     if resolved and _is_npx_agent_browser_sentinel(resolved):
-        check_ok("agent-browser", "(resolves via npx on first use)")
+        check_ok("agent-browser", "（首次使用时通过 npx 解析）")
         if should_fix:
             # Can't tell whether npx's cache is warm — fire the same warm-up `hermes update` does.
             from tools.browser_tool_install import warm_agent_browser_npx_cache
-            check_info("  Warmed npx cache for agent-browser" if warm_agent_browser_npx_cache()
-                       else "  Could not warm npx cache (offline or npx unavailable)")
+            check_info("已预热 agent-browser 的 npx 缓存" if warm_agent_browser_npx_cache()
+                       else "  没能预热 npx 缓存（离线或没有 npx）")
         return True
     if resolved and agent_browser_runnable(resolved):
-        check_ok("agent-browser", "(browser automation)")
+        check_ok("agent-browser", "（浏览器自动化）")
         return True
     if resolved:
         # Almost always a dangling global symlink left by npm postinstall after `hermes update` wiped node_modules.
-        check_warn("agent-browser found but not runnable", f"(broken symlink at {resolved}? run: npx agent-browser --version)")
+        check_warn("找到了 agent-browser 但跑不起来", f"（{resolved} 是坏链接？跑一下：npx agent-browser --version）")
     elif _is_termux():
         _termux_browser_hints("agent-browser is not installed (expected in the tested Termux path)",
                               "Install it manually later with: npm install -g agent-browser && agent-browser install", node_installed=True)
     else:
-        check_warn("agent-browser not installed", "(requires npm/npx on PATH)")
+        check_warn("没装 agent-browser", "（需要 PATH 里有 npm/npx）")
     return False
 
 
 def _termux_browser_hints(*lines: str, node_installed: bool) -> None:
     for line in lines:
         check_info(line)
-    check_info("Termux browser setup:")
+    check_info("Termux 浏览器设置：")
     for step in _termux_browser_setup_steps(node_installed=node_installed):
         check_info(step)
 
@@ -333,7 +333,7 @@ def _check_chromium() -> None:
     if not check_bool(_chromium_installed(), ("Playwright Chromium", "(browser engine)"),
                       ("Playwright Chromium not installed", "(browser_* tools will be hidden from the agent)")):
         with_deps = "" if sys.platform == "win32" else "--with-deps "
-        check_info(f"Install with: cd {PROJECT_ROOT} && npx playwright install {with_deps}chromium")
+        check_info(f"安装方式：cd {PROJECT_ROOT} && npx playwright install {with_deps}chromium")
 
 
 def _check_lightpanda() -> None:
@@ -351,10 +351,10 @@ def _check_lightpanda() -> None:
     except Exception as e:
         used, reason = False, f"status check failed: {e}"
     if not used:
-        check_warn("browser.engine=lightpanda is shadowed", f"({reason})")
-        check_info("Fix: pick Lightpanda in `hermes tools` → Browser Automation, or set browser.engine: auto")
+        check_warn("browser.engine=lightpanda 被遮蔽了", f"({reason})")
+        check_info("修法：在「coco tools」→ Browser Automation 里选 Lightpanda，或把 browser.engine 设成 auto")
     elif not check_bool(find_lightpanda_binary(), ("Lightpanda", f"({reason})"),
-                        ("Lightpanda selected but binary not found", "(browser tools will fail until it is installed)")):
+                        ("选了 Lightpanda 但找不到可执行文件", "（装上之前浏览器工具用不了）")):
         check_info(LIGHTPANDA_INSTALL_HINT)
 
 
@@ -366,10 +366,10 @@ def _check_node_and_browser(should_fix: bool, f: Finding) -> None:
         if _check_agent_browser(should_fix) and not _is_termux():  # Chromium check is not a tested Termux path
             _check_chromium()
     elif _is_termux():
-        _termux_browser_hints("Node.js not found (browser tools are optional in the tested Termux path)",
+        _termux_browser_hints("没装 Node.js (browser tools are optional in the tested Termux path)",
                               "Install Node.js on Termux with: pkg install nodejs", node_installed=False)
     else:
-        check_warn("Node.js not found", "(optional, needed for browser tools)")
+        check_warn("没装 Node.js", "（可选，浏览器工具需要）")
     _check_lightpanda()
 
 
@@ -399,20 +399,20 @@ def _audit_one(npm_bin: str, npm_dir, label: str, audit_extra: list[str], issues
         total = critical + high + moderate
         workspace_scoped = bool(audit_extra) and audit_extra[0] == "--workspace"
         if total == 0:
-            check_ok(f"{label} deps", "(no known vulnerabilities)")
+            check_ok(f"{label} 依赖", "（没有已知漏洞）")
         elif critical > 0 or high > 0:
             detail = "build-time tooling" if workspace_scoped else "runtime dependency tree"
             remedy = ("fix is an upstream lockfile bump — a local manual fix does not persist"
                       " (the next `hermes update` reinstalls from the committed lockfile)")
-            check_warn(f"{label} deps", f"({critical} critical, {high} high, {moderate} moderate — {remedy})")
+            check_warn(f"{label} 依赖", f"（严重 {critical}、高 {high}、中 {moderate} —— {remedy}）")
             if workspace_scoped:
-                check_info("  ^ build-time tooling (not runtime); if manual npm remediation "
+                check_info("构建期工具（不影响运行）；如果要手工修 npm "
                            "errors with an arborist crash it's a known npm bug — clears via a lockfile bump")
             else:
-                check_info(f"  ^ {detail}; report/pin the fix in package-lock.json — see #116774")
-            issues.append(f"{label} has {total} npm {_plural(total)}")
+                check_info(f"{detail}；把修复写进 package-lock.json（见 #116774）")
+            issues.append(f"{label} 有 {total} 个 npm 漏洞")
         else:
-            check_ok(f"{label} deps", f"({moderate} moderate {_plural(moderate)})")
+            check_ok(f"{label} 依赖", f"（其中中危 {moderate} 个）")
     except Exception:
         pass
 
@@ -449,7 +449,7 @@ def _check_npm_audit(should_fix: bool, f: Finding) -> None:
             if ((PROJECT_ROOT if audit_extra else npm_dir) / "node_modules").exists():
                 _audit_one(npm_bin, npm_dir, label, audit_extra, f.issues)
     if _is_termux():
-        check_info("Termux compatibility fallbacks:")
+        check_info("Termux 兼容回退：")
         for note in _TERMUX_INSTALL_ALL_FALLBACK_NOTES:
             check_info(note)
 
@@ -475,10 +475,10 @@ def _check_tool_availability(should_fix: bool, f: Finding) -> None:
         (check_ok if status == "ok" else check_warn)(label, detail)
     for item in unavailable:
         env_vars = item.get("missing_vars") or item.get("env_vars") or []
-        detail = f"(missing {', '.join(env_vars)})" if env_vars else _TOOLSET_SETUP_HINTS.get(item["name"], "(system dependency not met)")
+        detail = f"(missing {', '.join(env_vars)})" if env_vars else _TOOLSET_SETUP_HINTS.get(item["name"], "（系统依赖没装齐）")
         check_warn(item["name"], detail)
     # Only toolsets enabled for the CLI count toward the summary; default-off or
     # disabled toolsets may warn above but must not pollute it.
     api_disabled = _missing_api_key_toolsets_for_summary(unavailable)
     if api_disabled or any(status != "ok" for status, _, _ in web_rows):
-        f.issues.append("Run 'hermes setup' to configure missing API keys for full tool access")
+        f.issues.append("跑「coco setup」把缺的密钥配上，工具才能全用")

@@ -94,9 +94,9 @@ class TestDoctorToolAvailabilitySummary:
         out = buf.getvalue()
 
         image_line = next(line for line in out.splitlines() if "image_gen" in line)
-        assert "hermes tools" in image_line and "system dependency" not in image_line and "unavailable" in image_line
-        assert "system dependency not met" in next(line for line in out.splitlines() if "homeassistant" in line)
-        assert any("hermes setup" in issue for issue in f.issues)
+        assert "coco tools" in image_line and "系统依赖" not in image_line and "不可用" in image_line
+        assert "系统依赖没装齐" in next(line for line in out.splitlines() if "homeassistant" in line)
+        assert any("coco setup" in issue for issue in f.issues)
 
     def test_web_capability_rows_warn_when_selected_provider_not_ready(self, monkeypatch):
         """#78412: selected firecrawl with is_available=False must warn."""
@@ -809,7 +809,7 @@ def test_run_doctor_reports_agent_browser_resolves_via_npx(monkeypatch, tmp_path
     out = buf.getvalue()
 
     assert "agent-browser" in out
-    assert "resolves via npx on first use" in out
+    assert "首次使用时通过 npx 解析" in out
     assert "agent-browser not installed" not in out
     # --fix was not requested: the warm-up must not fire on a plain check.
     assert not warm_calls
@@ -834,8 +834,8 @@ def test_run_doctor_fix_warms_npx_cache_when_agent_browser_resolves_via_npx(
     out = buf.getvalue()
 
     assert warm_calls, "warm_agent_browser_npx_cache() must be called under --fix"
-    assert "Warmed npx cache for agent-browser" in out
-    assert "Could not warm npx cache" not in out
+    assert "已预热 agent-browser 的 npx 缓存" in out
+    assert "没能预热 npx 缓存" not in out
 
 
 def test_run_doctor_fix_reports_when_npx_warmup_fails(monkeypatch, tmp_path):
@@ -852,7 +852,7 @@ def test_run_doctor_fix_reports_when_npx_warmup_fails(monkeypatch, tmp_path):
         doctor_mod.run_doctor(Namespace(fix=True))
     out = buf.getvalue()
 
-    assert "Could not warm npx cache (offline or npx unavailable)" in out
+    assert "没能预热 npx 缓存（离线或没有 npx）" in out
     assert "Warmed npx cache for agent-browser" not in out
 
 
@@ -1460,7 +1460,7 @@ def test_run_doctor_reports_shadowed_lightpanda_engine(monkeypatch, tmp_path):
         lambda: (False, "cloud provider Browserbase is selected"),
     )
     out = helper._run_doctor_and_capture(monkeypatch, tmp_path)
-    assert "browser.engine=lightpanda is shadowed" in out
+    assert "browser.engine=lightpanda 被遮蔽了" in out
     assert "Browserbase" in out
 
 
@@ -1473,7 +1473,7 @@ def test_run_doctor_warns_when_lightpanda_binary_missing(monkeypatch, tmp_path):
     monkeypatch.setattr("tools.browser_tool_lightpanda_fallback.lightpanda_engine_status", lambda: (True, "Browser Use mode"))
     monkeypatch.setattr("tools.browser_lightpanda.find_lightpanda_binary", lambda: None)
     out = helper._run_doctor_and_capture(monkeypatch, tmp_path)
-    assert "Lightpanda selected but binary not found" in out
+    assert "选了 Lightpanda 但找不到可执行文件" in out
 
 
 def test_docker_daemon_probe_uses_version_not_info(monkeypatch):

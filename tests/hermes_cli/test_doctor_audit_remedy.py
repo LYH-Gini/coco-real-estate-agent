@@ -44,12 +44,12 @@ def test_root_remedy_never_prescribes_local_audit_fix(capsys):
     assert "run: cd" not in out
     assert "npm audit fix" not in out
     assert "lockfile bump" in out
-    assert issues == ["Browser tools (agent-browser) has 2 npm vulnerabilities"]
+    assert issues == ["Browser tools (agent-browser) 有 2 个 npm 漏洞"]
 
 
 
 
 def test_clean_tree_reports_no_known_vulnerabilities(capsys):
     out, issues = _run_audit_one(capsys, ["--workspaces=false"], _audit_json())
-    assert "no known vulnerabilities" in out
+    assert "没有已知漏洞" in out
     assert issues == []

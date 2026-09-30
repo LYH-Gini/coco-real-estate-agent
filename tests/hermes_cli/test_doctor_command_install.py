@@ -88,7 +88,7 @@ class TestDoctorCommandInstallation:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         out = _run_doctor(fix=True)
-        assert "Fixed symlink" in out
+        assert "已修复链接" in out
 
         # Verify the symlink now points to the correct target
         assert cmd_link.is_symlink()

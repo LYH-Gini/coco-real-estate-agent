@@ -95,7 +95,7 @@ def _report_database_holders(name: str, db_path: Path) -> None:
     an all-clear (the scan is the same fail-closed authority repair/VACUUM/checkpoint admission uses)."""
     from hermes_state_holders import describe_holder_pid, foreign_state_db_holders
     if sys.platform == "win32":
-        check_warn(f"{name}: cannot prove the database is quiet", "(holder scan is unavailable on Windows)")
+        check_warn(f"{name}：没法确认数据库此刻是安静的", "（Windows 上看不了占用进程）")
         return
     unknown: list[str] = []
     by_pid: dict[int, set[str]] = {}
@@ -105,12 +105,12 @@ def _report_database_holders(name: str, db_path: Path) -> None:
         else:
             by_pid.setdefault(pid, set()).add(Path(target.removesuffix(" (deleted)")).name)
     for pid in sorted(by_pid):
-        check_info(f"{name} is held by {describe_holder_pid(pid)}: {', '.join(sorted(by_pid[pid]))}")
+        check_info(f"{name} 正被占用：{describe_holder_pid(pid)} —— {', '.join(sorted(by_pid[pid]))}")
     if unknown:
-        check_warn(f"{name}: cannot prove the database is quiet",
+        check_warn(f"{name}：没法确认数据库此刻是安静的",
                    f"(holder scan incomplete: {unknown[0][:120]}" + (f"; +{len(unknown) - 1} more" if len(unknown) > 1 else "") + ")")
     elif not by_pid:
-        check_info(f"{name}: no other process holds it right now — the offline conversion can run")
+        check_info(f"{name}：当前没有别的进程占用，离线转换可以跑")
 
 
 def _report_database_journal_modes(hermes_home: Path | None = None, version_info: tuple[int, ...] | None = None) -> None:
@@ -125,7 +125,7 @@ def _report_database_journal_modes(hermes_home: Path | None = None, version_info
     try:
         databases = _hermes_database_paths(hermes_home if hermes_home is not None else HERMES_HOME)
     except Exception as exc:
-        check_warn(f"Could not list Hermes databases: {exc}")
+        check_warn(f"列不出数据库：{exc}")
         return
     exposed = []
     for name, path in databases:
@@ -141,7 +141,7 @@ def _report_database_journal_modes(hermes_home: Path | None = None, version_info
             # cross-VM hint's remedy ("set journal_mode: delete") is already applied.
             if vulnerable:
                 exposed.append(name)
-            check_warn(f"{name} is in WAL mode ({size}) despite database.journal_mode=delete",
+            check_warn(f"{name} 仍是 WAL 模式（{size}），但配置写的是 database.journal_mode=delete",
                        "(the setting never applied: an existing WAL database is never live-downgraded"
                        + ("; also exposed to the WAL-reset bug" if vulnerable else "")
                        + ". Stop every Hermes process for this profile, then run "
@@ -149,28 +149,28 @@ def _report_database_journal_modes(hermes_home: Path | None = None, version_info
             _report_database_holders(name, path)
         elif error is not None:
             if vulnerable:
-                check_warn(f"{name}: journal mode could not be read", f"({error}; cannot rule out WAL exposure)")
+                check_warn(f"{name}：读不到日志模式", f"（{error}；没法排除 WAL 风险）")
             else:
-                check_info(f"{name}: journal mode could not be read ({error})")
+                check_info(f"{name}：读不到日志模式（{error}）")
         elif mode == "wal" and _path_on_cross_vm_fs(str(path)):
             # #110848: WAL shared-memory is not coherent across a virtiofs/9p bind mount; startup only refuses WAL
             # for FRESH databases, so an existing WAL file here keeps corrupting until the operator converts it.
             # Checked before the WAL-reset exposure: active cross-VM corruption outranks a latent bug class.
             if vulnerable:
                 exposed.append(name)
-            check_warn(f"{name} is in WAL mode on a cross-VM filesystem (virtiofs/9p, {size})",
+            check_warn(f"{name} 在跨虚拟机文件系统（virtiofs/9p）上是 WAL 模式（{size}）",
                        "(WAL can silently corrupt across the VM boundary; stop every Hermes process and run "
                        f"`hermes sessions set-journal-mode delete{'' if name == 'state.db' else f' --db {path}'}`, then "
                        "set `database.journal_mode: delete` — or move the database onto a native/named volume)")
         elif mode == "wal" and vulnerable:
             exposed.append(name)
-            check_warn(f"{name} is in WAL mode ({size})", "(exposed to the WAL-reset bug until SQLite is upgraded)")
+            check_warn(f"{name} 是 WAL 模式（{size}）", "（SQLite 升级前有 WAL 重置风险）")
         elif mode == "wal":
-            check_info(f"{name}: WAL journal mode ({size})")
+            check_info(f"{name}：WAL 日志模式（{size}）")
         else:
-            check_info(f"{name}: rollback journal mode ({size}{', not exposed' if vulnerable else ''})")
+            check_info(f"{name}：回滚日志模式（{size}{'，无风险' if vulnerable else ''}）")
     if exposed:
-        check_info(f"To clear the exposure: {_wal_reset_repair_hint()}")
+        check_info(f"消除风险的办法：{_wal_reset_repair_hint()}")
 
 
 def _read_pyproject_version() -> str | None:
@@ -200,7 +200,7 @@ def _check_version_consistency(issues: list[str]) -> None:
     if pyproject_version is None:
         return
     if pyproject_version == init_version:
-        return check_ok("Version files consistent", f"({init_version})")
+        return check_ok("版本文件一致", f"({init_version})")
     _fail_and_issue("Version mismatch between source files", f"(pyproject.toml {pyproject_version} != hermes_cli/__init__.py {init_version})",
                     "版本文件不一致：重新同步（跑 'coco update'，或把 hermes_cli/__init__.py 的 __version__ 改成与 pyproject.toml 一致）", issues)
 
@@ -218,7 +218,7 @@ def _check_s6_supervision(issues: list[str]) -> None:
     mgr = S6ServiceManager()
     for static in ("main-hermes", "dashboard"):  # s6-rc symlinks under /run/service/, same s6-svstat probe
         up = mgr.is_running(static)
-        (check_ok if up else check_info)(f"{static}: up" if up else f"{static}: down (expected if not enabled via env)")
+        (check_ok if up else check_info)(f"{static}: up" if up else f"{static}：未运行（没通过环境变量启用时属正常）")
     _report_host_gateway_slot(mgr, issues)
 
 
@@ -233,16 +233,16 @@ def _report_host_gateway_slot(mgr, issues: list[str]) -> None:
         if not slots:
             return check_info("还没有注册网关服务 —— 跑 `coco gateway install`")
         up = [p for p in slots if mgr.is_running(f"gateway-{p}")]
-        issues.append("No host gateway owns the gateway role — start the ONE host multiplexer: "
+        issues.append("没有网关在承担网关角色 —— 启动那个唯一的主网关："
                       "hermes --profile default gateway start")
-        return check_warn(f"No host gateway owns the gateway role ({len(up)}/{len(slots)} supervision "
+        return check_warn(f"没有网关承担网关角色（{len(up)}/{len(slots)} 个监管槽位在位）："
                           f"slots up: {', '.join(slots)})", "(nothing is serving these profiles)")
-    check_ok(f"Host gateway: {topology.describe()}")
+    check_ok(f"主网关：{topology.describe()}")
     legacy_up = sorted(p for p in slots if p != "default" and mgr.is_running(f"gateway-{p}"))
     if legacy_up:
-        check_warn(f"LEGACY per-profile gateway slots still supervised: {', '.join(legacy_up)}",
+        check_warn(f"仍在监管的旧版按配置网关：{', '.join(legacy_up)}",
                    "(multiplex-only: the host gateway already serves every profile from one process)")
-        issues.append("Fold the legacy per-profile gateways into the host gateway: "
+        issues.append("把旧版按配置的网关并进主网关："
                       "hermes --profile default gateway migrate --multiplex")
 
 
@@ -256,17 +256,17 @@ def check_certificates(should_fix: bool = False, issues: "list | None" = None) -
         from agent.ssl_guard import verify_ca_bundle
         from agent.errors import SSLConfigurationError
     except Exception as e:
-        return check_warn("SSL certificate check skipped", str(e))
+        return check_warn("跳过 SSL 证书检查", str(e))
     if issues is None:
         issues = []
     try:
         verify_ca_bundle()
-        return check_ok("SSL CA certificate bundle is valid")
+        return check_ok("SSL 根证书包正常")
     except SSLConfigurationError as e:
         first_error = str(e)
     except Exception as e:
-        return check_warn("SSL certificate check skipped", str(e))
-    check_fail("SSL CA certificate bundle is broken", first_error)
+        return check_warn("跳过 SSL 证书检查", str(e))
+    check_fail("SSL 根证书包有问题", first_error)
     pip_cmd = f"{sys.executable} -m pip install --force-reinstall certifi"
     if not should_fix:
         issues.append(f"修复 CA 证书包：跑 `coco doctor --fix`，或 `{pip_cmd}`")
@@ -287,7 +287,7 @@ def check_certificates(should_fix: bool = False, issues: "list | None" = None) -
     importlib.invalidate_caches()
     try:
         verify_ca_bundle()
-        check_ok("SSL CA certificate bundle repaired (certifi reinstalled)")
+        check_ok("SSL 根证书包已修好（重装了 certifi）")
     except SSLConfigurationError as e:
         _fail_and_issue("SSL CA certificate bundle still broken after reinstall", str(e),
                         "certifi reinstall did not restore the CA bundle — check for a custom CA env var "
@@ -307,7 +307,7 @@ def _check_gateway_service_linger(issues: list[str]) -> None:
             user_systemd_unit_dir)
         from hermes_cli.service_manager import detect_service_manager
     except Exception as e:
-        return check_warn("Gateway service linger", f"(could not import gateway helpers: {e})")
+        return check_warn("网关服务常驻（linger）", f"（导入网关辅助函数失败：{e}）")
     if not is_linux() or detect_service_manager() == "s6":
         return
     host_unit = user_systemd_unit_dir() / f"{_SERVICE_BASE}.service"
@@ -316,11 +316,11 @@ def _check_gateway_service_linger(issues: list[str]) -> None:
     _section("Gateway Service")
     linger_enabled, linger_detail = get_systemd_linger_status()
     if linger_enabled is None:
-        return check_warn("Could not verify systemd linger", f"({linger_detail})")
+        return check_warn("没能确认 systemd linger 状态", f"({linger_detail})")
     if not check_bool(linger_enabled, ("Systemd linger enabled", "(gateway service survives logout)"),
                       ("Systemd linger disabled", "(gateway may stop after logout)")):
-        check_info("Run: sudo loginctl enable-linger $USER")
-        issues.append("Enable linger for the gateway user service: sudo loginctl enable-linger $USER")
+        check_info("执行：sudo loginctl enable-linger $USER")
+        issues.append("让网关用户服务常驻：sudo loginctl enable-linger $USER")
 
 
 _TCC_CDHASH_DETAIL = (
@@ -348,12 +348,12 @@ def check_macos_tcc_grants() -> None:
         return
     dr = _macos_desktop_dr(app)
     if not dr:
-        return check_warn("macOS TCC grant check", "(could not read code-signing requirement of the desktop bundle)")
+        return check_warn("macOS 权限授予检查", "（读不到桌面版的签名要求）")
     if "cdhash" in dr.lower():
-        return check_warn("macOS TCC grants will reset after every update", _TCC_CDHASH_DETAIL)
+        return check_warn("macOS 的权限授予会在每次更新后重置", _TCC_CDHASH_DETAIL)
     # --setup-tcc-identity or notarized build (certificate-anchored) is the strongest anchor.
-    check_ok("macOS TCC signing identity is stable", _TCC_STABLE_DETAIL["certificate" in dr.lower()])
-    check_info("If macOS still re-prompts for permissions (toggle shows ON): the stored grant is stale — run "
+    check_ok("macOS 的签名身份稳定", _TCC_STABLE_DETAIL["certificate" in dr.lower()])
+    check_info("如果 macOS 还是反复要权限（开关显示已开）：存的授权过期了 —— 执行 "
                "`tccutil reset ScreenCapture com.nousresearch.hermes` (repeat per affected service), toggle it ON in "
                "System Settings, then fully quit & relaunch Hermes once.")
 
@@ -391,11 +391,11 @@ def check_macos_tcc_anchor(should_fix: bool = False) -> None:
         if status == "skip":
             return
         if status == "active":
-            return check_ok("macOS TCC anchor active", f"({detail})")
+            return check_ok("macOS 授权锚点生效", f"({detail})")
         anchored = tcc.ensure_tcc_anchor() if should_fix else None
         if anchored is not None:
-            return check_ok("macOS TCC anchor installed", f"({anchored})")
-        check_warn("macOS TCC anchor missing" if status == "missing" else "macOS TCC anchor stale", f"({detail})")
+            return check_ok("macOS 授权锚点已装好", f"({anchored})")
+        check_warn("macOS 授权锚点缺失" if status == "missing" else "macOS 授权锚点是旧的", f"({detail})")
 
 
 def check_macos_full_disk_access() -> None:
@@ -415,7 +415,7 @@ def check_macos_full_disk_access() -> None:
     try:
         os.listdir(Path.home() / "Library" / "Application Support" / "com.apple.TCC")
     except PermissionError:
-        check_info("One switch silences all macOS folder prompts: grant your terminal app Full Disk Access and Hermes "
+        check_info("一个开关能关掉 macOS 的所有目录弹窗：给终端 App 开「完全磁盘访问权限」，Coco "
                    "will never trip per-folder dialogs (Desktop/Downloads/Documents/...) again. Open: System Settings → "
                    "Privacy & Security → Full Disk Access — or run:\n"
                    "      open \"x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles\"\n"
@@ -424,7 +424,7 @@ def check_macos_full_disk_access() -> None:
     except OSError:
         pass  # missing dir / other error: indeterminate, stay silent
     else:
-        check_ok("macOS Full Disk Access granted", "(no per-folder permission prompts will occur)")
+        check_ok("macOS 完全磁盘访问权限已授予", "（不会再逐个目录弹权限）")
 
 
 @doctor_check("Security advisory check failed: {e}")
@@ -434,7 +434,7 @@ def _check_security_advisories(should_fix: bool, f: Finding) -> None:
     all_hits = detect_compromised()
     fresh_hits = filter_unacked(all_hits)
     if not fresh_hits:
-        return check_ok("No active security advisories")
+        return check_ok("没有需要处理的安全公告")
     for hit in fresh_hits:
         # Fail row + remediation text indented under it as one section; also into the summary action list.
         _fail_and_issue(f"{hit.advisory.title}", f"({hit.package}=={hit.installed_version})",
@@ -445,7 +445,7 @@ def _check_security_advisories(should_fix: bool, f: Finding) -> None:
     acked_ids = get_acked_ids()  # acked-but-still-installed stays visible
     for h in all_hits:
         if h.advisory.id in acked_ids:
-            check_warn(f"{h.package}=={h.installed_version} still installed (advisory {h.advisory.id} acknowledged)")
+            check_warn(f"仍处于安装状态（公告 {h.advisory.id} 已确认）")
 
 
 @doctor_check()
@@ -466,7 +466,7 @@ def _check_python_environment(should_fix: bool, f: Finding) -> None:
         check_bool(not is_sqlite_wal_reset_vulnerable(), f"SQLite {sqlite3.sqlite_version}",
                    (f"SQLite {sqlite3.sqlite_version} (WAL-reset bug)", _sqlite_upgrade_hint()))
         if src:
-            check_info(f"SQLite source id: {(src[:48] + '…') if len(src) > 48 else src}")
+            check_info(f"SQLite 源码版本号：{(src[:48] + '…') if len(src) > 48 else src}")
         _report_database_journal_modes()
     check_bool(sys.prefix != sys.base_prefix, "Virtual environment active", ("Not in virtual environment", "(推荐)"))
     # macOS TCC interpreter anchor (#95596): dylib-complete re-land of the mechanism reverted in #95563.
@@ -503,7 +503,7 @@ def _check_required_packages(should_fix: bool, f: Finding) -> None:
             check_ok(name, "(optional)" if optional else "")
         except ImportError:
             if optional:
-                check_warn(name, "(optional, not installed)")
+                check_warn(name, "（可选，未安装）")
             else:
                 _fail_and_issue(name, "(missing)", f"Install {name}: {_python_install_cmd()} {module}", f.issues)
 
@@ -523,9 +523,9 @@ def _check_command_installation(should_fix: bool, f: Finding) -> None:
     _section("Command Installation")
     venv_bin = next((c for c in (PROJECT_ROOT / n / "bin" / "hermes" for n in ("venv", ".venv")) if c.exists()), None)
     if venv_bin is None:
-        check_warn("Venv entry point not found", "(hermes not in venv/bin/ or .venv/bin/ — reinstall with pip install -e '.[all]')")
-        return f.manual_issues.append(f"Reinstall entry point: cd {PROJECT_ROOT} && source venv/bin/activate && pip install -e '.[all]'")
-    check_ok(f"Venv entry point exists ({venv_bin.relative_to(PROJECT_ROOT)})")
+        check_warn("虚拟环境入口缺失", "（venv/bin/ 或 .venv/bin/ 里没有 hermes —— 用 pip install -e '.[all]' 重装）")
+        return f.manual_issues.append(f"重装入口：cd {PROJECT_ROOT} && source venv/bin/activate && pip install -e '.[all]'")
+    check_ok(f"虚拟环境入口在位（{venv_bin.relative_to(PROJECT_ROOT)}）")
     # Expected command link directory (mirrors install.sh logic).
     prefix = os.environ.get("PREFIX", "")
     termux = prefix and (os.environ.get("TERMUX_VERSION") or "com.termux/files/usr" in prefix)
@@ -538,23 +538,23 @@ def _check_command_installation(should_fix: bool, f: Finding) -> None:
     if link.is_symlink():
         target, expected = link.resolve(), venv_bin.resolve()
         if target == expected:
-            return check_ok(f"{display}/{link_name} → correct target")
-        check_warn(f"{display}/{link_name} points to wrong target", f"(→ {target}, expected → {expected})")
+            return check_ok(f"{display}/{link_name} → 指向正确")
+        check_warn(f"{display}/{link_name} 指向的目标不对", f"（→ {target}，应该是 → {expected}）")
         if not should_fix:
-            return f.issues.append(f"Broken symlink at {display}/{link_name} — run 'coco doctor --fix'")
+            return f.issues.append(f"{display}/{link_name} 是坏链接 —— 跑「coco doctor --fix」")
         link.unlink()
-        verb = "Fixed"
+        verb = "已修复"
     elif link.exists():  # regular file (wrapper script), not a symlink
-        return check_ok(f"{display}/{link_name} exists (non-symlink)")
+        return check_ok(f"{display}/{link_name} 存在（是普通文件）")
     else:
-        check_fail(f"{display}/{link_name} not found", f"({link_name} 命令在虚拟环境外可能不可用)")
+        check_fail(f"找不到 {display}/{link_name}", f"({link_name} 命令在虚拟环境外可能不可用)")
         if not should_fix:
-            return f.issues.append(f"Missing {display}/{link_name} symlink — run 'coco doctor --fix'")
+            return f.issues.append(f"缺 {display}/{link_name} 链接 —— 跑「coco doctor --fix」")
         link_dir.mkdir(parents=True, exist_ok=True)
-        verb = "Created"
+        verb = "已创建"
     link.symlink_to(venv_bin)
-    check_ok(f"{verb} symlink: {display}/{link_name} → {venv_bin}")
+    check_ok(f"{verb}链接：{display}/{link_name} → {venv_bin}")
     f.fixed += 1
-    if verb == "Created" and str(link_dir) not in os.environ.get("PATH", "").split(os.pathsep):
-        check_warn(f"{display} is not on your PATH", "(add it to your shell config: export PATH=\"$HOME/.local/bin:$PATH\")")
-        f.manual_issues.append(f"Add {display} to your PATH")
+    if verb == "已创建" and str(link_dir) not in os.environ.get("PATH", "").split(os.pathsep):
+        check_warn(f"{display} 不在你的 PATH 里", "（加到你的 shell 配置里：export PATH=\"$HOME/.local/bin:$PATH\"）")
+        f.manual_issues.append(f"把 {display} 加到 PATH 里")
