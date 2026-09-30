@@ -632,9 +632,10 @@ class GatewayNotificationsMixin:
         if not sent_buttons:
             default_hint = f" (default: {default})" if default else ""
             _p = getattr(adapter, "typed_command_prefix", "/")
+            # COCO-PATCH 2026-09-30：审批提示改中文（官方英文，会发到经纪人会话里）
             await target.send(
-                f"☤ **Update needs your input:**\n\n{prompt_text}{default_hint}\n\n"
-                f"Reply `{_p}approve` (yes) or `{_p}deny` (no), or type your answer directly."
+                f"☤ **更新需要你确认：**\n\n{prompt_text}{default_hint}\n\n"
+                f"回 `{_p}approve` 表示同意、`{_p}deny` 表示不同意，也可以直接说你的答案。"
             )
         # Keep the prompt marker on disk until answered so a restarted watcher can re-forward it.
         self._session_state(target.session_key).persistent.update_prompt_pending = True

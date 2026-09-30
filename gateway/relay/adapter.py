@@ -2079,7 +2079,7 @@ class RelayAdapter(BasePlatformAdapter):
         back to base."""
         if choices and self.descriptor.supports_op("prompt"):
             options = [{"id": f"c{i}", "label": str(choice)[:75]} for i, choice in enumerate(choices)]
-            options.append({"id": "other", "label": "✏️ Other (type your answer)"})
+            options.append({"id": "other", "label": "✏️ 其他（我来补充）"})
             result = await self._mint_and_send_prompt(
                 "clarify",
                 {

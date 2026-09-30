@@ -2868,10 +2868,10 @@ class BasePlatformAdapter(ABC):
                     _is_multi = bool(getattr(_cg._entries.get(clarify_id), "multi_select", False))
             except Exception:
                 _is_multi = False
-            hint = "Reply with the number, the option text, or your own answer."
+            # COCO-PATCH 2026-09-30：选项提示行改中文（官方是英文，经纪人每次选选项都看得见）
+            hint = "回数字、选项原文，或直接说你的答案。"
             if _is_multi:
-                hint = ("Multiple selections allowed — reply with the numbers separated by commas "
-                        "or spaces (e.g. \"1, 3\"), the option text, or your own answer.")
+                hint = "可以多选：回数字（用逗号或空格隔开，如「1, 3」）、选项原文，或直接说你的答案。"
             numbered = [f"  {i}. {choice}" for i, choice in enumerate(choices, start=1)]
             text = "\n".join([f"❓ {question}", "", *numbered, "", hint])
             # Text fallback: let the gateway intercept capture the typed reply.
