@@ -312,6 +312,41 @@
 - **上游变了怎么办**：官方若把这些提示也 i18n 了（换成语言包键），按官方新键重挂并把中文写进语言包；
   只要它还是硬编码，就按 `patches/22-busy-notice-cn.patch` 的语义在新版里重新替换。
 
+### 23 经纪人可见的英文提示改中文（选项提示行 / 更新确认 / 中继"其他"行）
+
+- **改什么**：三处硬编码英文 → 中文：
+  - `gateway/platforms/base.py` 的澄清选项提示行：`Reply with the number, the option text, or your own answer.`
+    → `回数字、选项原文，或直接说你的答案。`（多选版一并改）；
+  - `gateway/run_notifications.py` 的更新确认提示：`☤ **Update needs your input:** … Reply \`/approve\` (yes) or …`
+    → `☤ **更新需要你确认：** … 回 \`/approve\` 表示同意、\`/deny\` 表示不同意，也可以直接说你的答案。`；
+  - `gateway/relay/adapter.py` 的"其他"选项行：`✏️ Other (type your answer)` → `✏️ 其他（我来补充）`。
+  - **同族（已单独处理）**：`tools/clarify_tool.py` 不再给选项自动标英文 "(Recommended)"，标签也改中文
+    （见自检 57；那条是"别替经纪人做选择"的产品决定，不只是语言问题）。
+- **为什么**：这些串**写死在代码里、不走语言包**，所以 `display.language: zh` 调不掉它们；
+  实测经纪人问政策时，选项列表最后一句就是英文，他当场问"这行字怎么还是英文"。
+- **上游变了怎么办**：同步会把这三处覆盖回英文。跑 `python3 scripts/check_coco_hooks.py`
+  （**58 / 59 / 60** 三项正向守中文、反向守英文不许回来）会立刻 FAIL；按本条改回中文即可。
+
+### 24 `coco` 命令文案里的"推荐/不建议"改中文
+
+- **改什么**（只改文案，不动逻辑）：8 个官方文件里的英文"推荐/不建议"字样 → 中文：
+  - `hermes_cli/uninstall.py`：卸载菜单 `(Recommended - you can reinstall later with your settings intact)`
+    → `(推荐：只删程序，配置和会话都留着，之后重装还在)`（同屏的 `(Warning: …)` 一并中文化）；
+  - `hermes_cli/gateway.py` 三处：裸机 `not recommended`、`Switch to a per-user service (recommended for personal use)`、
+    `--force … (not recommended`；
+  - `hermes_cli/subcommands/gateway.py` 两处 help：`(recommended for WSL, Docker, Termux)`、
+    `(not recommended: two pollers on one bot token, port conflicts)`；
+  - `hermes_cli/main_platform_setup.py`：`1. Separate bot number (recommended)`；
+  - `hermes_cli/cli_commands_mixin.py`：`Restart recommended for gateway/dashboard processes …`；
+  - `hermes_cli/model_setup_flows_azure.py`：`Recommended by Microsoft. …`；
+  - `hermes_cli/secrets_cli.py` / `hermes_cli/onepassword_secrets_cli.py`：`(not recommended)`。
+- **为什么**：老板要求"涉及推荐的地方都用中文"（起因是飞书里那句英文 "(Recommended)"）。
+  这些是 `coco` 命令输出/help 里的英文，用户敲命令时看得见。
+- **没动的**：同文件里其它英文句子（如 `Run 'coco update' to install.`）不属于"推荐"字样，
+  属更大的话题「`coco` 命令文案整体中文化」——本轮只处理"推荐/不建议"，其余待老板单独拍板。
+- **上游变了怎么办**：同步会把这几处覆盖回英文。跑 `python3 scripts/check_coco_hooks.py`
+  （**61–68** 八项守着）会立刻 FAIL；按本条改回中文即可。
+
 ## 使用方法（同步时）
 
 ```bash

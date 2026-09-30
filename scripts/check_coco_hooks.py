@@ -789,10 +789,92 @@ CONTENT_CHECKS = [
             r'RECOMMENDED_LABEL = "（推荐）"',
             r"!\(Recommended\)",
             r"def mark_recommended",
+            r"when in doubt add your own",
         ],
         "官方原实现会把第一个选项标成英文“(Recommended)”—— 经纪人的中文对话里出现英文，"
         "而且等于替他做选择（实测：问哪个城市的政策，一个外地城市被标成“推荐”）。\n"
         "处理：RECOMMENDED_LABEL 保持中文、mark_recommended 不再改写选项（只留 strip 用于剥离历史标记）。",
+    ),
+    (
+        "58",
+        "飞书选项提示行中文（经纪人每次选选项都看得见）",
+        "gateway/platforms/base.py",
+        [r"回数字、选项原文，或直接说你的答案。", r"可以多选：回数字", r"!Reply with the number"],
+        "官方这两行是英文（实测经纪人看到最后一句就是 “Reply with the number, the option text, "
+        "or your own answer.”）。\n处理：按 patches/README.md 第 23 处改回中文。",
+    ),
+    (
+        "59",
+        "更新确认提示中文（会发到经纪人会话里）",
+        "gateway/run_notifications.py",
+        [r"更新需要你确认", r"!Update needs your input"],
+        "官方这句是英文；它会作为“需要你确认”的提示发进经纪人会话。\n处理：按 patches/README.md 第 23 处改回中文。",
+    ),
+    (
+        "60",
+        "中继模式的“其他”选项行中文",
+        "gateway/relay/adapter.py",
+        [r"✏️ 其他（我来补充）", r"!Other \(type your answer\)"],
+        "官方是英文 “✏️ Other (type your answer)”（中继拓扑下经纪人可见）。\n处理：按 patches/README.md 第 23 处改回中文。",
+    ),
+    (
+        "61",
+        "卸载菜单的“推荐档”说明中文",
+        "hermes_cli/uninstall.py",
+        [r"推荐：只删程序", r"!Recommended - you can reinstall"],
+        "官方的 “(Recommended - you can reinstall later with your settings intact)” 是英文。\n"
+        "处理：按 patches/README.md 第 24 处改回中文。",
+    ),
+    (
+        "62",
+        "网关命令里的“推荐/不建议”文案中文",
+        "hermes_cli/gateway.py",
+        [r"个人自用推荐这个", r"!recommended for personal use"],
+        "官方三处（裸机不建议 / 换 per-user 服务推荐 / --force 不建议）都是英文。\n"
+        "处理：按 patches/README.md 第 24 处改回中文。",
+    ),
+    (
+        "63",
+        "网关子命令 help 文案中文",
+        "hermes_cli/subcommands/gateway.py",
+        [r"前台运行网关（WSL / Docker / Termux 下推荐）", r"!recommended for WSL"],
+        "官方 help 里的 “(recommended for WSL, Docker, Termux)”“(not recommended: two pollers…)” 是英文。\n"
+        "处理：按 patches/README.md 第 24 处改回中文。",
+    ),
+    (
+        "64",
+        "平台接入向导的“推荐”档文案中文",
+        "hermes_cli/main_platform_setup.py",
+        [r"Separate bot number（推荐）", r"!Separate bot number \(recommended\)"],
+        "官方向导里 “1. Separate bot number (recommended)” 是英文。\n处理：按 patches/README.md 第 24 处改回中文。",
+    ),
+    (
+        "65",
+        "状态恢复提示中文",
+        "hermes_cli/cli_commands_mixin.py",
+        [r"建议重启网关/看板进程", r"!Restart recommended for gateway"],
+        "官方 “Restart recommended for gateway/dashboard processes…”。\n处理：按 patches/README.md 第 24 处改回中文。",
+    ),
+    (
+        "66",
+        "Azure 认证方式的说明中文",
+        "hermes_cli/model_setup_flows_azure.py",
+        [r"微软推荐的方式", r"!Recommended by Microsoft"],
+        "官方 “Recommended by Microsoft. …”。\n处理：按 patches/README.md 第 24 处改回中文。",
+    ),
+    (
+        "67",
+        "密钥命令 help 里的“不建议”中文",
+        "hermes_cli/secrets_cli.py",
+        [r"不先探测 Bitwarden 直接存（不建议）", r"!not recommended\)"],
+        "官方 “(not recommended)”。\n处理：按 patches/README.md 第 24 处改回中文。",
+    ),
+    (
+        "68",
+        "密钥命令 help 里的“不建议”中文（1Password）",
+        "hermes_cli/onepassword_secrets_cli.py",
+        [r"不先探测 1Password 直接存（不建议）", r"!not recommended\)"],
+        "官方 “(not recommended)”。\n处理：按 patches/README.md 第 24 处改回中文。",
     ),
 ]
 
