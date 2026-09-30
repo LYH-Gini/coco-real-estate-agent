@@ -1953,14 +1953,14 @@ def _deliver_result(
     # persisted as ``last_delivery_unverified`` so `hermes cron list` shows it.
     unverified_targets: list = []
     if wrap_response:
-        task_name = job.get("name", job["id"])
+        # COCO-PATCH 2026-09-30: 送达文案中文化、不带内部任务名与编号。
+        # 官方那套包装是英文抬头 + 任务名 + 内部任务编号 + 一段英文的"如何停止"说明，
+        # 实测经纪人看到的是内部任务标识（形如 coco_overdue_sentinel）跟英文一起露出去。
         delivery_content = (
-            f"Cronjob Response: {task_name}\n"
-            f"(job_id: {job.get('id', '')})\n"
-            f"-------------\n\n"
+            "【定时消息】\n"
+            "-------------\n\n"
             f"{content}\n\n"
-            "To stop or manage this job, send me a new message "
-            f"(e.g. \"stop reminder {task_name}\")."
+            "（不想收到这类消息就跟我说一声，我来关掉。）"
         )
     else:
         delivery_content = content

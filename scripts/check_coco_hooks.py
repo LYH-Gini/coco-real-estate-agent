@@ -765,6 +765,20 @@ CONTENT_CHECKS = [
         "依赖里的 [socks] 代理扩展写法会被判违规（2026-09-29 实测，改依赖时注释里也要一起改）。\n"
         "处理：写成不带 extra 的形式（httpx==x.y.z）。",
     ),
+    (
+        "56",
+        "定时任务送达文案（中文抬头、不带内部任务名/编号）",
+        "cron/scheduler_delivery.py",
+        [
+            r"【定时消息】",
+            r"不想收到这类消息就跟我说一声",
+            r"!Cronjob Response:",
+            r"!\(job_id: ",
+            r"!To stop or manage this job",
+        ],
+        "官方送达包装是英文抬头 + 内部任务名与编号（实测经纪人看到「Cronjob Response: coco_overdue_sentinel」）。\n"
+        "处理：COCO-PATCH 改成中文抬头、不带任务名与编号，保留一句“怎么关”。",
+    ),
 ]
 
 # 文件/目录存在性检查：编号 / 名称 / 相对路径 / 类型(file|dir|glob) / 最少数量 / 失败提示
