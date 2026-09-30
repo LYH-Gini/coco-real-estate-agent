@@ -1178,7 +1178,7 @@ def price_drop_alerts(days: int = 7, task_id: str = None) -> str:
         head += f"；这里列前 {len(shown)} 套"
     lines = [head]
     for a in shown:
-        lines.append(f"\n· {a['title']}（ID:{a['property_id']}）降价 {fmt_wan(a['drop_amount'] or 0, 0)}"
+        lines.append(f"\n· {a['title']}（房源编号 {a['property_id']}）降价 {fmt_wan(a['drop_amount'] or 0, 0)}"
                      f" → 现价 {fmt_wan(a['new_price'], 0)}")
         for c in a["matched_customers"]:
             afford = "现在够得着" if c["now_affordable"] else "还差一点"
@@ -1244,7 +1244,7 @@ def find_alternatives(property_id: int, limit: int = _FIND_ALT_LIMIT_DEFAULT, ta
     for a in alts:
         diff = a.get("diff_price") or 0
         diff_str = (f"{'贵' if diff > 0 else '便宜'}{fmt_wan(abs(diff), 0)}" if diff else "同价")
-        lines.append(f"\n· {a['title']}（ID:{a['id']}）{fmt_wan(a['price'], 0)}（{diff_str}）"
+        lines.append(f"\n· {a['title']}（房源编号 {a['id']}）{fmt_wan(a['price'], 0)}（{diff_str}）"
                      f"{a['area']}㎡ {a['rooms'] or '?'}室")
         lines.append(f"  贴近度: {a['match_level']}分")
     return json.dumps({
