@@ -291,6 +291,9 @@ echo "  仓库体积: ${CUR_SIZE}MB → ${NEW_SIZE}MB（增量 $((NEW_SIZE-CUR_S
 echo
 echo "  ① 重新应用 Coco 对官方文件的改动（按语义，别机械 apply；清单见 patches/README.md）："
 echo "       cat patches/README.md"
+echo "     其中「中文文案」那部分（第 23 / 24 处）有自动重打脚本，先跑它："
+echo "       python3 scripts/coco_cn_strings.py            # 先看有哪些被换回英文"
+echo "       python3 scripts/coco_cn_strings.py --apply    # 自动改回中文（锚点失效会报 ANCHOR，需人工）"
 echo "     挂钩点备份在 .sync-backup/$STAMP/"
 echo
 echo "  ② 自检（应全 PASS）："

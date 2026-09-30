@@ -876,6 +876,15 @@ CONTENT_CHECKS = [
         [r"不先探测 1Password 直接存（不建议）", r"!not recommended\)"],
         "官方 “(not recommended)”。\n处理：按 patches/README.md 第 24 处改回中文。",
     ),
+    (
+        "69",
+        "中文文案重打脚本在位（同步官方后一条命令改回来）",
+        "scripts/coco_cn_strings.py",
+        [r"--apply", r"ANCHOR", r"ENTRIES = \["],
+        "同步官方底座会把我们改过的官方文件换回英文；这个脚本把「文件 + 官方原文 + 中文」"
+        "登记成表，跑 `--apply` 自动改回来，锚点失效报 ANCHOR 不静默。\n"
+        "处理：别删；改文案时同步更新表（patches/README.md 第 23/24 处）。",
+    ),
 ]
 
 # 文件/目录存在性检查：编号 / 名称 / 相对路径 / 类型(file|dir|glob) / 最少数量 / 失败提示
