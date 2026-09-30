@@ -6,12 +6,11 @@
 - 只提醒、不执行：具体跟进动作由经纪人自己做，脚本不代替他做任何事。
 """
 import sys
-import traceback
 from datetime import datetime
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
 from coco_cron_common import (  # noqa: E402
-    clip, ensure_import_path, get_db, load_state, parse_dt, save_state, state_path, today_str,
+    clip, ensure_import_path, get_db, load_state, parse_dt, report_failure, save_state, today_str,
 )
 
 _STATE_NAME = "overdue"
@@ -116,15 +115,8 @@ def main() -> int:
     try:
         items = collect_overdue(get_db(), now)
     except Exception as exc:
-        # 哨兵坏掉必须让人看见：写日志 + 发一句人话（不静默）
-        try:
-            state_path(_STATE_NAME).parent.mkdir(parents=True, exist_ok=True)
-            log = state_path(_STATE_NAME).with_suffix(".error.log")
-            with open(log, "a", encoding="utf-8") as f:
-                f.write(f"[{now.isoformat()}] {exc}\n{traceback.format_exc()}\n")
-        except Exception:
-            log = None
-        print(f"⚠️ 逾期检查失败：{type(exc).__name__}: {exc}" + (f"（详情见 {log}）" if log else ""))
+        # 哨兵坏掉必须让人看见：日志留全，对外只给一句人话（不静默）
+        print(report_failure(_STATE_NAME, "逾期检查", exc))
         return 0
 
     state = load_state(_STATE_NAME)

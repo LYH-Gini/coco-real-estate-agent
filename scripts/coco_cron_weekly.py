@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from coco_cron_common import ensure_import_path, get_db  # noqa: E402
+from coco_cron_common import ensure_import_path, get_db, report_failure  # noqa: E402
 from coco_cron_overdue import collect_overdue  # noqa: E402
 
 _TIER_ORDER = {"S": 0, "A": 1, "B": 2, "C": 3}
@@ -100,7 +100,7 @@ def main() -> int:
     try:
         print(build_data(get_db(), datetime.now()))
     except Exception as exc:
-        print(f"⚠️ 周报数据收集失败：{type(exc).__name__}: {exc}")
+        print(report_failure("weekly", "周报", exc))
     return 0
 
 

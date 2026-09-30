@@ -282,3 +282,51 @@ class TestWeeklyData:
         m = mods["coco_cron_weekly"]
         out = m.build_data(db, datetime.now())
         assert "假设" not in out and "模拟" not in out
+
+
+class TestCronFailureIsHumanReadable:
+    """脚本跑不动时，经纪人只该看到一句人话（2026-09-30 实测）
+
+    真实事故：逾期哨兵因为没拿到数据库环境变量而失败，脚本把整段技术报错
+    （含 systemctl --user edit、EnvironmentFile、内部路径与"幽灵库事故"字样）
+    连同英文抬头一起推到了经纪人面前 —— 他看不懂，也不该看到。
+    """
+
+    JOBS = (
+        ("coco_cron_overdue", "逾期检查"),
+        ("coco_cron_daily", "早报"),
+        ("coco_cron_dayend", "收工小结"),
+        ("coco_cron_opportunity", "机会提醒"),
+        ("coco_cron_weekly", "周报"),
+    )
+
+    @pytest.mark.parametrize("module_name,what", JOBS)
+    def test_outward_text_is_one_human_sentence(self, mods, monkeypatch, capsys, tmp_path,
+                                               module_name, what):
+        m = mods[module_name]
+        monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+
+        def boom():
+            raise RuntimeError("未配置 DATABASE_URL 环境变量；运维可在服务器上补 "
+                               "EnvironmentFile（systemctl --user edit hermes-gateway.service）")
+
+        monkeypatch.setattr(m, "get_db", boom)
+        assert m.main() == 0
+        out = capsys.readouterr().out.strip()
+        assert out == f"⚠️ 这次的{what}没跑起来，稍后会自动再试；一直这样就跟我说一声，我去看日志。"
+        for leak in ("RuntimeError", "DATABASE_URL", "systemctl", "EnvironmentFile", "/root/"):
+            assert leak not in out, out
+
+    def test_technical_details_go_to_the_log(self, mods, monkeypatch, capsys, tmp_path):
+        m = mods["coco_cron_overdue"]
+        monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+
+        def boom():
+            raise RuntimeError("数据库连不上")
+
+        monkeypatch.setattr(m, "get_db", boom)
+        m.main()
+        logs = list((tmp_path / "cron").glob("*.error.log"))
+        assert logs, "技术细节没有落进日志，出问题时就没法查了"
+        text = logs[0].read_text(encoding="utf-8")
+        assert "RuntimeError" in text and "数据库连不上" in text

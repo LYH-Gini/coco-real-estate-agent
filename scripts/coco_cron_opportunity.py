@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from coco_cron_common import (  # noqa: E402
-    ensure_import_path, get_db, load_state, save_state, today_str,
+    ensure_import_path, get_db, load_state, report_failure, save_state, today_str,
 )
 
 _STATE_NAME = "opportunity"
@@ -156,7 +156,7 @@ def main() -> int:
     try:
         fresh, new_state = collect_opportunities(get_db(), load_state(_STATE_NAME), now)
     except Exception as exc:
-        print(f"⚠️ 机会提醒数据收集失败：{type(exc).__name__}: {exc}")
+        print(report_failure(_STATE_NAME, "机会提醒", exc))
         return 0
     save_state(_STATE_NAME, new_state)
     if not fresh:
