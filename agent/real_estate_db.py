@@ -90,10 +90,12 @@ _ROOM_TAIL_BLOCK = set("平㎡米万元%年天层楼栋幢座厅卫")
 # 房号前面是这些 → 是价格/面积/费用，不是房号
 _ROOM_PREFIX_BLOCK = ("租", "价", "费", "面积", "总价")
 # 中文数字（「4栋一单元」里的「一」）→ 数字，否则「一单元」与「1单元」会被当成不同单元
-_CN_NUM = {"一": "1", "二": "2", "三": "3", "四": "4", "五": "5",
+_CN_NUM = {"一": "1", "二": "2", "两": "2", "三": "3", "四": "4", "五": "5",
            "六": "6", "七": "7", "八": "8", "九": "9", "十": "10"}
 # 面积同一口径的容差（㎡）：128 与 128.5 是同一套房的两种说法；差 2 ㎡ 以上视为不同房源
 AREA_TOLERANCE = 1.0
+# 客户把户型写成这些 → 是真的不设限（不算"解析不出来"，别给他报"没看懂"）
+_LAYOUT_OPEN_WORDS = ("不限", "都可以", "都行", "没要求", "无要求", "随意")
 
 
 # 房源类型的中文名（提示文案用）
@@ -2020,6 +2022,9 @@ class RealEstateDB:
                     continue
                 if prop.property_type in ('new', 'second_hand') and c.customer_type == 'rent':
                     continue
+                # 户型偏好解析一次（客户写法可能是"一居/两房/三室两厅"）
+                layout_plan = self._parse_layout_pref(c.layout_pref)
+                layout_unparsed = self._layout_unparsed(c.layout_pref)
                 # 租客要求过滤（2026-08-29 加）：出租房源租客要求与客户资料冲突 → 排除
                 if prop.property_type == 'rental' and not self._tenant_req_ok(prop.tenant_requirements, c):
                     continue
@@ -2028,7 +2033,7 @@ class RealEstateDB:
                     continue
                 # 户型硬性要求：客户明确 N 室/N 厅而房源不满足 → 跳过
                 #（与 match_property 对称，防止"2 室房源推给要 3 室的客户"）
-                if c.layout_pref and not self._match_layout(c.layout_pref, prop.rooms, prop.halls):
+                if layout_plan is not None and not self._layout_ok(layout_plan, prop.rooms, prop.halls):
                     continue
                 score = 0
                 reasons = []
@@ -2046,11 +2051,9 @@ class RealEstateDB:
                     score += 5
                     reasons.append("略超预算")
 
-                # 户型匹配（权重 25）
-                pref = c.layout_pref or ""
-                import re as _re
-                m_room = _re.search(r'(\d+)室', pref)
-                if m_room and prop.rooms == int(m_room.group(1)):
+                # 户型匹配（权重 25）：认不出写法的客户这次按"不限户型"筛，不给这条理由
+                if (layout_plan is not None and not layout_unparsed
+                        and self._layout_ok(layout_plan, prop.rooms, prop.halls)):
                     score += 25
                     reasons.append("户型匹配")
 
@@ -2083,7 +2086,8 @@ class RealEstateDB:
                     # perfect_match：预算在区间 + 户型硬性匹配 + 区域匹配（或无区域需求）+ 类型匹配
                     perfect_match = (
                         budget_min <= prop.price <= budget_max
-                        and self._match_layout(c.layout_pref, prop.rooms, prop.halls)
+                        and not layout_unparsed
+                        and self._layout_ok(layout_plan, prop.rooms, prop.halls)
                         and (region_ok or not c.location)
                         and type_ok
                     )
@@ -2094,6 +2098,7 @@ class RealEstateDB:
                         'area_pref': c.area_pref, 'layout_pref': c.layout_pref,
                         'location': c.location,
                         'perfect_match': perfect_match,
+                        'layout_unparsed': layout_unparsed,
                         '_region_ok': region_ok,
                     })
 
@@ -2340,6 +2345,10 @@ class RealEstateDB:
         loc = customer.get('location') or ''
         layout_pref = customer.get('layout_pref')
         layout_plan = self._parse_layout_pref(layout_pref)   # 每客户解析一次（循环里只做整数比较）
+        # 写了户型偏好但解析不出来（写法不在我们认得的范围）→ 这次按"不限户型"筛，
+        # 但不许报"户型匹配"、不许给完全匹配（2026-09-30 实测：'1居' 曾被判成"没提户型"，
+        # 于是 2 室 1 厅 也被标成"完全匹配"）
+        layout_unparsed = self._layout_unparsed(layout_pref)
         ren_pref = customer.get('renovation')
         ctype = customer.get('customer_type')
 
@@ -2395,9 +2404,9 @@ class RealEstateDB:
             # 户型硬性要求：客户明确 N 室/N 厅而房源不满足 → 直接排除
             #（真实案例 2026-08-11：客户要 3 室却被推 2 室房源并标"匹配度较高"）
             layout_ok = self._layout_ok(layout_plan, prop.get('rooms'), prop.get('halls'))
-            if layout_pref and not layout_ok:
+            if layout_plan is not None and not layout_ok:
                 continue
-            if layout_ok:
+            if layout_ok and not layout_unparsed:
                 score += 25; reasons.append("户型匹配")
             
             # 区域匹配（权重 15）：区名归一化优先，原子串兜底
@@ -2436,11 +2445,13 @@ class RealEstateDB:
                 perfect_match = (
                     budget_min <= price <= budget_max
                     and layout_ok
+                    and not layout_unparsed
                     and (region_ok or not loc)
                     and type_ok
                 )
                 scores.append({**prop, 'score': score, 'match_reasons': reasons,
-                               'perfect_match': perfect_match, '_region_ok': region_ok})
+                               'perfect_match': perfect_match, '_region_ok': region_ok,
+                               'layout_unparsed': layout_unparsed})
 
         # 区域硬优先级 tier（2026-08-30 加，治"客户明确要某区但其他区房源排在前面"）：
         # 客户 location 非空时，区域匹配(region_ok)的房源一律排在区域不符的前面，同 tier 内再按 score 降序。
@@ -2531,15 +2542,27 @@ class RealEstateDB:
 
         2026-09-18 加：原实现每套房跑 3 次正则（硬过滤 / 加分 / 完全匹配判定），
         6 万套 × 3 次 = 18 万次正则，是批量匹配的主要耗时来源。
+
+        2026-09-30 加：**中文数字、以及「居」「房」这两种口语说法**（一居/两居/一居室/
+        三室两厅/一房/两房一厅）都要认 —— 原来只认半角数字 +「室/厅」，会把它们全判成
+        "没提户型"。实测根因：`_parse_layout_pref('1居')` 返回 None ⇒ 户型硬过滤失效、
+        还照样报"户型匹配"（2 室 1 厅被标成"完全匹配"）。
         """
         if not layout_pref:
             return None
 
+        # 「居室 / 居 / 房」都是「室」的口语说法；中文数字先换成半角数字，后面只按一套正则解析
+        text = str(layout_pref)
+        for alias in ("居室", "居", "房"):
+            text = text.replace(alias, "室")
+        for cn, digit in _CN_NUM.items():
+            text = text.replace(cn, digit)
+
         def _parse(token):
-            m = re.search(r'(\d+)\s*[-~到至]\s*(\d+)' + token, layout_pref)
+            m = re.search(r'(\d+)\s*[-~到至]\s*(\d+)' + token, text)
             if m:
                 return ('range', int(m.group(1)), int(m.group(2)))
-            m = re.search(r'(\d+)' + token, layout_pref)
+            m = re.search(r'(\d+)' + token, text)
             if m:
                 return ('exact', int(m.group(1)))
             return None
@@ -2573,6 +2596,19 @@ class RealEstateDB:
     def _match_layout(self, layout_pref, rooms, halls):
         """兼容入口（内部先用解析计划再判定）"""
         return self._layout_ok(self._parse_layout_pref(layout_pref), rooms, halls)
+
+    @classmethod
+    def _layout_unparsed(cls, layout_pref) -> bool:
+        """写了户型偏好、但写法解析不出来（"不限/都可以"这类明确不设限的不算）
+
+        为什么单独判：解析不出来会被当成"没提户型" ⇒ 房源照样报"户型匹配"、还能拿"完全匹配"
+        （2026-09-30 实测：客户写"一居"，2 室 1 厅被标成完全匹配）。
+        """
+        if not layout_pref:
+            return False
+        if cls._parse_layout_pref(layout_pref) is not None:
+            return False
+        return not any(word in str(layout_pref) for word in _LAYOUT_OPEN_WORDS)
     
     # ---------- 匹配辅助（2026-08-13 加） ----------
     @staticmethod

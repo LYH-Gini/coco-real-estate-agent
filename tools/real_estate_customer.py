@@ -4,7 +4,7 @@ Coco 房产工具 - 客户管理
 import json
 
 from agent.real_estate_display import (attach_key_warning, dedup_key_mismatch_payload,
-                                       mask_contacts, safe_contact)
+                                       layout_unparsed_note, mask_contacts, safe_contact)
 from agent.real_estate_money import fmt_budget, fmt_wan
 from agent.real_estate_input import (CUSTOMER_TYPE_LABELS, STAGES, STAGE_LABELS, clamp_limit,
                                      clean_tags, money_limit_problem, norm_birthday,
@@ -239,6 +239,8 @@ def add_customer(
     if matched_properties:
         response["matched_properties"] = matched_properties
         response["message"] = _match_message(matched_properties, budget_max)
+        if any(m.get("layout_unparsed") for m in matched_properties):
+            response["message"] += " " + layout_unparsed_note(result.get("layout_pref"))
     if warnings:
         response["warnings"] = warnings
     if match_warning:

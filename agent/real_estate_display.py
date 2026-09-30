@@ -83,3 +83,13 @@ def attach_key_warning(payload, masked, text=CUSTOMER_KEY_MISMATCH_WARNING):
         payload["warning_key_mismatch"] = text
         payload["cipher_fields"] = sorted(set(masked))
     return payload
+
+
+def layout_unparsed_note(layout_pref) -> str:
+    """客户户型写法认不出时，给经纪人的那一句（成品文案，别在各工具里各写一遍）
+
+    为什么要说：认不出写法时按"不限户型"筛，房源照样给 —— 但"完全匹配"不作数，
+    且得让他知道该去确认什么（2026-09-30 实测：客户写"一居"，2 室 1 厅被标成完全匹配）。
+    """
+    return (f"另外提醒一句：这位客户的户型偏好写的是「{layout_pref}」，这个写法我没认出来，"
+            f"这次按不限户型筛的（「完全匹配」这次不作数）——方便的话跟他确认要几室几厅，我改过来。")

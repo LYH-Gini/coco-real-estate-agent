@@ -4,7 +4,8 @@ Coco 房产工具 - 房源管理
 import json
 import re
 
-from agent.real_estate_display import (OWNER_KEY_MISMATCH_WARNING, attach_key_warning, mask_contacts,
+from agent.real_estate_display import (OWNER_KEY_MISMATCH_WARNING, attach_key_warning,
+                                       layout_unparsed_note, mask_contacts,
                                        safe_contact)
 from agent.real_estate_money import (fmt_budget, fmt_delta, fmt_price, fmt_unit_price,
                                      fmt_wan)
@@ -213,6 +214,9 @@ def add_property(
     if matched:
         response["matched_customers"] = matched
         response["message"] = f"房源已添加，有 {len(matched)} 位客户可能感兴趣"
+        unparsed = [m for m in matched if m.get("layout_unparsed")]
+        if unparsed:
+            response["message"] += " " + layout_unparsed_note(unparsed[0].get("layout_pref"))
     return json.dumps(response, ensure_ascii=False)
 
 
@@ -834,7 +838,7 @@ def match_property(customer_id: int, top_n: int = 5, task_id: str = None) -> str
             "matches": [],
         }, ensure_ascii=False)
     matches = db.match_property(customer_id, top_n)
-    return json.dumps({
+    payload = {
         "success": True, "customer": customer.get('name'),
         "customer_tier": customer.get('tier'),
         "matched": True,
@@ -844,7 +848,10 @@ def match_property(customer_id: int, top_n: int = 5, task_id: str = None) -> str
         "matches": [{k: v for k, v in m.items() if k in ('id','title','community','price','area','rooms','halls',
                                                          'district','score','match_reasons','perfect_match','unit_price')}
                     for m in matches],
-    }, ensure_ascii=False)
+    }
+    if any(m.get('layout_unparsed') for m in matches):
+        payload["message"] = layout_unparsed_note(customer.get('layout_pref'))
+    return json.dumps(payload, ensure_ascii=False)
 
 
 def batch_match_report(
