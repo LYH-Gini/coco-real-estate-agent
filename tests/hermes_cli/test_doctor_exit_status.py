@@ -50,4 +50,4 @@ main()
         capture_output=True, text=True, encoding="utf-8", timeout=30,
     )
     assert result.returncode == int(unresolved), result.stdout + result.stderr
-    assert ("fixture unresolved problem" if unresolved else "All checks passed") in result.stdout
+    assert ("fixture unresolved problem" if unresolved else "全部检查通过") in result.stdout

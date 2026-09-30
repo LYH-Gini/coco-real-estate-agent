@@ -32,7 +32,7 @@ def _sqlite_upgrade_hint(install_method: str | None = None) -> str:
     method = install_method or detect_install_method(PROJECT_ROOT)
     cmd = recommended_update_command_for_method(method)
     action = cmd if is_nix_install_method(method) else {  # nix: prose guidance, not a shell command
-        "docker": f"run `{cmd}`, then recreate all Hermes containers", "apt": f"run `{cmd}`"}.get(method, "run `hermes update`")
+        "docker": f"跑 `{cmd}`，然后重建全部容器", "apt": f"跑 `{cmd}`"}.get(method, "跑 `coco update`")
     return f"({action}; fixed versions: 3.51.3+ / 3.50.7 / 3.44.6 — see https://sqlite.org/wal.html#walresetbug)"
 
 
@@ -202,7 +202,7 @@ def _check_version_consistency(issues: list[str]) -> None:
     if pyproject_version == init_version:
         return check_ok("Version files consistent", f"({init_version})")
     _fail_and_issue("Version mismatch between source files", f"(pyproject.toml {pyproject_version} != hermes_cli/__init__.py {init_version})",
-                    "Re-sync version files (e.g. run 'hermes update', or set hermes_cli/__init__.py __version__ to match pyproject.toml)", issues)
+                    "版本文件不一致：重新同步（跑 'coco update'，或把 hermes_cli/__init__.py 的 __version__ 改成与 pyproject.toml 一致）", issues)
 
 
 def _check_s6_supervision(issues: list[str]) -> None:
@@ -231,7 +231,7 @@ def _report_host_gateway_slot(mgr, issues: list[str]) -> None:
     topology = host_gateway_topology()
     if topology is None:
         if not slots:
-            return check_info("No gateway registered yet — run `hermes gateway install`")
+            return check_info("还没有注册网关服务 —— 跑 `coco gateway install`")
         up = [p for p in slots if mgr.is_running(f"gateway-{p}")]
         issues.append("No host gateway owns the gateway role — start the ONE host multiplexer: "
                       "hermes --profile default gateway start")
@@ -269,7 +269,7 @@ def check_certificates(should_fix: bool = False, issues: "list | None" = None) -
     check_fail("SSL CA certificate bundle is broken", first_error)
     pip_cmd = f"{sys.executable} -m pip install --force-reinstall certifi"
     if not should_fix:
-        issues.append(f"Repair the CA bundle: run `hermes doctor --fix`, or `{pip_cmd}`")
+        issues.append(f"修复 CA 证书包：跑 `coco doctor --fix`，或 `{pip_cmd}`")
         return
     print("    → Repairing: force-reinstalling certifi...")
     try:
@@ -325,7 +325,7 @@ def _check_gateway_service_linger(issues: list[str]) -> None:
 
 _TCC_CDHASH_DETAIL = (
     "the desktop bundle's designated requirement is cdhash-pinned (pre-#73681 build) — rebuilds invalidate "
-    "all permission grants. Run `hermes update` to get the stable identifier-pinned signing identity, "
+    "all permission grants. Run `coco update` to get the stable identifier-pinned signing identity, "
     "then re-grant permissions once.")
 _TCC_STABLE_DETAIL = {
     True: "(certificate-anchored DR; grants survive rebuilds)",
@@ -439,7 +439,7 @@ def _check_security_advisories(should_fix: bool, f: Finding) -> None:
         # Fail row + remediation text indented under it as one section; also into the summary action list.
         _fail_and_issue(f"{hit.advisory.title}", f"({hit.package}=={hit.installed_version})",
                         f"Resolve security advisory {hit.advisory.id}: uninstall {hit.package}=={hit.installed_version} "
-                        f"and rotate credentials, then run `hermes doctor --ack {hit.advisory.id}`.", f.manual_issues)
+                        f"and rotate credentials, then run `coco doctor --ack {hit.advisory.id}`.", f.manual_issues)
         for line in full_remediation_text(hit):
             print(f"    {color(line, Colors.YELLOW)}" if line else "")
     acked_ids = get_acked_ids()  # acked-but-still-installed stays visible
@@ -530,26 +530,30 @@ def _check_command_installation(should_fix: bool, f: Finding) -> None:
     prefix = os.environ.get("PREFIX", "")
     termux = prefix and (os.environ.get("TERMUX_VERSION") or "com.termux/files/usr" in prefix)
     link_dir, display = (Path(prefix) / "bin", "$PREFIX/bin") if termux else (Path.home() / ".local" / "bin", "~/.local/bin")
-    link = link_dir / "hermes"
+    # Coco 只对外暴露 coco 命令（安装与更新会移除 hermes 软链），所以这里查的是 coco 链接。
+    # 照官方查 hermes 会让每次体检都报一个假问题，`--fix` 还会把 hermes 命令装回来。
+    _coco_only = (PROJECT_ROOT / "scripts" / "coco.sh").exists()
+    link_name = "coco" if _coco_only else "hermes"
+    link = link_dir / link_name
     if link.is_symlink():
         target, expected = link.resolve(), venv_bin.resolve()
         if target == expected:
-            return check_ok(f"{display}/hermes → correct target")
-        check_warn(f"{display}/hermes points to wrong target", f"(→ {target}, expected → {expected})")
+            return check_ok(f"{display}/{link_name} → correct target")
+        check_warn(f"{display}/{link_name} points to wrong target", f"(→ {target}, expected → {expected})")
         if not should_fix:
-            return f.issues.append(f"Broken symlink at {display}/hermes — run 'hermes doctor --fix'")
+            return f.issues.append(f"Broken symlink at {display}/{link_name} — run 'coco doctor --fix'")
         link.unlink()
         verb = "Fixed"
     elif link.exists():  # regular file (wrapper script), not a symlink
-        return check_ok(f"{display}/hermes exists (non-symlink)")
+        return check_ok(f"{display}/{link_name} exists (non-symlink)")
     else:
-        check_fail(f"{display}/hermes not found", "(hermes command may not work outside the venv)")
+        check_fail(f"{display}/{link_name} not found", f"({link_name} 命令在虚拟环境外可能不可用)")
         if not should_fix:
-            return f.issues.append(f"Missing {display}/hermes symlink — run 'hermes doctor --fix'")
+            return f.issues.append(f"Missing {display}/{link_name} symlink — run 'coco doctor --fix'")
         link_dir.mkdir(parents=True, exist_ok=True)
         verb = "Created"
     link.symlink_to(venv_bin)
-    check_ok(f"{verb} symlink: {display}/hermes → {venv_bin}")
+    check_ok(f"{verb} symlink: {display}/{link_name} → {venv_bin}")
     f.fixed += 1
     if verb == "Created" and str(link_dir) not in os.environ.get("PATH", "").split(os.pathsep):
         check_warn(f"{display} is not on your PATH", "(add it to your shell config: export PATH=\"$HOME/.local/bin:$PATH\")")

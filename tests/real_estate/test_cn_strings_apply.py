@@ -39,6 +39,27 @@ def test_table_entries_are_well_formed():
         assert old != new, f"官方原文与中文相同（白替换）：{rel}"
 
 
+def test_every_entry_round_trips(tmp_path):
+    """把官方原文写进空文件 → 判定必须是 APPLY，换上中文后判定必须是 OK
+
+    这样表里"官方原文"与"中文"必须真的配对：早先生成表时曾把不连续的行拼成一条
+    （永远匹配不上），本用例会当场报出来。
+    """
+    mod = _load()
+    broken = []
+    for rel, old, new in mod.ENTRIES:
+        probe = tmp_path / rel.replace("/", "_")
+        probe.write_text(old, encoding="utf-8")
+        entry = (probe.name, old, new)
+        if mod.classify(tmp_path, entry)[0] != "APPLY":
+            broken.append(f"{rel}: 官方原文写进文件后仍判不出待重打")
+            continue
+        probe.write_text(old.replace(old, new), encoding="utf-8")
+        if mod.classify(tmp_path, entry)[0] != "OK":
+            broken.append(f"{rel}: 换成中文后仍判不出已就位")
+    assert not broken, "重打表里有配不上的条目：\n" + "\n".join(broken)
+
+
 def test_classify_distinguishes_the_three_states(tmp_path):
     mod = _load()
     entry = ("probe.txt", "官方原文", "中文文案")

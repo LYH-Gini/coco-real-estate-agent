@@ -36,7 +36,7 @@ class TestDoctorPlatformHints:
     def test_sqlite_upgrade_hint_uses_pkg_for_apt_managed_install(self):
         hint = doctor_platform._sqlite_upgrade_hint("apt")
 
-        assert "run `pkg upgrade hermes-agent`" in hint
+        assert "跑 `pkg upgrade hermes-agent`" in hint
         assert "hermes update" not in hint
 
     def test_sqlite_upgrade_hint_preserves_nix_guidance_as_prose(self):
@@ -340,7 +340,7 @@ class TestDoctorMemoryProviderSection:
 
     def test_no_provider_shows_builtin_ok(self, monkeypatch, tmp_path):
         out = self._run_doctor_and_capture(monkeypatch, tmp_path, provider="")
-        assert "Memory Provider" in out
+        assert "记忆存储" in out
         assert "Built-in memory active" in out
         # Should NOT mention Honcho or Mem0 errors
         assert "Honcho API key" not in out
@@ -351,7 +351,7 @@ class TestDoctorMemoryProviderSection:
         # Make mem0 import fail
         monkeypatch.setitem(sys.modules, "plugins.memory.mem0", None)
         out = self._run_doctor_and_capture(monkeypatch, tmp_path, provider="mem0")
-        assert "Memory Provider" in out
+        assert "记忆存储" in out
         assert "Built-in memory active" not in out
 
     @pytest.mark.parametrize("memory_enabled", [False, True])
@@ -1240,7 +1240,7 @@ class TestDoctorXaiOAuthStatus:
             raise RuntimeError("simulated xAI status failure")
 
         out = self._run(monkeypatch, tmp_path, xai_auth_fn=_raise)
-        assert "Auth Providers" in out
+        assert "模型服务商登录" in out
 
 
 # ---------------------------------------------------------------------------

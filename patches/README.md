@@ -329,6 +329,19 @@
   **更省事**：这些中文已登记在自动重打表里，同步后直接 `python3 scripts/coco_cn_strings.py --apply`
   即可自动改回（锚点失效会报 `ANCHOR`，那时才需要人工按本条重做并更新表）。
 
+### 25 `coco doctor` 输出中文化 + 两个假问题的修正
+
+- **改了什么**：体检横幅（`🩺 Coco 部署体检`）、各章节标题（安全公告 / Python 环境 / 依赖包 /
+  目录结构 / 可用工具 / 技能源 / 记忆存储 …）、汇总行（`发现 N 个需要处理的问题：`、
+  `全部检查通过！🎉`、`已自动修好 N 个问题。`、`提示：能自动修的问题，跑「coco doctor --fix」会帮你修。`）、
+  以及提示里引导的命令名（`hermes setup/update/tools/config path/doctor --fix` → `coco …`）。
+- **顺带修掉两个假问题**：① 体检总报"缺 `~/.local/bin/hermes` 软链"—— 我们按设计移除了 hermes 命令，
+  照官方查 hermes 会**每次体检都报一个永远修不好的问题**，`--fix` 还会把 hermes 命令装回来；
+  现在 Coco 安装只查 `coco` 链接。② 汇总里的"跑 `hermes setup` 配密钥"改成 `coco setup`。
+- **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回；
+  锚点失效会报 `ANCHOR`（需人工按本条重做并更新表）。同一批的断言更新在
+  `tests/hermes_cli/test_doctor.py` / `test_doctor_exit_status.py`（也算进表里）。
+
 ### 24 `coco` 命令文案里的"推荐/不建议"改中文
 
 - **改什么**（只改文案，不动逻辑）：8 个官方文件里的英文"推荐/不建议"字样 → 中文：

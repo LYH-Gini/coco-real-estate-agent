@@ -108,18 +108,18 @@ def _check_api_connectivity(should_fix: bool, f: Finding) -> None:
 
 # Ordered (section title, check). None title = check prints its own header (or none); order is user-visible.
 DOCTOR_CHECKS = (
-    ('Security Advisories', _check_security_advisories), ('MCP Server Security', _check_mcp_security),
-    ('Python Environment', _check_python_environment), ('SSL / CA Certificates', _check_certificates),
-    ('Required Packages', _check_required_packages), ('Configuration Files', _check_env_file),
+    ('安全公告', _check_security_advisories), ('MCP 服务安全', _check_mcp_security),
+    ('Python 环境', _check_python_environment), ('SSL 证书', _check_certificates),
+    ('依赖包', _check_required_packages), ('配置文件', _check_env_file),
     (None, _check_config_file), (None, _check_config_drift),
-    ('xAI Model Retirement (May 15, 2026)', _check_xai_retirement),
-    ('Plugin import paths (removed Sep 14, 2026)', _check_plugin_compat), ('Auth Providers', _check_auth_providers),
-    ('Directory Structure', _check_directory_structure), (None, _check_state_db), (None, _check_checkpoint_store),
+    ('xAI 模型下线（2026-05-15）', _check_xai_retirement),
+    ('插件导入路径（2026-09-14 移除）', _check_plugin_compat), ('模型服务商登录', _check_auth_providers),
+    ('目录结构', _check_directory_structure), (None, _check_state_db), (None, _check_checkpoint_store),
     (None, _check_gateway_supervision), (None, _check_command_installation),
-    ('External Tools', _check_git_and_rg), (None, _check_terminal_backend), (None, _check_node_and_browser),
-    (None, _check_npm_audit), ('API Connectivity', _check_api_connectivity),
-    ('Tool Availability', _check_tool_availability), ('Skills Hub', _check_skills_hub),
-    ('Memory Provider', _check_memory_provider), (None, _check_profiles),
+    ('外部工具', _check_git_and_rg), (None, _check_terminal_backend), (None, _check_node_and_browser),
+    (None, _check_npm_audit), ('模型服务连通性', _check_api_connectivity),
+    ('可用工具', _check_tool_availability), ('技能源', _check_skills_hub),
+    ('记忆存储', _check_memory_provider), (None, _check_profiles),
 )
 
 
@@ -128,14 +128,14 @@ def _ack_advisory(ack_target: str) -> None:
     from hermes_cli.security_advisories import ADVISORIES, ack_advisory
     valid_ids = {a.id for a in ADVISORIES}
     if ack_target not in valid_ids:
-        print(color(f"Unknown advisory ID: {ack_target!r}. Known IDs: {', '.join(sorted(valid_ids)) or '(none)'}", Colors.RED))
+        print(color(f"认不出这条公告编号：{ack_target!r}。可用编号：{', '.join(sorted(valid_ids)) or '（无）'}", Colors.RED))
         sys.exit(2)
     if ack_advisory(ack_target):
-        print(color(f"  ✓ Acknowledged advisory {ack_target}. It will no longer trigger startup banners.", Colors.GREEN))
+        print(color(f"  ✓ 已确认公告 {ack_target}，启动时不再提示。", Colors.GREEN))
     else:
-        print(color(f"  ✗ Could not save the acknowledgement for {ack_target}. Make sure {_DHH}/config.yaml is "
-                    f"writable (`hermes config path` prints the exact file), then re-run "
-                    f"`hermes doctor --ack {ack_target}`.", Colors.RED))
+        print(color(f"  ✗ 没能保存 {ack_target} 的确认记录。请确认 {_DHH}/config.yaml 可写"
+                    f"（「coco config path」能打印它的确切路径），然后重跑 "
+                    f"「coco doctor --ack {ack_target}」。", Colors.RED))
         sys.exit(1)
 
 
@@ -145,21 +145,21 @@ def _print_summary(should_fix: bool, total: Finding) -> None:
     numbered = "".join(f"  {i}. {issue}\n" for i, issue in enumerate(remaining, 1))
     if should_fix and total.fixed > 0:
         print(color("─" * 60, Colors.GREEN))
-        print(color(f"  Fixed {total.fixed} issue(s).", Colors.GREEN, Colors.BOLD), end="")
-        print(color(f" {len(remaining)} issue(s) require manual intervention.", Colors.YELLOW, Colors.BOLD) if remaining else "")
+        print(color(f"  已自动修好 {total.fixed} 个问题。", Colors.GREEN, Colors.BOLD), end="")
+        print(color(f" 另有 {len(remaining)} 个问题需要你手动处理。", Colors.YELLOW, Colors.BOLD) if remaining else "")
         print()
         if remaining:
             print(numbered)
     elif remaining:
         print(color("─" * 60, Colors.YELLOW))
-        print(color(f"  Found {len(remaining)} issue(s) to address:", Colors.YELLOW, Colors.BOLD))
+        print(color(f"  发现 {len(remaining)} 个需要处理的问题：", Colors.YELLOW, Colors.BOLD))
         print()
         print(numbered)
         if not should_fix:
-            print(color("  Tip: run 'hermes doctor --fix' to auto-fix what's possible.", Colors.DIM))
+            print(color("  提示：能自动修的问题，跑「coco doctor --fix」会帮你修。", Colors.DIM))
     else:
         print(color("─" * 60, Colors.GREEN))
-        print(color("  All checks passed! 🎉", Colors.GREEN, Colors.BOLD))
+        print(color("  全部检查通过！🎉", Colors.GREEN, Colors.BOLD))
     print()
 
 
@@ -172,7 +172,7 @@ def run_doctor(args):
         return _ack_advisory(args.ack)
     print()
     for line in ("┌─────────────────────────────────────────────────────────┐",
-                 "│                 🩺 Hermes Doctor                        │",
+                 "│                 🩺 Coco 部署体检                        │",
                  "└─────────────────────────────────────────────────────────┘"):
         print(color(line, Colors.CYAN))
     total = Finding()
