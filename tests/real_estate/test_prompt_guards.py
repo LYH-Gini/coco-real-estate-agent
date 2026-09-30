@@ -327,6 +327,30 @@ class TestOutwardWordingNamedExamples:
         assert "写数值区间必须带分隔符" in PROMPT
         assert "别把上下限连成" in MANUAL
 
+    def test_prompt_forbids_system_subject_for_tool_warnings(self):
+        """工具 warnings 也要说成"提醒一下"，别说"系统提示"（实测：阶段回退提醒被说成"系统提示…"）"""
+        assert "工具返回里的 `warnings` 也要这样转述" in PROMPT
+        assert "工具返回的 warnings 也这样转述" in MANUAL
+
+    def test_prompt_forbids_naming_the_brokers_city(self):
+        """不许替经纪人总结"你主做哪个城市"（实测：冒出"你主做的北京"，而他做的是海口）"""
+        assert "城市只按经纪人自己的资料说" in PROMPT
+        assert "不要替他总结" in MANUAL
+
+    def test_policy_citation_needs_source_and_no_mixing(self):
+        """政策引用要带来源、别把两次调整混着说（实测："2024-05-17 起二套也降到 15%"）"""
+        assert "引用必须带来源" in PROMPT
+        assert "别把两次政策调整混在一次里说" in PROMPT
+        assert "引用要带来源" in MANUAL
+        assert "别把两次调整混在一次里说" in MANUAL
+
+    def test_policy_section_stores_no_numbers(self):
+        """提示词不预存政策数字 —— 预存了模型就会照念旧数字（口径：一律联网查现的）"""
+        import re
+        section = PROMPT.split("## 政策查询")[1].split("## 沟通工具")[0]
+        leaked = re.findall(r"\d+\s*%", section)
+        assert not leaked, f"政策查询段里出现了具体百分比数字：{leaked}"
+
     def test_prompt_forbids_system_as_subject(self):
         """不把"系统"当主语（2026-09-29 实测：「系统提示客户很可能在别处看到了更便宜的房子」）"""
         assert "不把\"系统\"当主语" in PROMPT
