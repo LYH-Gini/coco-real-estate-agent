@@ -2398,7 +2398,10 @@ class RealEstateDB:
                 reasons.append("超预算")
             
             area = prop.get('area', 0)
-            if min_area <= area <= max_area:
+            # 客户没填面积偏好 → 不给这条理由、也不加这 20 分（与反匹配那条路径同一口径）
+            # 2026-09-30 实测：`_parse_area(None)` 返回 (0, 999999)，条件恒真 ⇒ 没填偏好的客户
+            # 也被报"面积匹配"、分数虚高 20 分（赵一鸣/林嘉明都没填却都出现这条）
+            if customer.get('area_pref') and min_area <= area <= max_area:
                 score += 20; reasons.append("面积匹配")
             
             # 户型硬性要求：客户明确 N 室/N 厅而房源不满足 → 直接排除

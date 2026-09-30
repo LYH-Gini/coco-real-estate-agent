@@ -223,3 +223,43 @@ class TestRegionPriority:
         scores = [m["score"] for m in matches]
         assert scores == sorted(scores, reverse=True)
         assert matches[0]["title"] == "高分房"
+
+
+# ==================== 面积理由只在填了面积偏好时才给（2026-09-30 实测） ====================
+
+class TestAreaReasonOnlyWhenAsked:
+    """没填面积偏好 → 匹配理由里不该出现"面积匹配"（分数也不该多给这 20 分）
+
+    起因：`_parse_area(None)` 返回 (0, 999999)，那条判断恒真 —— 实测两位没填面积偏好的客户
+    （林嘉明、赵一鸣）的匹配理由里都有"面积匹配"，经纪人看到的"匹配度"虚高。
+    反匹配（房源→客户）那条路径本来就有 `if area_pref` 守卫，这里补齐同一口径。
+    """
+
+    def _rental(self, db, area=45.0):
+        return db.add_property(title="面积口径房源", price=2200, area=area, rooms=1, halls=1,
+                               property_type="rental", district="海口龙华区")
+
+    def test_no_area_pref_means_no_area_reason(self, db):
+        cid = db.add_customer(name="没填面积偏好", customer_type="rent", budget_min=2000,
+                              budget_max=3000, location="海口龙华区", layout_pref="1室")["id"]
+        self._rental(db)
+        matches = db.match_property(cid)
+        assert matches, "这套房源本来就该匹配上"
+        for m in matches:
+            assert "面积匹配" not in m["match_reasons"], m["match_reasons"]
+
+    def test_area_pref_still_counts(self, db):
+        cid = db.add_customer(name="填了面积偏好", customer_type="rent", budget_min=2000,
+                              budget_max=3000, location="海口龙华区", layout_pref="1室",
+                              area_pref="40-50")["id"]
+        self._rental(db, area=45.0)
+        m = db.match_property(cid)[0]
+        assert "面积匹配" in m["match_reasons"], m["match_reasons"]
+
+    def test_area_pref_out_of_range_not_counted(self, db):
+        cid = db.add_customer(name="面积不合", customer_type="rent", budget_min=2000,
+                              budget_max=3000, location="海口龙华区", layout_pref="1室",
+                              area_pref="80-100")["id"]
+        self._rental(db, area=45.0)
+        m = db.match_property(cid)[0]
+        assert "面积匹配" not in m["match_reasons"], m["match_reasons"]
