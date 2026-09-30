@@ -214,7 +214,7 @@ def _check_s6_supervision(issues: list[str]) -> None:
         return
     if detect_service_manager() != "s6":
         return
-    _section("s6 Supervision")
+    _section("s6 监管")
     mgr = S6ServiceManager()
     for static in ("main-hermes", "dashboard"):  # s6-rc symlinks under /run/service/, same s6-svstat probe
         up = mgr.is_running(static)
@@ -313,12 +313,12 @@ def _check_gateway_service_linger(issues: list[str]) -> None:
     host_unit = user_systemd_unit_dir() / f"{_SERVICE_BASE}.service"
     if not (get_systemd_unit_path().exists() or host_unit.exists()):
         return
-    _section("Gateway Service")
+    _section("网关服务")
     linger_enabled, linger_detail = get_systemd_linger_status()
     if linger_enabled is None:
         return check_warn("没能确认 systemd linger 状态", f"({linger_detail})")
-    if not check_bool(linger_enabled, ("Systemd linger enabled", "(gateway service survives logout)"),
-                      ("Systemd linger disabled", "(gateway may stop after logout)")):
+    if not check_bool(linger_enabled, ("systemd linger 已开启", "（退出登录后网关服务仍在跑）"),
+                      ("systemd linger 未开启", "（退出登录后网关可能会停）")):
         check_info("执行：sudo loginctl enable-linger $USER")
         issues.append("让网关用户服务常驻：sudo loginctl enable-linger $USER")
 
@@ -464,11 +464,11 @@ def _check_python_environment(should_fix: bool, f: Finding) -> None:
         src = sqlite_source_id()
         # Warn-only: Hermes already refuses WAL on fresh DBs and runtime repair is best-effort.
         check_bool(not is_sqlite_wal_reset_vulnerable(), f"SQLite {sqlite3.sqlite_version}",
-                   (f"SQLite {sqlite3.sqlite_version} (WAL-reset bug)", _sqlite_upgrade_hint()))
+                   (f"SQLite {sqlite3.sqlite_version}（有 WAL 重置风险）", _sqlite_upgrade_hint()))
         if src:
             check_info(f"SQLite 源码版本号：{(src[:48] + '…') if len(src) > 48 else src}")
         _report_database_journal_modes()
-    check_bool(sys.prefix != sys.base_prefix, "Virtual environment active", ("Not in virtual environment", "(推荐)"))
+    check_bool(sys.prefix != sys.base_prefix, "虚拟环境正常", ("不在虚拟环境里", "（推荐用虚拟环境）"))
     # macOS TCC interpreter anchor (#95596): dylib-complete re-land of the mechanism reverted in #95563.
     # Silent on non-macOS.
     check_macos_tcc_anchor(should_fix=should_fix)
@@ -520,7 +520,7 @@ def _check_command_installation(should_fix: bool, f: Finding) -> None:
     from hermes_cli.doctor import PROJECT_ROOT
     if sys.platform == "win32":
         return
-    _section("Command Installation")
+    _section("命令入口")
     venv_bin = next((c for c in (PROJECT_ROOT / n / "bin" / "hermes" for n in ("venv", ".venv")) if c.exists()), None)
     if venv_bin is None:
         check_warn("虚拟环境入口缺失", "（venv/bin/ 或 .venv/bin/ 里没有 hermes —— 用 pip install -e '.[all]' 重装）")

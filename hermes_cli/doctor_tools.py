@@ -137,9 +137,9 @@ def _missing_api_key_toolsets_for_summary(unavailable: list[dict]) -> list[dict]
 
 @doctor_check()
 def _check_git_and_rg(should_fix: bool, f: Finding) -> None:
-    check_bool(_safe_which("git"), "git", ("git not found", "(optional)"))
-    if not check_bool(_safe_which("rg"), ("ripgrep (rg)", "(faster file search)"),
-                      ("ripgrep (rg) not found", "(file search uses grep fallback)")):
+    check_bool(_safe_which("git"), "git", ("没找到 git", "(optional)"))
+    if not check_bool(_safe_which("rg"), ("ripgrep (rg)", "（搜索更快）"),
+                      ("没找到 ripgrep (rg)", "（搜索退回用 grep）")):
         check_info(f"想搜得更快可以装：{_system_package_install_cmd('ripgrep')}")
 
 
@@ -330,8 +330,8 @@ def _check_chromium() -> None:
         return
     if _is_camofox_mode() or bool(_get_cdp_override_raw()) or _get_cloud_provider() is not None or _using_lightpanda_engine():
         return
-    if not check_bool(_chromium_installed(), ("Playwright Chromium", "(browser engine)"),
-                      ("Playwright Chromium not installed", "(browser_* tools will be hidden from the agent)")):
+    if not check_bool(_chromium_installed(), ("Playwright Chromium", "（浏览器引擎）"),
+                      ("没装 Playwright Chromium", "（浏览器类工具会对模型隐藏）")):
         with_deps = "" if sys.platform == "win32" else "--with-deps "
         check_info(f"安装方式：cd {PROJECT_ROOT} && npx playwright install {with_deps}chromium")
 
