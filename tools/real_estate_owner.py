@@ -9,8 +9,8 @@ from datetime import datetime
 from agent.real_estate_display import (OWNER_KEY_MISMATCH_WARNING, PERSON_KEY_MISMATCH_WARNING,
                                        attach_key_warning, dedup_key_mismatch_payload,
                                        mask_contacts, safe_contact)
-from agent.real_estate_input import (clamp_limit, clean_text, clip_text, norm_id, norm_id_number,
-                                     norm_phone)
+from agent.real_estate_input import (CUSTOMER_TYPE_LABELS, clamp_limit, clean_text, clip_text, norm_id,
+                                     norm_id_number, norm_phone)
 from agent.real_estate_money import fmt_budget, fmt_price
 from tools.real_estate_property import _STATUS_LABELS
 from tools.registry import registry
@@ -260,14 +260,14 @@ def get_property_owners(property_ids: list = None, task_id: str = None) -> str:
     for r in rows:
         o = r.get('owner')
         if not o:
-            lines.append(f"· {r['title']}（ID:{r['id']}）：未录入业主信息")
+            lines.append(f"· {r['title']}（房源编号 {r['id']}）：未录入业主信息")
             continue
         phone = o.get('phone')
         wechat = o.get('wechat')
         oid_number = o.get('id_number')
         view = f"，看房方式: {r.get('viewing_note')}" if r.get('viewing_note') else ""
         lines.append(
-            f"· {r['title']}（ID:{r['id']}）：业主 {o.get('name')}，"
+            f"· {r['title']}（房源编号 {r['id']}）：业主 {o.get('name')}，"
             f"电话 {phone or '未录'}"
             + (f"，微信 {wechat}" if wechat else "")
             + (f"，身份证 {oid_number}" if oid_number else "")
@@ -321,13 +321,13 @@ def find_person_by_name(name: str = None, limit: int = None, task_id: str = None
     for c in customers:
         budget = '-'.join(filter(None, [str(fmt_budget(c.get('budget_min')) or ''),
                                         str(fmt_budget(c.get('budget_max')) or '')])) or '-'
-        lines.append(f"\n【客户】{c.get('name')}（ID:{c.get('id')}）"
+        lines.append(f"\n【客户】{c.get('name')}（客户编号 {c.get('id')}）"
                      f"电话 {c.get('phone') or '未录'} | 微信 {c.get('wechat') or '未录'} | "
                      f"等级 {c.get('tier') or '-'} | "
-                     f"类型 {c.get('customer_type') or '-'} | 预算 {budget} | "
+                     f"类型 {CUSTOMER_TYPE_LABELS.get(c.get('customer_type'), c.get('customer_type') or '-')} | 预算 {budget} | "
                      f"意向 {c.get('location') or '-'} {c.get('layout_pref') or ''}")
     for o in owners:
-        lines.append(f"\n【业主】{o.get('name')}（ID:{o.get('id')}）"
+        lines.append(f"\n【业主】{o.get('name')}（业主编号 {o.get('id')}）"
                      f"电话 {o.get('phone') or '未录'} | 微信 {o.get('wechat') or '未录'} | "
                      f"证件 {o.get('id_number') or o.get('id_masked') or '-'} | "
                      f"信任度 {o.get('trust_note') or '-'}")
@@ -423,7 +423,7 @@ def owner_portfolio(owner_id: int, limit: int = None, task_id: str = None) -> st
         # 展示口径复用共用实现：fmt_price（出租 → 元/月）/ _STATUS_LABELS（在售/已售/已租）
         viewing = f"，看房方式: {p['viewing_note']}" if p.get("viewing_note") else ""
         status = _STATUS_LABELS.get(p.get('status'), p.get('status') or '未录入')
-        lines.append(f"\n· {p['title']}（ID:{p['id']}）{fmt_price(p)} [{status}]{viewing}")
+        lines.append(f"\n· {p['title']}（房源编号 {p['id']}）{fmt_price(p)} [{status}]{viewing}")
     payload = {
         "success": True, **result,
         "count": len(shown), "truncated": truncated,
@@ -460,7 +460,7 @@ def exclusive_expiring(days: int = 30, limit: int = None, task_id: str = None) -
                      f"要我多列就说一声。")
     for it in items:
         when = "已过期" if it['days_remaining'] < 0 else f"还有 {it['days_remaining']} 天到期"
-        lines.append(f"\n· {it['title']}（ID:{it['id']}）{fmt_price(it)} — {when}")
+        lines.append(f"\n· {it['title']}（房源编号 {it['id']}）{fmt_price(it)} — {when}")
     lines.append("\n到期前是重新谈委托条件或建议调价的窗口")
     return json.dumps({
         "success": True, "items": items,
