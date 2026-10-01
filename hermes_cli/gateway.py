@@ -3147,9 +3147,9 @@ def systemd_install(
             refresh_systemd_unit_if_needed(system=system)
             if enable_on_startup:
                 _run_systemctl(["enable", get_service_name()], system=system, check=True, timeout=30)
-            print(f"✓ {scope_label.capitalize()} 服务定义已更新")
+            print(f"✓ {scope_label.capitalize()}服务定义已更新")
         else:
-            print(f"服务已装在： {unit_path}")
+            print(f"服务已装在：{unit_path}")
             print("想重装加 --force")
         # Same post-install guarantee as a fresh install: a repaired user unit must survive logout too.
         configured_user = _read_systemd_user_from_unit(unit_path) if system else None
@@ -3163,7 +3163,7 @@ def systemd_install(
     new_unit = generate_systemd_unit(system=system, run_as_user=run_as_user)
     if _refuse_temp_home_service_write(new_unit, "systemd unit"):
         return
-    print(f"正在安装 {scope_label}systemd 服务到： {unit_path}")
+    print(f"正在安装 {scope_label}systemd 服务到：{unit_path}")
     unit_path.write_text(new_unit, encoding="utf-8")
 
     _run_systemctl(["daemon-reload"], system=system, check=True, timeout=30)
@@ -3171,7 +3171,7 @@ def systemd_install(
         _run_systemctl(["enable", get_service_name()], system=system, check=True, timeout=30)
 
     print()
-    print(f"✓ {scope_label.capitalize()} 服务{'已安装并启用' if enable_on_startup else '已安装'}！")
+    print(f"✓ {scope_label.capitalize()}服务{'已安装并启用' if enable_on_startup else '已安装'}！")
     print()
     print("接下来：")
     print(f"  {sudo}coco gateway start{scope_flag}              # 启动服务")
@@ -3182,7 +3182,7 @@ def systemd_install(
     if system:
         configured_user = _read_systemd_user_from_unit(unit_path)
         if configured_user:
-            print(f"配置为以这个用户运行： {configured_user}")
+            print(f"配置为以这个用户运行：{configured_user}")
             _ensure_system_service_linger(configured_user)
     else:
         _ensure_linger_enabled()
@@ -3416,7 +3416,7 @@ def systemd_status(deep: bool = False, system: bool = False, full: bool = False)
 
     configured_user = _read_systemd_user_from_unit(unit_path) if system else None
     if configured_user:
-        print(f"配置为以这个用户运行： {configured_user}")
+        print(f"配置为以这个用户运行：{configured_user}")
 
     _print_runtime_health()
 
