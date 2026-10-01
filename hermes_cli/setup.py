@@ -372,6 +372,15 @@ def _boxed(text: str) -> str:
     return "│" + text + " " * max(0, _BANNER_INNER - _disp_width(text)) + "│"
 
 
+_PLATFORM_STATUS_LABELS = {"configured": "已配置", "not configured": "未配置",
+                           "partially configured": "部分配置"}
+
+
+def platform_status_label(status: str) -> str:
+    """状态词的中文显示文案 —— 判断逻辑仍用原值（未知状态原样返回，插件的状态不翻）"""
+    return _PLATFORM_STATUS_LABELS.get(status, status)
+
+
 def _print_banner(*lines: str) -> None:
     """Print the magenta box banner: top border, the given body lines, bottom border."""
     print()

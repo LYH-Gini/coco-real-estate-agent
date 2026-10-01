@@ -318,7 +318,7 @@ def _restart_running_gateway(any_messaging: bool, supports_systemd: bool) -> Non
 
 def setup_gateway(config: dict):
     """Configure messaging platform integrations."""
-    from hermes_cli.setup import _info, print_header, print_info, print_success, prompt_checklist
+    from hermes_cli.setup import platform_status_label, _info, print_header, print_info, print_success, prompt_checklist
     from hermes_cli.gateway import _all_platforms, _platform_status, _configure_platform
     print_header("接入通道")
     _info("接上你的聊天工具，随时随地跟 Coco 对话。",
@@ -327,7 +327,8 @@ def setup_gateway(config: dict):
 
     # Build checklist, pre-selecting already-configured platforms.
     statuses = [_platform_status(plat) for plat in platforms]
-    items = [f"{plat['emoji']} {plat['label']}  ({status})" for plat, status in zip(platforms, statuses)]
+    items = [f"{plat['emoji']} {plat['label']}  ({platform_status_label(status)})"
+             for plat, status in zip(platforms, statuses)]
     pre_selected = [i for i, status in enumerate(statuses) if status == "configured"]
     selected = prompt_checklist("选择要配置的平台：", items, pre_selected)
     if not selected:

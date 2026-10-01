@@ -180,7 +180,7 @@ class TestIRCGatewaySetupFreshInstall:
                 f"No platform prompt found in {checklist_calls}"
             choices_text = "\n".join(platform_prompt["choices"])
             assert "IRC" in choices_text
-            assert "not configured" in choices_text.lower()
+            assert "未配置" in choices_text
         finally:
             _unregister_irc_platform()
 

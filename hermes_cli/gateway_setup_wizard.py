@@ -9,7 +9,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
-from hermes_cli.setup import _boxed, print_success  # def-time binding (table value)
+from hermes_cli.setup import _boxed, platform_status_label, print_success  # def-time binding (table value)
 from hermes_cli.setup import print_warning  # def-time binding (table value)
 
 
@@ -825,7 +825,8 @@ def _wizard_platform_loop() -> None:
         _gw().print_header("接入通道")
 
         platforms = _gw()._all_platforms()
-        menu_items = [f"{p['emoji']} {p['label']}  ({_platform_status(p)})" for p in platforms] + ["完成"]
+        menu_items = [f"{p['emoji']} {p['label']}  ({platform_status_label(_platform_status(p))})"
+                      for p in platforms] + ["完成"]
         choice = _gw().prompt_choice("选择要配置的平台：", menu_items, len(menu_items) - 1)
         if choice == len(platforms):
             break
