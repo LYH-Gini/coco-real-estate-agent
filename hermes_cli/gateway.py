@@ -1588,7 +1588,7 @@ def _print_other_profiles_gateway_status() -> None:
         if not other_processes:
             return
         print()
-        print("Other profiles:")
+        print("其它配置档：")
         for proc in other_processes:
             print(f"  ✓ {proc.profile:<16s} — PID {proc.pid}")
     except Exception:
@@ -3708,7 +3708,7 @@ def _served_profile_needs_no_service() -> bool:
     print_success(
         f"配置档「{_current_profile_name()}」已经由默认多路复用器提供服务。"
     )
-    print_info("  (served now by the running multiplexed gateway — add its bot token and it connects)")
+    print_info("  （现在由那个多路复用主网关服务 —— 把它的机器人令牌配上就能连上）")
     print_info("  No standalone gateway service was installed or started.")
     return True
 
@@ -3755,38 +3755,37 @@ def _named_profile_refused_under_multiplexer(force: bool = False) -> bool:
         return False
 
     if served:
-        print_error(f"The host gateway already serves profile '{suffix}'.")
+        print_error(f"主网关已经在服务配置档「{suffix}」了。")
         if owner is not None:
             print(f"  {owner.describe()}")
     else:
-        print_error(f"Profile '{suffix}' does not get a gateway of its own.")
+        print_error(f"配置档「{suffix}」不会有自己的网关。")
     print(
-        "  Exactly one gateway per host is the inbound process for every\n"
-        "  profile. Starting a separate gateway for this profile would\n"
-        "  double-bind its platforms (two pollers on one bot token, port\n"
-        "  conflicts).\n"
+        "  一台机器只该有一个网关进程，它负责所有配置档的接入。\n"
+        "  给这个配置档单独起一个，会让两边的接入打起来\n"
+        "  （同一个机器人令牌被两个进程同时轮询、端口冲突）。\n"
     )
     if served:
-        print("  Manage the host gateway instead:")
+        print("  改成操作主网关：")
         print()
-        print(f"    coco -p {owner.profile_label if owner is not None else 'default'} gateway restart")
+        print(f"    coco cli -p {owner.profile_label if owner is not None else 'default'} gateway restart")
     else:
-        print("  Install or start the host gateway from the default profile; it serves this one too:")
+        print("  在默认档上装/启动主网关；它也会服务这个配置档：")
         print()
         print("    coco gateway install")
         print()
-        print("  Or fold an existing per-profile fleet onto one host gateway:")
+        print("  或者把已有的按配置档网关并进主网关：")
         print()
         print("    coco gateway migrate --multiplex")
     print()
-    print("  A separate per-profile gateway (for a fleet split across UNIX users or a")
-    print(f"  HERMES_HOME outside profiles/) needs --force:  coco -p {suffix} gateway install --force")
+    print("  确实要单独按配置档的网关（比如一套机器按 UNIX 用户切分，或者")
+    print(f"  HERMES_HOME 不在 profiles/ 下）得加 --force：  coco cli -p {suffix} gateway install --force")
     print()
     from hermes_constants import display_hermes_home
     from hermes_cli.gateway_multiplex_mode import STANDALONE_DEPRECATION_NOTICE
-    print("  Temporary compatibility path while multiplexing gaps are closed: set")
-    print(f"  gateway.standalone: true in {display_hermes_home(get_hermes_home())}/config.yaml,")
-    print("  then wait for the host gateway to rescan (<=30s) or send its rescan-profiles control verb.")
+    print("  多路复用暂时还有缺口，临时兼容做法：")
+    print(f"  在 {display_hermes_home(get_hermes_home())}/config.yaml 里设 gateway.standalone: true，")
+    print("  然后等主网关重新扫描（最多 30 秒），或者给它发 rescan-profiles 控制指令。")
     print(f"  ({STANDALONE_DEPRECATION_NOTICE})")
     return True
 
@@ -3881,7 +3880,7 @@ def _guard_supervised_gateway_conflict(force: bool = False) -> None:
     if not (snapshot.service_installed and snapshot.service_running):
         return
 
-    print_error(f"A gateway is already running under {snapshot.manager} for this profile.")
+    print_error(f"这个配置档下已经有网关在跑了（由 {snapshot.manager} 管）")
     print(
         "  Starting another one from a shell leaves an orphan dispatcher that\n"
         "  escapes the service, survives restarts, and writes to the same kanban\n"
@@ -4364,7 +4363,7 @@ def _dispatch_via_service_manager_if_s6(action: str, profile: str | None = None)
             # repairs that; stop/restart on a missing slot stay an error.
             if action != "start" or not register_unregistered_profile_gateway(mgr, profile):
                 raise
-            print(f"✓ registered the s6 gateway slot for profile {profile!r}")
+            print(f"✓ 已注册配置档 {profile!r} 的 s6 网关槽位")
             mgr.start(service)
     except (RuntimeError, ValueError, OSError) as exc:  # S6Error is a RuntimeError
         print(f"✗ {exc}")
@@ -4382,7 +4381,7 @@ def _dispatch_all_via_service_manager_if_s6(action: str) -> bool:
     mgr = get_service_manager()
     profiles = mgr.list_profile_gateways()
     if not profiles:
-        print("✗ No profile gateways registered under s6")
+        print("✗ s6 下没有注册任何按配置档的网关")
         return True
     fn = mgr.stop if action == "stop" else mgr.restart
     errors: list[tuple[str, Exception]] = []
@@ -4394,9 +4393,9 @@ def _dispatch_all_via_service_manager_if_s6(action: str) -> bool:
     succeeded = len(profiles) - len(errors)
     verb = "stopped" if action == "stop" else "restarted"
     if succeeded:
-        print(f"✓ {verb.capitalize()} {succeeded} profile gateway(s) under s6")
+        print(f"✓ 已在 s6 下{verb} {succeeded} 个按配置档网关")
     for profile, exc in errors:
-        print(f"✗ Could not {action} gateway-{profile}: {exc}")
+        print(f"✗ {action} 配置档 {profile} 的网关失败：{exc}")
     return True
 
 
@@ -4754,9 +4753,9 @@ def _print_unfolded_gateway_note(owner) -> None:
         return
     if not others:
         return
-    print(f"  {len(others)} per-profile gateway process(es) still run beside it "
-          f"(PIDs: {', '.join(str(p) for p in others)}).")
-    print("  They were left running; fold them in with: coco gateway migrate --multiplex")
+    print(f"  它旁边还跑着 {len(others)} 个按配置档的网关进程 "
+          f"（PID：{', '.join(str(p) for p in others)}）。")
+    print("  它们还留着；用 coco gateway migrate --multiplex 并进来")
 
 
 def _cmd_start(args):
@@ -4774,13 +4773,13 @@ def _cmd_start(args):
         if owner is not None:
             # Already up: `--all` has nothing to start, and the old sweep here SIGTERMed this very
             # process before starting a single-profile replacement.
-            print(f"✓ The host gateway is already running — {owner.describe()}")
-            print("  One gateway per host serves every profile; nothing to start.")
+            print(f"✓ 主网关已经在跑了 —— {owner.describe()}")
+            print("  一台机器一个主网关就服务所有配置档，不用再起。")
             _print_unfolded_gateway_note(owner)
             return
         killed = kill_gateway_processes(all_profiles=True)
         if killed:
-            print(f"✓ Killed {killed} stale gateway process(es) across all profiles")
+            print(f"✓ 清掉了 {killed} 个残留网关进程（全部配置档）")
             _wait_for_gateway_exit(timeout=10.0, force_after=5.0)
             _wait_for_api_server_port_free()
 
@@ -4805,15 +4804,14 @@ def _cmd_stop(args):
         # The launch/default-profile lifecycle still names the whole host.
         owner = _served_by_another_host_gateway()
         print_error(
-            f"The host gateway serves profile '{_current_profile_name()}' — there is no separate "
-            f"gateway for this profile to stop."
+            f"主网关在服务配置档「{_current_profile_name()}」—— 这个配置档没有单独的gateway可停。"
         )
         if owner is not None:
             print(f"  {owner.describe()}")
-        print("  Stop or restart the host gateway instead:")
+        print("  改成操作主网关：")
         print()
         owner_flag = f"-p {owner.profile_label} " if owner is not None else ""
-        print(f"    coco {owner_flag}gateway stop      # takes every served profile offline")
+        print(f"    coco {owner_flag}gateway stop      # 被服务的配置档都会下线")
         print(f"    coco {owner_flag}gateway restart")
         sys.exit(GATEWAY_FATAL_CONFIG_EXIT_CODE)
     # Under s6 a bare pkill is seen as a crash and restarted; go through the supervisor.
@@ -4826,16 +4824,16 @@ def _cmd_stop(args):
     if stop_all:
         total = kill_gateway_processes(all_profiles=True) + (1 if service_available else 0)
         if total:
-            print(f"✓ Stopped {total} gateway process(es) across all profiles")
+            print(f"✓ 已停掉全部配置档的 {total} 个网关进程")
         else:
-            print("✗ No gateway processes found")
+            print("✗ 没找到网关进程")
     elif not service_available:
         if stop_profile_gateway():
-            print("✓ Stopped gateway for this profile")
+            print("✓ 已停掉这个配置档的网关")
         else:
-            print("✗ No gateway running for this profile")
+            print("✗ 这个配置档没有在跑的网关")
     else:
-        print(f"✓ Stopped {get_service_name()} service")
+        print(f"✓ 已停掉 {get_service_name()} 服务")
 
 
 def _stop_host_multiplexer(owner) -> int:
@@ -4867,11 +4865,11 @@ def _restart_all(system: bool) -> None:
         # `--all` means "restart the ONE host multiplexer" — and this profile does not own it.
         # Sweeping every profile here took the host process down and replaced it with a gateway
         # serving only this profile.
-        print_error(f"The host gateway runs under profile '{owner.profile_label}'.")
+        print_error(f"主网关跑在配置档「{owner.profile_label}」下。")
         print(f"  {owner.describe()}")
-        print("  `--all` restarts the one host multiplexer, and this profile is not its owner.")
+        print("  --all 是重启那个唯一的主网关，而这个配置档不是它的归属档。")
         print()
-        print(f"    coco -p {owner.profile_label} gateway restart --all")
+        print(f"    coco cli -p {owner.profile_label} gateway restart --all")
         sys.exit(GATEWAY_FATAL_CONFIG_EXIT_CODE)
 
     service_stopped = _stop_installed_service(system)
@@ -4887,7 +4885,7 @@ def _restart_all(system: bool) -> None:
     else:
         total = kill_gateway_processes(all_profiles=True) + (1 if service_stopped else 0)
         if total:
-            print(f"✓ Stopped {total} gateway process(es) across all profiles")
+            print(f"✓ 已停掉全部配置档的 {total} 个网关进程")
     _wait_for_gateway_exit(timeout=10.0, force_after=5.0)
     _wait_for_api_server_port_free()
     # Retract the stopped owner's rendezvous record. Leaving it made this very function a silent
@@ -4973,7 +4971,7 @@ def _cmd_restart(args):
         return
 
     if stop_profile_gateway():
-        print("✓ Stopped gateway for this profile")
+        print("✓ 已停掉这个配置档的网关")
     _wait_for_gateway_exit(timeout=10.0, force_after=5.0)
     _wait_for_api_server_port_free()
     print("正在启动网关…")

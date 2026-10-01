@@ -34,13 +34,13 @@ def test_missing_and_reused_codex_credential_copy_names_the_profile(codex_profil
     ))
     for err in (missing.value, reused):
         text = str(err)
-        assert "`hermes -p codex auth add openai-codex --type oauth`" in text, text
-        assert "`hermes auth`" not in text, text
+        assert "`coco cli -p codex auth add openai-codex --type oauth`" in text, text
+        assert "`coco cli auth add" not in text, text
 
 
 def test_format_auth_error_relogin_suffix_names_the_profile(codex_profile_home):
     err = AuthError("Codex token refresh failed: invalid_grant", provider="openai-codex",
                     code="invalid_grant", relogin_required=True)
     rendered = format_auth_error(err)
-    assert "`hermes -p codex model`" in rendered, rendered
-    assert "`hermes model`" not in rendered, rendered
+    assert "`coco cli -p codex model`" in rendered, rendered
+    assert "`coco cli model`" not in rendered, rendered

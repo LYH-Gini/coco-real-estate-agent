@@ -234,7 +234,7 @@ def _report_host_gateway_slot(mgr, issues: list[str]) -> None:
             return check_info("还没有注册网关服务 —— 跑 `coco gateway install`")
         up = [p for p in slots if mgr.is_running(f"gateway-{p}")]
         issues.append("没有网关在承担网关角色 —— 启动那个唯一的主网关："
-                      "coco -p default gateway start")
+                      "coco cli -p default gateway start")
         return check_warn(f"没有网关承担网关角色（{len(up)}/{len(slots)} 个监管槽位在位）："
                           f"{', '.join(slots)}）", "（这些配置档没有网关在服务）")
     check_ok(f"主网关：{topology.describe()}")
@@ -243,7 +243,7 @@ def _report_host_gateway_slot(mgr, issues: list[str]) -> None:
         check_warn(f"仍在监管的旧版按配置网关：{', '.join(legacy_up)}",
                    "（主网关进程已经同时服务所有配置档）")
         issues.append("把旧版按配置的网关并进主网关："
-                      "coco -p default gateway migrate --multiplex")
+                      "coco cli -p default gateway migrate --multiplex")
 
 
 def check_certificates(should_fix: bool = False, issues: "list | None" = None) -> None:
@@ -526,35 +526,49 @@ def _check_command_installation(should_fix: bool, f: Finding) -> None:
         check_warn("虚拟环境入口缺失", "（venv/bin/ 或 .venv/bin/ 里没有 hermes —— 用 pip install -e '.[all]' 重装）")
         return f.manual_issues.append(f"重装入口：cd {PROJECT_ROOT} && source venv/bin/activate && pip install -e '.[all]'")
     check_ok(f"虚拟环境入口在位（{venv_bin.relative_to(PROJECT_ROOT)}）")
-    # Expected command link directory (mirrors install.sh logic).
-    prefix = os.environ.get("PREFIX", "")
-    termux = prefix and (os.environ.get("TERMUX_VERSION") or "com.termux/files/usr" in prefix)
-    link_dir, display = (Path(prefix) / "bin", "$PREFIX/bin") if termux else (Path.home() / ".local" / "bin", "~/.local/bin")
+    # 命令链接目录：与 install.sh 的 get_command_link_dir 同一套规则 ——
+    # Termux 用 $PREFIX/bin；root/FHS 装法用 /usr/local/bin；其余用 ~/.local/bin。
+    # 只看一个目录会误报：root 装法的链接在 /usr/local/bin，体检却只查 ~/.local/bin。
     # Coco 只对外暴露 coco 命令（安装与更新会移除 hermes 软链），所以这里查的是 coco 链接。
-    # 照官方查 hermes 会让每次体检都报一个假问题，`--fix` 还会把 hermes 命令装回来。
     _coco_only = (PROJECT_ROOT / "scripts" / "coco.sh").exists()
     link_name = "coco" if _coco_only else "hermes"
-    link = link_dir / link_name
-    if link.is_symlink():
-        target, expected = link.resolve(), venv_bin.resolve()
-        if target == expected:
-            return check_ok(f"{display}/{link_name} → 指向正确")
-        check_warn(f"{display}/{link_name} 指向的目标不对", f"（→ {target}，应该是 → {expected}）")
-        if not should_fix:
-            return f.issues.append(f"{display}/{link_name} 是坏链接 —— 跑「coco doctor --fix」")
-        link.unlink()
-        verb = "已修复"
-    elif link.exists():  # regular file (wrapper script), not a symlink
-        return check_ok(f"{display}/{link_name} 存在（是普通文件）")
+    prefix = os.environ.get("PREFIX", "")
+    termux = prefix and (os.environ.get("TERMUX_VERSION") or "com.termux/files/usr" in prefix)
+    if termux:
+        candidates = [(Path(prefix) / "bin", "$PREFIX/bin")]
+    elif os.geteuid() == 0:
+        candidates = [(Path("/usr/local/bin"), "/usr/local/bin"), (Path.home() / ".local" / "bin", "~/.local/bin")]
     else:
-        check_fail(f"找不到 {display}/{link_name}", f"({link_name} 命令在虚拟环境外可能不可用)")
-        if not should_fix:
-            return f.issues.append(f"缺 {display}/{link_name} 链接 —— 跑「coco doctor --fix」")
-        link_dir.mkdir(parents=True, exist_ok=True)
-        verb = "已创建"
+        candidates = [(Path.home() / ".local" / "bin", "~/.local/bin"), (Path("/usr/local/bin"), "/usr/local/bin")]
+    dirty_link = None
+    for link_dir, display in candidates:
+        link = link_dir / link_name
+        if link.is_symlink():
+            target, expected = link.resolve(), venv_bin.resolve()
+            if target == expected:
+                return check_ok(f"{display}/{link_name} → 指向正确")
+            check_warn(f"{display}/{link_name} 指向的目标不对", f"（→ {target}，应该是 → {expected}）")
+            if not should_fix:
+                return f.issues.append(f"{display}/{link_name} 是坏链接 —— 跑「coco doctor --fix」")
+            link.unlink()
+            link.symlink_to(venv_bin)
+            check_ok(f"已修复链接：{display}/{link_name} → {venv_bin}")
+            f.fixed += 1
+            return
+        if link.exists():  # regular file (wrapper script), not a symlink
+            return check_ok(f"{display}/{link_name} 存在（是普通文件）")
+        if dirty_link is None:
+            dirty_link = (link_dir, display)
+    link_dir, display = dirty_link
+    looked = "、".join(d for _, d in candidates)
+    check_fail(f"找不到 {link_name} 命令链接", f"（{looked} 都查过）")
+    if not should_fix:
+        return f.issues.append(f"缺 {link_name} 命令链接 —— 跑「coco doctor --fix」")
+    link_dir.mkdir(parents=True, exist_ok=True)
+    link = link_dir / link_name
     link.symlink_to(venv_bin)
-    check_ok(f"{verb}链接：{display}/{link_name} → {venv_bin}")
+    check_ok(f"已创建链接：{display}/{link_name} → {venv_bin}")
     f.fixed += 1
-    if verb == "已创建" and str(link_dir) not in os.environ.get("PATH", "").split(os.pathsep):
-        check_warn(f"{display} 不在你的 PATH 里", "（加到你的 shell 配置里：export PATH=\"$HOME/.local/bin:$PATH\"）")
+    if str(link_dir) not in os.environ.get("PATH", "").split(os.pathsep):
+        check_warn(f"{display} 不在你的 PATH 里", f"（加到你的 shell 配置里：export PATH=\"{display}:$PATH\"）")
         f.manual_issues.append(f"把 {display} 加到 PATH 里")

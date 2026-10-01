@@ -341,8 +341,8 @@ CONTENT_CHECKS = [
         # 官方 v0.21.5 把配对逻辑拆到独立模块（gateway/run_inbound_unauthorized.py），
         # 提示串随之搬家；官方再拆时按同样方式更新路径。
         "gateway/run_inbound_unauthorized.py",
-        [r"coco \{profile_arg\}pairing approve ", r"!hermes \{profile_arg\}pairing approve "],
-        "新用户首次私聊机器人时，配对提示会让所有者执行官方 hermes 命令（应为 coco pairing approve）。"
+        [r"coco cli \{profile_arg\}pairing approve ", r"!hermes \{profile_arg\}pairing approve "],
+        "新用户首次私聊机器人时，配对提示会让所有者执行官方 hermes 命令（应为 coco cli pairing approve）。"
         "处理：把提示里的 `hermes ` 改回 `coco `。",
     ),
     (
@@ -503,7 +503,7 @@ CONTENT_CHECKS = [
         "tests/hermes_cli/test_gateway_no_new_standalone_profile.py",
         [
             r'assert "coco gateway install" in out and "coco gateway migrate --multiplex" in out',
-            r'assert f"coco -p \{profile\} gateway install --force" in out',
+            r'assert f"coco cli -p \{profile\} gateway install --force" in out',
             r'!"hermes gateway',
         ],
         "命名 profile 被拒时的三处提示（装在哪 / 怎么合并 / --force 写法）在 hermes_cli/gateway.py 里\n"
@@ -699,7 +699,7 @@ CONTENT_CHECKS = [
         "官方测试断言：配对提示里的命令名",
         "tests/gateway/test_unauthorized_sender_notices.py",
         [
-            r"`coco -p work pairing approve discord ZZZZ9999`",
+            r"`coco cli -p work pairing approve discord ZZZZ9999`",
             r"!`hermes -p work pairing approve",
         ],
         "陌生人私聊的配对提示由 gateway/run_inbound_unauthorized.py 生成，命令名是 coco，官方断言写的是 hermes。\n"

@@ -460,7 +460,7 @@ def format_auth_error(error: Exception) -> str:
         # Profile-aware: a bare `hermes model` from a named profile re-signs the ROOT store (#114012).
         from hermes_constants import profile_cli_selector
 
-        return f"{error} Run `hermes {profile_cli_selector()}model` to re-authenticate."
+        return f"{error} 重新登录：跑 `coco cli {profile_cli_selector()}model`。"
     if error.code in _ENTITLEMENT_ERROR_CODES:
         if error.provider == "nous":
             return _format_nous_entitlement_auth_error(error)
@@ -1563,10 +1563,10 @@ def resolve_provider(
         pass  # boto3 not installed
     from hermes_constants import display_hermes_home
     raise AuthError(
-        "Hermes is not connected to any AI provider yet. Run `hermes model` to pick one (the free "
-        "Nous tier needs no API key), type `/login` in chat, or add a key with "
-        f"`hermes auth add <provider>`. (Advanced: put an API key such as OPENROUTER_API_KEY in "
-        f"{display_hermes_home()}/.env.)",
+        "还没接任何模型服务商。跑 `coco model` 挑一个（免费的 Nous 档不用 API Key），"
+        "在对话里输入 `/login`，或者用 "
+        f"`coco cli auth add <服务商>` 加密钥。（进阶：把 OPENROUTER_API_KEY 这类密钥写进 "
+        f"{display_hermes_home()}/.env。）",
         code="no_provider_configured")
 
 

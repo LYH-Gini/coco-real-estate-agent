@@ -47,8 +47,8 @@ class HostGatewayTopology:
     def describe(self) -> str:
         """``the host gateway (PID 42) serving profiles default, coder`` — one shared phrasing so
         doctor, cron status and the state.db holder lines cannot drift apart."""
-        roster = ", ".join(self.profiles) if self.profiles else "an unknown profile set"
-        return f"the host gateway (PID {self.pid}) serving profiles {roster}"
+        roster = "、".join(self.profiles) if self.profiles else "未知配置档"
+        return f"主网关进程（PID {self.pid}）同时服务配置档 {roster}"
 
 
 def _from_host_record() -> Optional[HostGatewayTopology]:

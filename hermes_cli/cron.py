@@ -72,10 +72,10 @@ def _warn_if_gateway_not_running() -> None:
     """Warn at create/list time when the scheduler is not ready; stay silent on an unknown probe result."""
     if _builtin_gateway_liveness() is not False:
         return
-    print(color("  ⚠  Scheduler is not ready: no gateway or no fresh profile heartbeat.", Colors.YELLOW))
+    print(color("  ⚠  调度还没就绪：没有网关，或者这个配置档还没有新的心跳。", Colors.YELLOW))
     print(color("     If no gateway is running: hermes gateway install\n"
                 "                    sudo hermes gateway install --system  # Linux servers\n"
-                "     Check status:  hermes cron status", Colors.DIM))
+                "     看状态：coco cron status", Colors.DIM))
 
 
 def _format_lateness(seconds: float) -> str:
@@ -257,8 +257,8 @@ def _short_reason(text: Any, limit: int = 120) -> str:
 
 
 def _delivery_fix_hint(job: Dict[str, Any]) -> str:
-    return (f"Check the target with `hermes cron status` or change it with "
-            f"`hermes cron edit {job.get('id', '<id>')} --deliver <target>`.")
+    return (f"用 `coco cron status` 看目标，或者用 "
+            f"`coco cron edit {job.get('id', '<id>')} --deliver <目标>` 改。")
 
 
 def _missed_fire_issue(job: Dict[str, Any], fire_err: Dict[str, Any]) -> str:
@@ -302,7 +302,7 @@ def cron_tick():
         # For the one-shot CLI surface, report cleanly instead of dumping a traceback; the gateway ticker
         # loop handles its own retry. See #87644.
         print(color(f"✗ Cron tick failed: {exc}", Colors.RED))
-        print("  Check `hermes cron status` and the gateway log for details.")
+        print("  细节看 `coco cron status` 和网关日志。")
         return 1
     return 0
 
@@ -408,14 +408,14 @@ def _print_ticker_health(pids: list, restart_command: str = "hermes gateway rest
 
     if hb_age is None:
         # Ticker never started (non-cron profile, gateway just started, or a config issue).
-        _warn("⚠ Gateway is running but the cron ticker has not reported a heartbeat.")
-        print("  Cron jobs will NOT fire until the ticker writes its first heartbeat.\n"
-              "  If the gateway just started, wait ~60s and re-run `hermes cron status`.\n"
-              f"  If heartbeat never appears, restart: {restart_command}")
+        _warn("⚠ 网关在跑，但定时任务的调度线程还没报过心跳。")
+        print("  在它写出第一份心跳之前，定时任务不会触发。\n"
+              "  如果网关刚启动，等 ~60 秒再跑一次 `coco cron status`。\n"
+              f"  如果一直没有心跳，重启：{restart_command}")
     elif not _ticker_age_is_fresh(hb_age):  # ticker thread is gone
-        _warn("⚠ Gateway is running but the cron ticker looks STALLED — "
-              f"no heartbeat for {int(hb_age)}s (expected every ~60s).")
-        print(f"  Cron jobs may NOT be firing. Restart: {restart_command}")
+        _warn("⚠ 网关在跑，但定时任务的调度线程像是卡住了 —— "
+              f"已经 {int(hb_age)} 秒没有心跳（正常应该每 ~60 秒一次）。")
+        print(f"  定时任务可能没在跑。重启：{restart_command}")
     elif (skew := stale_code_yield_labels(last_error)) is not None:
         # `hermes update` moved the checkout under a running gateway: its ticker yields every
         # tick (heartbeat stays fresh, nothing dispatches) until the process is restarted (#117275).
@@ -490,14 +490,14 @@ def cron_status():
             if not gateway_alive_via_lock:
                 served_by_multiplexer = named_profile_served_by_running_multiplexer()
         if host is not None:
-            print(f"  Scheduler host: {host.describe()}")
+            print(f"  调度进程所在：{host.describe()}")
             # `hermes gateway restart` exits 78 for a served NAMED profile
             # (_guard_named_profile_under_multiplexer): the one host process is the default's.
-            _print_ticker_health([host.pid], restart_command="hermes --profile default gateway restart")
+            _print_ticker_health([host.pid], restart_command="coco cli -p default gateway restart")
         elif pids or gateway_alive_via_lock or served_by_multiplexer:
             if served_by_multiplexer:
-                print("  Scheduler host: the host gateway (multiplexing this profile)")
-                _print_ticker_health([], restart_command="hermes --profile default gateway restart")
+                print("  调度进程所在：主网关（正在多路复用这个配置档）")
+                _print_ticker_health([], restart_command="coco cli -p default gateway restart")
             else:
                 _print_ticker_health(pids)
         else:

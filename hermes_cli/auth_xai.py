@@ -26,7 +26,7 @@ if TYPE_CHECKING:  # annotation-only; the runtime import would be a cycle
     from hermes_cli.auth import ProviderConfig
 logger = logging.getLogger("hermes_cli.auth")
 
-_RELOGIN = "Re-authenticate with `hermes model`."
+_RELOGIN = "重新登录：跑 `coco model`。"
 
 
 def _clean(value: Any) -> str:
@@ -84,12 +84,12 @@ def _read_xai_oauth_tokens(*, _lock: bool = True) -> Dict[str, Any]:
         )
     tokens = state.get("tokens")
     if not isinstance(tokens, dict):
-        raise _xai_err(f"xAI OAuth state is missing tokens. {_RELOGIN}", "xai_auth_invalid_shape", relogin=True)
+        raise _xai_err(f"xAI OAuth 的登录状态里没有令牌。{_RELOGIN}", "xai_auth_invalid_shape", relogin=True)
     access_token, refresh_token = _token_pair(tokens)
     for value, field in ((access_token, "access_token"), (refresh_token, "refresh_token")):
         if not value:
             raise _xai_err(
-                f"xAI OAuth state is missing {field}. {_RELOGIN}", f"xai_auth_missing_{field}", relogin=True,
+                f"xAI OAuth 的登录状态里缺 {field}。{_RELOGIN}", f"xai_auth_missing_{field}", relogin=True,
             )
     return {
         "tokens": tokens, "last_refresh": state.get("last_refresh"),
@@ -305,7 +305,7 @@ def refresh_xai_oauth_pure(
     del access_token
     if not _nonempty_str(refresh_token):
         raise _xai_err(
-            f"xAI OAuth is missing refresh_token. {_RELOGIN}", "xai_auth_missing_refresh_token", relogin=True,
+            f"xAI OAuth 缺 refresh_token。{_RELOGIN}", "xai_auth_missing_refresh_token", relogin=True,
         )
     endpoint = token_endpoint.strip() or _xai_oauth_discovery(timeout_seconds)["token_endpoint"]
     # Re-validate cached endpoints: an old/hand-edited auth.json may carry a non-xAI token_endpoint

@@ -381,8 +381,8 @@ def oauth_relogin_command(provider: Any) -> str:
 
     slug = str(provider or "").strip().lower()
     if slug == "nous":
-        return f"hermes {profile_cli_selector()}portal"
-    return f"hermes {profile_cli_selector()}auth add {slug} --type oauth"
+        return f"coco cli {profile_cli_selector()}portal"
+    return f"coco cli {profile_cli_selector()}auth add {slug} --type oauth"
 
 
 def relogin_command_hint(provider: Any) -> str:
@@ -394,12 +394,12 @@ def relogin_command_hint(provider: Any) -> str:
 
     slug = str(provider or "").strip().lower()
     if not slug:
-        return f"hermes {profile_cli_selector()}auth add <provider>"
+        return f"coco cli {profile_cli_selector()}auth add <provider>"
     from agent.error_surface import auth_kind
 
     if auth_kind(slug) == "oauth":
         return oauth_relogin_command(slug)
-    return f"hermes {profile_cli_selector()}auth add {slug}"
+    return f"coco cli {profile_cli_selector()}auth add {slug}"
 
 
 def nonretryable_copy(

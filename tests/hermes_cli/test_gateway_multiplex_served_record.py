@@ -124,7 +124,7 @@ def test_setup_gateway_service_step_skips_install_for_served_profile(served_root
     monkeypatch.setenv("HERMES_HOME", str(served_root / "profiles" / "other"))  # not in the live record
     assert gw.ensure_gateway_service(context="setup") is True
     assert calls == []
-    assert "Profile 'other' does not get a gateway of its own" in capsys.readouterr().out
+    assert "配置档「other」不会有自己的网关" in capsys.readouterr().out
 
 
 def test_recycled_pid_does_not_lend_a_stale_record_its_served_profiles(served_root):
@@ -203,13 +203,13 @@ def test_satellite_gateway_identity_does_not_imply_cron_health(served_root, monk
         cr.cron_status()
     # Multiplex-only: the ONE host gateway is named as the ticker, with the profiles it serves —
     # the FULL line, so this cannot pass on the sibling "(multiplexing this profile)" rung.
-    assert f"Scheduler host: the host gateway (PID {os.getpid()}) serving profiles default, coder" \
+    assert f"调度进程所在：主网关进程（PID {os.getpid()}）同时服务配置档 default、coder" \
         in buf.getvalue()
     # The remediation this rung prints must run for a served NAMED profile (`hermes gateway
     # restart` exits 78 there).
-    assert "restart: hermes --profile default gateway restart" in buf.getvalue()
+    assert "重启：coco cli -p default gateway restart" in buf.getvalue()
     # A live scheduler host alone does not prove this satellite's ticker is healthy.
-    assert "has not reported a heartbeat" in buf.getvalue()
+    assert "还没报过心跳" in buf.getvalue()
     assert "will fire automatically" not in buf.getvalue()
 
 

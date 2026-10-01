@@ -59,15 +59,15 @@ def test_status_preserves_profile_health_contract(served_root, capsys, monkeypat
     output = capsys.readouterr().out
     # This fixture leaves the rendezvous dir EMPTY, so the config-derived multiplexer rung is what
     # answers here — assert its exact line, never a prefix the host-record rung also prints.
-    assert ("Scheduler host: the host gateway (multiplexing this profile)" in output) == (
+    assert ("调度进程所在：主网关（正在多路复用这个配置档）" in output) == (
         mode in {"missing", "fresh", "stale"})
     assert ("will fire automatically" in output) == (mode in {"fresh", "local"})
     if mode in {"missing", "stale"}:
-        assert "hermes --profile default gateway restart" in output
+        assert "coco cli -p default gateway restart" in output
     if mode == "missing":
-        assert "has not reported a heartbeat" in output
+        assert "还没报过心跳" in output
     if mode == "stale":
-        assert "STALLED" in output
+        assert "卡住了" in output
     if mode in {"disabled", "excluded", "unrelated_pid"}:
         assert "No gateway is running on this host" in output
         assert "hermes --profile default gateway install" in output
@@ -101,10 +101,10 @@ def test_host_record_rung_names_the_roster_and_a_runnable_restart(served_root, c
     cron.cron_status()
     output = capsys.readouterr().out
 
-    assert f"Scheduler host: the host gateway (PID {os.getpid()}) serving profiles default, probe" in output
-    assert "Scheduler host: the host gateway (multiplexing this profile)" not in output
-    assert "hermes --profile default gateway restart" in output
-    assert "\n  If heartbeat never appears, restart: hermes gateway restart" not in output
+    assert f"调度进程所在：主网关进程（PID {os.getpid()}）同时服务配置档 default、probe" in output
+    assert "调度进程所在：主网关（正在多路复用这个配置档）" not in output
+    assert "coco cli -p default gateway restart" in output
+    assert "重启：coco gateway restart" not in output
 
 
 @pytest.mark.parametrize("heartbeat", ["missing", "fresh", "stale"])
@@ -128,7 +128,7 @@ def test_satellite_list_and_create_require_own_heartbeat(served_root, capsys, mo
     cron.cron_list()
     listed = capsys.readouterr().out
     for output in (created, listed):
-        assert ("Check status:  hermes cron status" in output) == (heartbeat != "fresh")
+        assert ("看状态：coco cron status" in output) == (heartbeat != "fresh")
     cron.cron_status()
     assert ("will fire automatically" in capsys.readouterr().out) == (heartbeat == "fresh")
 

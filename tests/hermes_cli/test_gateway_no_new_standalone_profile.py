@@ -69,9 +69,9 @@ def test_named_profile_install_and_start_refuse_without_force_when_no_multiplexe
         for verb in ("install", "start"):
             code, out = _run(getattr(gw, f"_cmd_{verb}"), force=False)
             assert code == gw.GATEWAY_FATAL_CONFIG_EXIT_CODE, (profile, verb)
-            assert f"Profile '{profile}' does not get a gateway of its own" in out
+            assert f"配置档「{profile}」不会有自己的网关" in out
             assert "coco gateway install" in out and "coco gateway migrate --multiplex" in out
-            assert f"coco -p {profile} gateway install --force" in out
+            assert f"coco cli -p {profile} gateway install --force" in out
             assert "already serves" not in out  # nothing is running: this is the no-multiplexer form
         assert not gw.get_systemd_unit_path(system=False).exists()
         # Dashboard twin: same rule, same pointers, `stop` untouched (nothing serves the profile).
@@ -101,7 +101,7 @@ def test_named_profile_install_and_start_refuse_without_force_when_no_multiplexe
     finally:
         status._read_process_cmdline = real_cmdline
     assert code == gw.GATEWAY_FATAL_CONFIG_EXIT_CODE
-    assert "The host gateway already serves profile 'coder'" in out and "gateway restart" in out
+    assert "主网关已经在服务配置档「coder」" in out and "gateway restart" in out
 
 
 def test_force_installs_a_separate_profile_gateway_and_its_service_stays_startable(quiet_host):

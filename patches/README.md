@@ -589,3 +589,29 @@ python3 scripts/smoke_test_real_estate.py
   Termux 专属分支，以及其它平台插件向导（wecom / dingtalk / matrix / Slack 等）。nix 安装方式下那句
   `Hermes-managed installs can repair the embedded runtime` 出自 `hermes_cli/config.py`（nix 专属路径），也不在本批。
 - **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
+
+### 38 体检假 FAIL 与登录/配对提示口径（`doctor_platform.py` / `auth*` / `cron.py` / `gateway*`）
+
+- **假 FAIL 修掉（唯一带逻辑改动的一处）**：`_check_command_installation` 原先非 Termux 一律只查 `~/.local/bin/<cmd>`，
+  而 `install.sh` 在 root/FHS 装法下把命令链接放在 `/usr/local/bin`（`get_command_link_dir`）—— root 装的机器每次体检都报
+  「找不到 ~/.local/bin/coco」。改为按安装脚本同一套规则列候选目录（Termux `$PREFIX/bin`；root 先 `/usr/local/bin` 再
+  `~/.local/bin`；普通用户反过来），哪个目录里指向 venv 的链接正确就算过，都没有才报缺，`--fix` 在**第一个候选目录**创建。
+- **命令口径两处错**（用户会照着敲）：
+  - 登录/配对提示：`hermes auth add …` → `coco cli auth add …`（`auth_codex.py`、`agent/turn_failure_copy.py`、
+    `hermes_cli/auth.py` 的 relogin 后缀、`gateway/run_inbound_unauthorized.py` 的首次配对提示、`gateway/platforms/base.py`）。
+  - **`coco -p <档> …` 本身是错的**：`coco.sh` 只按第一个参数分发，`-p` 打头会落到「未知命令」。本批把仓内所有
+    `coco -p …` 改成 `coco cli -p …`（逃生口转发全部参数，实测可用），涉及 `gateway.py`、`cron.py`、`doctor_platform.py`
+    与两个自检针（第 18 / 33 项）及对应用例。
+- **同族的英文一并中文化**：宿主网关那句 `the host gateway (PID …) serving profiles …`（`gateway/host_topology.py`，
+  体检 / state.db / cron / gateway 四处共用）、cron 状态屏（调度线程心跳、卡住、就绪提示）、`gateway_multiplex_mode.py` 的
+  standalone 兼容说明、xAI / Codex 登录文案、`auth.py` 的「还没接服务商」提示。
+- **重打表的登记方式改了（重要）**：旧做法拿 `git diff HEAD`（上一次提交 → 现在）当锚点，但**同一个字符串被改过两次时**，
+  锚点是上一次的**中文**，同步官方后锚点不存在 → 中文不会自动改回（本次实测：以官方基线跑 `--apply`，11 个文件里
+  9 个逐字一致、2 个共 21 条条目失效）。现改为**以官方基线（仓库首个提交 `1f5f14cc`）为锚点**重建条目，并把
+  「旧锚点不在官方基线里」的条目按替换块重建。**演练也跟着换成真演练**：把官方基线文件铺回工作区 →
+  `python3 scripts/coco_cn_strings.py --apply` → 与工作区逐字比对（本批 11/11 逐字一致）。
+- **连带改的用例**：`test_cron_satellite_diagnostics.py`、`test_gateway_no_new_standalone_profile.py`、
+  `test_gateway_multiplex_served_record.py`、`test_codex_relogin_copy_names_profile.py`、`test_api_key_providers.py`、
+  `tests/gateway/test_unauthorized_sender_notices.py`。本批相关用例 **310 通过 / 11 跳过**，自检 122/122。
+- **上游变了怎么办**：同步后先跑 `python3 scripts/coco_cn_strings.py --apply`；若报 ANCHOR，说明该句官方改过，
+  按本文件重新实现后再更新条目。

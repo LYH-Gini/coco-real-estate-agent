@@ -33,8 +33,8 @@ logger = logging.getLogger("hermes_cli.auth")
 
 # ``{relogin}`` is filled at raise time with the profile-aware sign-in command: a bare
 # ``hermes auth`` from a named profile re-signs the ROOT store (93889b770da, #114012).
-_MISSING_ACCESS_TOKEN_MSG = "Codex auth is missing access_token. Run `{relogin}` to re-authenticate."
-_MISSING_REFRESH_TOKEN_MSG = "Codex auth is missing refresh_token. Run `{relogin}` to re-authenticate."
+_MISSING_ACCESS_TOKEN_MSG = "Codex 的凭据缺 access_token。跑 `{relogin}` 重新登录。"
+_MISSING_REFRESH_TOKEN_MSG = "Codex 的凭据缺 refresh_token。跑 `{relogin}` 重新登录。"
 _NO_CREDENTIALS_MSG = "还没存 Codex 的凭据。跑 `{relogin}` 完成登录。"
 
 
@@ -98,7 +98,7 @@ def _read_codex_tokens(*, _lock: bool = True) -> Dict[str, Any]:
     tokens = state.get("tokens")
     if not isinstance(tokens, dict):
         raise _codex_err(
-            f"Codex auth state is missing tokens. Run `{_codex_relogin_command()}` to re-authenticate.",
+            f"Codex 的登录状态里没有令牌。跑 `{_codex_relogin_command()}` 重新登录。",
             "codex_auth_invalid_shape", relogin=True)
     if not _nonempty_str(tokens.get("access_token")):
         raise _codex_err(_MISSING_ACCESS_TOKEN_MSG.format(relogin=_codex_relogin_command()),

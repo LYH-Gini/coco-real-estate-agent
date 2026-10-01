@@ -34,8 +34,8 @@ STANDALONE_PROFILE_REASON = "this profile is standalone (gateway.standalone: tru
 #: dashboard scoping) are closed; it is removed once they are. Every surface that names the key
 #: prints this so nobody builds on it.
 STANDALONE_DEPRECATION_NOTICE = (
-    "gateway.standalone is a temporary compatibility shim while multiplexing gaps are fixed; "
-    "it will be removed once they are — plan to fold this profile with `hermes gateway migrate --multiplex`."
+    "gateway.standalone 只是多路复用缺口补齐前的临时兼容做法；"
+    "缺口补完就会去掉 —— 计划用 `coco gateway migrate --multiplex` 把这个配置档并进主网关。"
 )
 
 #: ``gateway.multiplex_profiles: false`` is no longer an opt-out from the one-gateway-per-host
