@@ -85,17 +85,17 @@ def is_interactive_stdin() -> bool:
 def print_noninteractive_setup_guidance(reason: str | None = None) -> None:
     """Print guidance for headless/non-interactive setup flows."""
     print()
-    print(color("☤ Hermes Setup — Non-interactive mode", Colors.CYAN, Colors.BOLD))
+    print(color("☤ Coco 配置向导 —— 非交互模式", Colors.CYAN, Colors.BOLD))
     print()
     if reason:
         print_info(reason)
-    _info("The interactive wizard cannot be used here.", None,
-          "Configure Hermes using environment variables or config commands:",
-          "  hermes config set model.provider custom",
-          "  hermes config set model.base_url http://localhost:8080/v1",
-          "  hermes config set model.default your-model-name", None,
-          "Or set OPENROUTER_API_KEY / OPENAI_API_KEY in your environment.",
-          "Run 'hermes setup' in an interactive terminal to use the full wizard.", None)
+    _info("这里没法用交互式向导。", None,
+          "可以用环境变量或配置命令来配：",
+          "  coco config set model.provider custom",
+          "  coco config set model.base_url http://localhost:8080/v1",
+          "  coco config set model.default your-model-name", None,
+          "或者在你的环境里设置 OPENROUTER_API_KEY / OPENAI_API_KEY。",
+          "在能交互的终端里跑「coco setup」，就会走完整向导。", None)
 
 
 def _sanitize_pasted_input(value: str) -> str:
@@ -230,9 +230,9 @@ def _run_setup_steps(steps: list[tuple[str, Callable[[], None]]]) -> None:
                     answers_by_section.get(previous_index, [])[:target_prompt])
                 print()
                 if previous_index == section_index:
-                    print_info(f"Returning to the previous choice in {label}...")
+                    print_info(f"返回「{label}」的上一个选项…")
                 else:
-                    print_info(f"Returning to {steps[previous_index][0]}...")
+                    print_info(f"返回「{steps[previous_index][0]}」…")
                 section_index = previous_index
                 continue
             _record_answers()
@@ -243,7 +243,7 @@ def _run_setup_steps(steps: list[tuple[str, Callable[[], None]]]) -> None:
 
 
 def run_setup_action_with_navigation(
-    label: str, action: Callable[[], None], *, cancelled_message: str = "Setup cancelled."
+    label: str, action: Callable[[], None], *, cancelled_message: str = "已取消配置。"
 ) -> None:
     """Run a setup-style menu flow with Escape and nested Left navigation — for commands such as
     ``hermes model`` that use the wizard's pickers outside ``run_setup_wizard``."""
@@ -271,7 +271,7 @@ def prompt_choice(question: str, choices: list, default: int = 0, description: s
     if idx < 0:
         return default
     if idx == default:
-        _info("  Skipped (keeping current)", None)
+        _info("  已跳过（保持当前值）", None)
         return default
     print()
     return idx
@@ -292,7 +292,7 @@ def prompt_yes_no(question: str, default: bool = True) -> bool:
     # Inside setup, route binary selections through the curses menu so ESC and left-arrow work
     # consistently; every other caller keeps the traditional line prompt.
     if _SETUP_NAVIGATION.get() is not None:
-        return _curses_prompt_choice(question, ["Yes", "No"], 0 if default else 1) == 0
+        return _curses_prompt_choice(question, ["是", "否"], 0 if default else 1) == 0
     default_str = "Y/n" if default else "y/N"
     while True:
         try:
@@ -308,7 +308,7 @@ def prompt_yes_no(question: str, default: bool = True) -> bool:
         answer = {"": default, "y": True, "yes": True, "n": False, "no": False}.get(value)
         if answer is not None:
             return answer
-        print_error("Please enter 'y' or 'n'")
+        print_error("请输入 y 或 n")
 
 
 def prompt_checklist(title: str, items: list, pre_selected: list = None) -> list:
@@ -331,14 +331,14 @@ def _prompt_api_key(var: dict):
     tools = var.get("tools", [])
     tools_str = ", ".join(tools[:3])
     if len(tools) > 3:
-        tools_str += f", +{len(tools) - 3} more"
+        tools_str += f"，等 {len(tools) - 3} 个"
     _section_rule(var.get("description", var["name"]))
     if tools_str:
-        print_info(f"  Enables: {tools_str}")
+        print_info(f"  能启用：{tools_str}")
     if var.get("url"):
-        print_info(f"  Get your key at: {var['url']}")
+        print_info(f"  密钥申请地址：{var['url']}")
     print()
-    _prompt_and_save_env_var(var, "  ✓ Saved", "  Skipped (configure later with 'hermes setup')")
+    _prompt_and_save_env_var(var, "  ✓ 已保存", "  已跳过（以后跑「coco setup」再配）")
 
 
 def _prompt_and_save_env_var(var: dict, saved_msg: str, skipped_msg: str) -> None:
@@ -358,10 +358,24 @@ def _module_installed(name: str) -> bool:
         return False
 
 
+_BANNER_INNER = 57  # _print_banner 横线的框内宽度
+
+
+def _disp_width(text: str) -> int:
+    """终端显示列宽：全角字符按 2 列算 —— 中文写进框里不这样算，框就歪了"""
+    import unicodedata
+    return sum(2 if unicodedata.east_asian_width(ch) in "WF" else 1 for ch in text)
+
+
+def _boxed(text: str) -> str:
+    """把一行文字补齐到框内宽度，交给 _print_banner 打印"""
+    return "│" + text + " " * max(0, _BANNER_INNER - _disp_width(text)) + "│"
+
+
 def _print_banner(*lines: str) -> None:
     """Print the magenta box banner: top border, the given body lines, bottom border."""
     print()
-    print(color("┌─────────────────────────────────────────────────────────┐", Colors.MAGENTA))
+    print(color("┌" + "─" * _BANNER_INNER + "┐", Colors.MAGENTA))
     for line in lines:
         print(color(line, Colors.MAGENTA))
     print(color("└─────────────────────────────────────────────────────────┘", Colors.MAGENTA))
@@ -375,18 +389,18 @@ def setup_model_provider(config: dict, *, quick: bool = False):
     path — any provider added there is available here). *quick* is accepted for the first-time
     quick setup caller; rotation, vision and TTS keep safe defaults either way."""
     from hermes_cli.config import load_config, save_config
-    print_header("Inference Provider")
-    _info("Choose how to connect to your main chat model.",
-          f"   Guide: {_DOCS_BASE}/integrations/providers", None)
+    print_header("模型服务商")
+    _info("选择用哪种方式连接你的主聊天模型。",
+          f"   文档：{_DOCS_BASE}/integrations/providers", None)
     from hermes_cli.main import select_provider_and_model
     try:
         select_provider_and_model()
     except (SystemExit, KeyboardInterrupt):
-        _info(None, "Provider setup skipped.")
+        _info(None, "已跳过服务商配置。")
     except Exception as exc:
         logger.debug("select_provider_and_model error during setup: %s", exc)
         from hermes_cli.auth_error_copy import provider_setup_failure_lines
-        lead, *rest = provider_setup_failure_lines(exc, retry_command="hermes model")
+        lead, *rest = provider_setup_failure_lines(exc, retry_command="coco model")
         print_warning(lead)
         for line in rest:
             print_info(line)
@@ -418,9 +432,9 @@ def _apply_default_agent_settings(config: dict):
     # 0.8 覆盖回 0.5（同步上游时若它回来，删掉即可）。运行时的标准值另由
     # scripts/coco_config_align.py 对齐，此处只需保证向导不写坏。
     save_config(config)
-    print_success("Applied recommended defaults:")
-    _info("  Max iterations: 500", "  Tool progress: all", "  Compression threshold: 0.8",
-          "  Run `hermes setup agent` later to customize.")
+    print_success("已套用标准默认值：")
+    _info("  最大轮次：500", "  工具进度显示：all", "  压缩阈值：0.8",
+          "  以后想改，跑「coco setup agent」。")
 
 
 def _prompt_number(label: str, current, cast=int):
@@ -439,57 +453,57 @@ def _prompt_int_setting(section: dict, key: str, label: str, current, accept) ->
 
 
 _TOOL_PROGRESS_HELP = (
-    "Tool Progress Display", "Controls how much tool activity is shown (CLI and messaging).",
-    "  off     — Silent, just the final response",
-    "  new     — Show tool name only when it changes (less noise)",
-    "  all     — Show every tool call with a short preview",
-    "  verbose — Full args, results, and debug logs",
-    "  log     — Silent in chat; write every tool call to ~/.hermes/logs/tool_calls.log (gateway only)",
+    "工具进度显示", "控制工具调用过程显示多少（命令行和飞书都算）。",
+    "  off     —— 不显示过程，只给最终回复",
+    "  new     —— 只在换工具时显示名字（噪音小）",
+    "  all     —— 每次工具调用显示一行摘要",
+    "  verbose —— 连参数、结果、调试日志都显示",
+    "  log     —— 聊天里不显示，全部写进 ~/.hermes/logs/tool_calls.log（仅网关）",
 )
 def setup_agent_settings(config: dict):
     """Configure agent behavior: iterations, progress display and compression."""
-    print_header("Agent Settings")
-    _info(f"   Guide: {_DOCS_BASE}/user-guide/configuration", None)
+    print_header("助手设置")
+    _info(f"   文档：{_DOCS_BASE}/user-guide/configuration", None)
 
     # ── Max Iterations ── (config.yaml is authoritative; never surface a stale legacy .env value)
     # If a legacy .env entry is still around (from pre-PR#18413 setups), prefer the config value so we don't
     # surface a stale number to the user.
     # COCO-PATCH: 提示语与默认值 90 → 500
     current_max = str(cfg_get(config, "agent", "max_turns", default=500))
-    _info("Maximum tool-calling iterations per conversation.",
-          "Higher = more complex tasks, but costs more tokens.",
-          f"Press Enter to keep {current_max}. Use 500 for long multi-step agent work.")
-    max_iter = _prompt_number("Max iterations", current_max)
+    _info("一次对话里最多调用多少次工具。",
+          "数值越大，能处理更复杂的任务，也更费 token。",
+          f"直接回车保持 {current_max}；长链路多步任务建议 500。")
+    max_iter = _prompt_number("最大轮次", current_max)
     if max_iter is None:
-        print_warning("Invalid number, keeping current value")
+        print_warning("这不是数字，保持当前值")
     elif max_iter > 0:
         # config.yaml only; gateway/run.py derives HERMES_MAX_ITERATIONS from agent.max_turns.
         config.setdefault("agent", {})["max_turns"] = max_iter
         config.pop("max_turns", None)
         remove_env_value("HERMES_MAX_ITERATIONS")
-        print_success(f"Max iterations set to {max_iter}")
+        print_success(f"最大轮次已设为 {max_iter}")
 
     # ── Tool Progress Display ──
     _info("", *_TOOL_PROGRESS_HELP)
     current_mode = cfg_get(config, "display", "tool_progress", default="all")
-    mode = prompt("Tool progress mode", current_mode)
+    mode = prompt("工具进度模式", current_mode)
     if mode.lower() in {"off", "new", "all", "verbose", "log"}:
         config.setdefault("display", {})["tool_progress"] = mode.lower()
         save_config(config)
-        print_success(f"Tool progress set to: {mode.lower()}")
+        print_success(f"工具进度已设为：{mode.lower()}")
     else:
-        print_warning(f"Unknown mode '{mode}', keeping '{current_mode}'")
+        print_warning(f"认不出模式「{mode}」，保持「{current_mode}」")
 
     # ── Context Compression ──
-    print_header("Context Compression")
-    _info("Automatically summarizes old messages when context gets too long.",
-          "Higher threshold = compress later (use more context). Lower = compress sooner.")
+    print_header("对话压缩")
+    _info("对话太长时，自动把旧消息压成摘要。",
+          "阈值越高越晚压缩（用到更多上下文），越低越早压缩。")
     config.setdefault("compression", {})["enabled"] = True
     current_threshold = cfg_get(config, "compression", "threshold", default=0.50)
-    threshold = _prompt_number("Compression threshold (0.5-0.95)", current_threshold, float)
+    threshold = _prompt_number("压缩阈值（0.5-0.95）", current_threshold, float)
     if threshold is not None and 0.5 <= threshold <= 0.95:
         config["compression"]["threshold"] = threshold
-    print_success(f"Context compression threshold set to {config['compression'].get('threshold', 0.50)}")
+    print_success(f"压缩阈值已设为 {config['compression'].get('threshold', 0.50)}")
 
     save_config(config)
 
@@ -508,43 +522,41 @@ def setup_tools(config: dict, first_install: bool = False):
 
 
 _SEND_CONSENT_EXPLAINER = (
-    "", "Sending uploads each daily package to the Nous telemetry",
-    "service. Packages carry your profile-scoped install ID, a",
-    "stable random UUID that identifies this profile across days",
-    "(it contains no personal information and is reset by deleting",
-    "the shared-metrics directory). Only packages whose entire",
-    "collection period falls inside a recorded consent window are",
-    "ever sent — data from before you opt in, or from any gap",
-    "while sending was off, stays on this machine. Sending can be", "turned off again at any time.",
+    "", "发送会把这台实例每天的打包数据上传到 Nous 的遥测服务。",
+    "包里带的是你这台实例的安装标识 —— 一段随机 UUID，用来跨天",
+    "识别同一个实例，不含任何个人信息；删掉共享指标目录就会重置。",
+    "只有整个采集周期都落在你同意的时间窗口内的数据才会被发送：",
+    "你同意之前的数据、以及中途关闭发送期间的数据，都留在本机。",
+    "发送随时可以再关掉。",
 )
 
 
 def setup_telemetry(config: dict):
     """Configure the local shared-metrics subscriber and optional sending."""
-    print_header("Shared Metrics")
-    _info("Shared metrics contain only bounded counters and histograms.",
-          "Collection is local. Sending them to Nous is a separate opt-in.")
+    print_header("共享指标")
+    _info("共享指标只包含范围固定的计数与直方图。",
+          "采集只在本机；是否发送给 Nous 是另一个独立开关。")
     shared_metrics = _sub_dict(_sub_dict(config, "telemetry"), "shared_metrics")
     current = shared_metrics.get("enabled") is True
-    shared_metrics["enabled"] = prompt_yes_no("Enable local shared metrics?", default=current)
+    shared_metrics["enabled"] = prompt_yes_no("要开启本机共享指标采集吗？", default=current)
     if not shared_metrics["enabled"]:
-        print_info("Local shared metrics disabled.")
+        print_info("已关闭本机共享指标采集。")
         # Sending cannot outlive collection (send=true would log an error every run, never send).
         if shared_metrics.get("send") is True:
             shared_metrics["send"] = False
-            print_info("Sending shared metrics disabled as well.")
+            print_info("发送也一并关掉了。")
         # Turning collection off withdraws send consent too. Recorded unconditionally: the send
         # key may already be false while the consent window is still open, and it must close.
         _record_send_consent_change(enabled=False)
         return
-    print_success("Local shared metrics enabled.")
+    print_success("已开启本机共享指标采集。")
     _info(*_SEND_CONSENT_EXPLAINER)
-    shared_metrics["send"] = prompt_yes_no("Send shared metrics to Nous?", default=shared_metrics.get("send") is True)
+    shared_metrics["send"] = prompt_yes_no("要把共享指标发送给 Nous 吗？", default=shared_metrics.get("send") is True)
     _record_send_consent_change(enabled=shared_metrics["send"])
     if shared_metrics["send"]:
-        print_success("Sending shared metrics enabled.")
+        print_success("已开启发送共享指标。")
     else:
-        print_info("Sending shared metrics disabled (collection stays local).")
+        print_info("已关闭发送共享指标（采集仍留在本机）。")
 
 
 def _record_send_consent_change(*, enabled: bool) -> None:
@@ -575,13 +587,13 @@ from hermes_cli.setup_quick import _run_portal_one_shot, _run_quick_setup  # noq
 # ── Main Wizard Orchestrator ──
 
 SETUP_SECTIONS = [
-    ("model", "Model & Provider", setup_model_provider),
-    ("tts", "Text-to-Speech", setup_tts),
-    ("terminal", "Terminal Backend", setup_terminal_backend),
-    ("gateway", "Messaging Platforms (Gateway)", setup_gateway),
-    ("tools", "Tools", setup_tools),
-    ("telemetry", "Shared Metrics", setup_telemetry),
-    ("agent", "Agent Settings", setup_agent_settings),
+    ("model", "模型与密钥", setup_model_provider),
+    ("tts", "语音合成", setup_tts),
+    ("terminal", "终端后端", setup_terminal_backend),
+    ("gateway", "接入通道（网关）", setup_gateway),
+    ("tools", "工具", setup_tools),
+    ("telemetry", "共享指标", setup_telemetry),
+    ("agent", "助手设置", setup_agent_settings),
 ]
 
 
@@ -591,7 +603,7 @@ def run_setup_wizard(args):
         try:
             return _run_setup_wizard_impl(args)
         except _SetupCancelled:
-            _info(None, "Setup cancelled. Remaining sections were not changed.")
+            _info(None, "已取消配置，剩下的章节没有改动。")
             return None
 
 
@@ -599,27 +611,27 @@ def _run_setup_section(config: dict, section: str) -> None:
     """``hermes setup <section>``: run one SETUP_SECTIONS entry under the banner."""
     entry = next(((label, func) for key, label, func in SETUP_SECTIONS if key == section), None)
     if entry is None:
-        print_error(f"Unknown setup section: {section}")
-        print_info(f"Available sections: {', '.join(k for k, _, _ in SETUP_SECTIONS)}")
+        print_error(f"没有这一节：{section}")
+        print_info(f"可选章节：{', '.join(k for k, _, _ in SETUP_SECTIONS)}")
         return
     label, func = entry
-    _print_banner(f"│     ☤ Hermes Setup — {label:<34s} │")
+    _print_banner(_boxed(f"     ☤ Coco 配置向导 —— {label}"))
     _run_setup_steps([(label, lambda: func(config))])
     save_config(config)
     print()
-    print_success(f"{label} configuration complete!")
+    print_success(f"「{label}」配置完成。")
 
 
 def _run_full_setup(config: dict, hermes_home, *, is_existing: bool, migration_ran: bool) -> None:
     """Full Setup — run all sections, honoring post-migration skips."""
-    print_header("Configuration Location")
-    _info(f"Config file:  {get_config_path()}", f"Secrets file: {get_env_path()}",
-          f"Data folder:  {hermes_home}", f"Install dir:  {PROJECT_ROOT}", None,
-          "You can edit these files directly or use 'hermes config edit'")
+    print_header("配置文件位置")
+    _info(f"配置文件：{get_config_path()}", f"密钥文件：{get_env_path()}",
+          f"数据目录：{hermes_home}", f"安装目录：{PROJECT_ROOT}", None,
+          "可以直接改这些文件，也可以跑「coco config edit」。")
     if migration_ran:
-        _info(None, "Settings were imported from OpenClaw.",
-              "Each section below will show what was imported — press Enter to keep,",
-              "or choose to reconfigure if needed.")
+        _info(None, "已从 OpenClaw 导入设置。",
+              "下面每一节会显示导入了什么 —— 直接回车就是保留，",
+              "需要改再选重新配置。")
 
     # Agent Settings are not prompted: first installs get defaults, existing keep theirs.
     if not is_existing:
@@ -629,7 +641,7 @@ def _run_full_setup(config: dict, hermes_home, *, is_existing: bool, migration_r
         return migration_ran and _skip_configured_section(config, key, label)
 
     def _gateway_step() -> None:
-        if not _skip("gateway", "Messaging Platforms"):
+        if not _skip("gateway", "接入通道"):
             setup_gateway(config)
             return
         # A skipped (migrated) gateway section still needs its service so imported platforms
@@ -641,18 +653,18 @@ def _run_full_setup(config: dict, hermes_home, *, is_existing: bool, migration_r
         return label, lambda: None if _skip(key, label) else run()
 
     _run_setup_steps([
-        _step("model", "Model & Provider", lambda: setup_model_provider(config)),
-        _step("terminal", "Terminal Backend", lambda: setup_terminal_backend(config)),
-        ("Messaging Platforms", _gateway_step),
-        _step("tools", "Tools", lambda: setup_tools(config, first_install=not is_existing))])
+        _step("model", "模型与密钥", lambda: setup_model_provider(config)),
+        _step("terminal", "终端后端", lambda: setup_terminal_backend(config)),
+        ("接入通道", _gateway_step),
+        _step("tools", "工具", lambda: setup_tools(config, first_install=not is_existing))])
 
 
 # First-time mode picker: (menu label, setup_quick runner name) — None falls through to Full Setup.
 _FIRST_TIME_MODES = (
-    ("Quick Setup (Nous Portal) — free OAuth login, no API keys, model + tools (recommended)",
+    ("快速配置（Nous Portal）—— 免费 OAuth 登录，不用填 API Key，模型和工具一次配好（推荐）",
      "_run_first_time_quick_setup"),
-    ("Full setup — configure every provider, tool & option yourself (bring your own keys)", None),
-    ("Blank Slate — everything off except the bare minimum; opt in to each capability", "_run_blank_slate_setup"),
+    ("完整配置 —— 每个服务商、工具、选项都自己配（自备密钥）", None),
+    ("空白起步 —— 除最小必要外全部关闭，用到哪个再开哪个", "_run_blank_slate_setup"),
 )
 
 
@@ -670,9 +682,9 @@ def _run_setup_wizard_impl(args):
     _backup_path = backup_config(config_path, "pre-setup")
     if getattr(args, "reset", False):
         save_config(copy.deepcopy(DEFAULT_CONFIG))
-        print_success("Configuration reset to defaults.")
+        print_success("配置已重置为默认值。")
         if _backup_path:  # --reset may exit before the end-of-wizard notice
-            _info(f"Previous config backed up to: {_backup_path}")
+            _info(f"原配置已备份到：{_backup_path}")
     reconfigure_requested = bool(getattr(args, "reconfigure", False))
     quick_requested = bool(getattr(args, "quick", False))
     config = load_config()
@@ -680,7 +692,7 @@ def _run_setup_wizard_impl(args):
 
     # Non-interactive environments (headless SSH, Docker, CI/CD)
     if getattr(args, 'non_interactive', False) or not is_interactive_stdin():
-        print_noninteractive_setup_guidance("Running in a non-interactive environment (no TTY detected).")
+        print_noninteractive_setup_guidance("当前环境不能交互（没检测到终端）。")
         return
     if getattr(args, "portal", False):  # one-shot Nous Portal setup; skips the rest
         _run_portal_one_shot(config)
@@ -694,10 +706,10 @@ def _run_setup_wizard_impl(args):
     from hermes_cli.auth import get_active_provider
     is_existing = bool(get_env_value("OPENROUTER_API_KEY") or get_env_value("OPENAI_BASE_URL")
                        or get_active_provider() is not None)
-    _print_banner("│             ☤ Hermes Agent Setup Wizard                │",
-                  "├─────────────────────────────────────────────────────────┤",
-                  "│  Let's configure your Hermes Agent installation.       │",
-                  "│  Press Ctrl+C at any time to exit.                     │")
+    _print_banner(_boxed("             ☤ Coco 配置向导"),
+                  "├" + "─" * _BANNER_INNER + "┤",
+                  _boxed("  下面开始配置你的 Coco。"),
+                  _boxed("  任何时候按 Ctrl+C 都可以退出。"))
     migration_ran = False
     if is_existing:
         # Full reconfigure wizard is the default (Enter keeps each current value); `--quick`
@@ -706,21 +718,21 @@ def _run_setup_wizard_impl(args):
         if quick_requested:
             _run_setup_steps([("Quick Setup", lambda: _run_quick_setup(config, hermes_home))])
             return
-        print_header("Reconfigure", gap=True)
-        print_success("You already have Hermes configured.")
-        _info("Running the full wizard — each prompt shows your current value.",
-              "Press Enter to keep it, or type a new value to change it.", "",
-              "Tip: jump straight to a section with 'hermes setup model|terminal|",
-              "     gateway|tools|agent', or fill only missing items with --quick.")
+        print_header("重新配置", gap=True)
+        print_success("你已经配置过 Coco 了。")
+        _info("这次走完整向导 —— 每一问都会显示你当前的值。",
+              "直接回车保留，输入新值就改。", "",
+              "小提示：只想配某一节，用「coco setup model|terminal|",
+              "     gateway|tools|agent」；只想补缺的项，加 --quick。")
     else:
         # First-time setup (--reconfigure / --quick are meaningless here; fall through)
         print()
         if reconfigure_requested or quick_requested:
-            _info("No existing configuration found — running first-time setup.", None)
+            _info("没找到已有配置 —— 走首次配置流程。", None)
         migration_ran = _offer_openclaw_migration(hermes_home)  # before configuration begins
         if migration_ran:
             config = load_config()
-        setup_mode = prompt_choice("How would you like to set up Hermes?", [label for label, _ in _FIRST_TIME_MODES], 0)
+        setup_mode = prompt_choice("你想怎么配置？", [label for label, _ in _FIRST_TIME_MODES], 0)
         label, runner = _FIRST_TIME_MODES[setup_mode]
         if runner is not None:
             from hermes_cli import setup_quick
@@ -731,8 +743,8 @@ def _run_setup_wizard_impl(args):
     # Save and show summary
     save_config(config)
     if _backup_path and _backup_path.exists():
-        _info(f"Previous config backed up to: {_backup_path}",
-              "If setup changed a value you customized, restore it with:",
+        _info(f"原配置已备份到：{_backup_path}",
+              "如果配置过程改掉了你自定义的值，可以这样恢复：",
               f"  cp {_backup_path} {config_path}")
     _print_setup_summary(config, hermes_home)
 

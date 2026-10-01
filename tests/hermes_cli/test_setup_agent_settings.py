@@ -42,7 +42,7 @@ def test_setup_agent_settings_prefers_config_over_stale_env(tmp_path, monkeypatc
 
     out = capsys.readouterr().out
     # Config value wins
-    assert "Press Enter to keep 500." in out
-    assert "Press Enter to keep 60." not in out
+    assert "直接回车保持 500" in out
+    assert "直接回车保持 60" not in out
     # And the stale .env entry gets cleaned up
     assert "HERMES_MAX_ITERATIONS" in removed_keys

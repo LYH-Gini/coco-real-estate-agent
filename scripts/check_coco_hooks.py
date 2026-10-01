@@ -163,8 +163,8 @@ CONTENT_CHECKS = [
             r'^\s*config\.setdefault\("agent", \{\}\)\["max_turns"\]\s*=\s*500',
             r'^\s*config\.setdefault\("compression", \{\}\)\["threshold"\]\s*=\s*0\.8',
             r'^\s*config\.setdefault\("compression", \{\}\)\["protect_last_n"\]\s*=\s*40',
-            r"Max iterations: 500",
-            r"Compression threshold: 0\.8",
+            r"最大轮次：500",
+            r"压缩阈值：0\.8",
             # 官方那句把阈值写回 0.50 的赋值必须不在（行首锚定，避免命中注释里提到的数字）
             r'!^\s*config\["compression"\]\["threshold"\]\s*=\s*0\.50',
         ],

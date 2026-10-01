@@ -93,6 +93,6 @@ class TestResetBackupOrdering:
         out = capsys.readouterr().out
         backups = _backups(tmp_path)
         assert len(backups) == 1
-        assert "Configuration reset to defaults." in out
-        assert "Previous config backed up to:" in out
+        assert "配置已重置为默认值。" in out
+        assert "原配置已备份到：" in out
         assert backups[0].name in out

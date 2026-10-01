@@ -57,7 +57,7 @@ class TestNonInteractiveSetup:
         assert reloaded["model"] == DEFAULT_CONFIG["model"]
         assert reloaded["agent"]["max_turns"] == DEFAULT_CONFIG["agent"]["max_turns"]
         out = capsys.readouterr().out
-        assert "Configuration reset to defaults." in out
+        assert "配置已重置为默认值。" in out
 
     def test_chat_first_run_headless_skips_setup_prompt(self, capsys):
         """Bare `hermes` should not prompt for input when no provider exists and stdin is headless."""
@@ -78,5 +78,5 @@ class TestNonInteractiveSetup:
         assert exc.value.code == 1
         mock_setup.assert_not_called()
         out = capsys.readouterr().out
-        assert "hermes config set model.provider custom" in out
+        assert "coco config set model.provider custom" in out
 

@@ -62,7 +62,7 @@ def test_wizard_summary_matches_written_values(wizard_env, capsys):
     _apply_default_agent_settings(_target())
 
     out = capsys.readouterr().out
-    assert "Max iterations: 500" in out
-    assert "Compression threshold: 0.8" in out
-    assert "Max iterations: 150" not in out
-    assert "Compression threshold: 0.50" not in out
+    assert "最大轮次：500" in out
+    assert "压缩阈值：0.8" in out
+    assert "最大轮次：150" not in out
+    assert "压缩阈值：0.50" not in out

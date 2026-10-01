@@ -399,3 +399,18 @@ python3 scripts/smoke_test_real_estate.py
   因此 patch 中可能夹带少量"官方版本漂移"的内容。**以本文件的语义说明为准。**
 - `07-gateway-run-greeting.patch` 体积较大（官方该文件改动频繁），仅作参考。
   实际同步时按语义在新版里重新挂钩。
+
+### 26 `coco setup` 向导文案中文化（骨架 + 收尾屏）
+
+- **改了什么**：`hermes_cli/setup.py`（向导横幅 / 章节名 / 各节提问与提示 / 取消与返回提示 / 输入校验 /
+  非交互提示）与 `hermes_cli/setup_summary.py`（"配置完成"那屏：工具可用情况、文件位置、命令清单、结束框），
+  共 93 处；命令一律 `coco`（`coco setup|model|config edit|config set`），产品名一律 `Coco`。
+- **框线对齐**：中文是双宽字符，`_print_banner` 的框改由 `_disp_width()` / `_boxed()` 按显示列宽补空格
+  —— 中英混排不做这一步会把框撑歪。
+- **收尾屏的"说明"列**：由各行自带（环境变量名带「缺 」、操作提示写「跑「coco …」」），模板只加括号，
+  否则会出现「缺 跑「coco setup」配置」这种病句。
+- **连带改动**：官方用例断言（`tests/hermes_cli/test_setup_agent_settings.py`、`test_setup_noninteractive.py`、
+  `test_setup_reset_backup.py`、`test_setup_summary_provider_warning.py`）与自有用例
+  `tests/real_estate/test_setup_wizard_defaults.py`，以及自检第 **14** 项守向导默认值那两条提示正则。
+- **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回；
+  报 `ANCHOR`（官方改写过这段）才需人工按本条重做并更新表。

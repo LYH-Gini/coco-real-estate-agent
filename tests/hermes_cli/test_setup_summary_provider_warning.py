@@ -40,7 +40,7 @@ def _summary_output(capsys, provider_ready: bool):
 
 def test_summary_warns_when_no_provider(capsys):
     out = _summary_output(capsys, provider_ready=False)
-    assert "No inference provider is configured" in out
+    assert "还没配模型服务商" in out
     # Coco 定制（2026-09-22）：收尾屏把命令改成 coco 口径（官方文案由挂钩点 17 守着）
     assert "coco model" in out
     assert "coco setup --portal" in out
@@ -48,4 +48,4 @@ def test_summary_warns_when_no_provider(capsys):
 
 def test_summary_quiet_when_provider_ready(capsys):
     out = _summary_output(capsys, provider_ready=True)
-    assert "No inference provider is configured" not in out
+    assert "还没配模型服务商" not in out
