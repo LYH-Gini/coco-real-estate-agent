@@ -102,9 +102,9 @@ def test_explanation_persistence_locked_cause_says_busy_not_disk():
         "session_persistence_failed", "locked"
     )
     lower = out.lower()
-    assert "busy" in lower
-    assert "disk" not in lower
-    assert "permission" not in lower
+    assert "忙" in out
+    assert "磁盘" not in out
+    assert "权限" not in out
 
 
 def test_explanation_persistence_compression_cause_is_specific():
@@ -112,9 +112,9 @@ def test_explanation_persistence_compression_cause_is_specific():
         "session_persistence_failed", "compression"
     )
     lower = out.lower()
-    assert "compression" in lower
+    assert "压缩" in out
     assert "database" not in lower
-    assert "disk" not in lower
+    assert "磁盘" not in out
 
 
 def test_explanation_persistence_turn_lease_cause_is_specific():
@@ -122,11 +122,11 @@ def test_explanation_persistence_turn_lease_cause_is_specific():
         "session_persistence_failed", "turn_lease"
     )
     lower = out.lower()
-    assert "took over" in lower
-    assert "not saved" in lower
-    assert "disk" not in lower
-    assert "compression" not in lower
-    assert "hermes doctor" not in lower
+    assert "接管" in out
+    assert "没存下来" in out
+    assert "磁盘" not in out
+    assert "压缩" not in out
+    assert "coco cli doctor" not in out
 
 
 def test_explanation_persistence_disk_cause_keeps_disk_wording():
@@ -134,8 +134,8 @@ def test_explanation_persistence_disk_cause_keeps_disk_wording():
         "session_persistence_failed", "disk"
     )
     lower = out.lower()
-    assert "disk" in lower
-    assert "free some space" in lower or "disk space" in lower
+    assert "磁盘" in out
+    assert "腾点空间" in out or "磁盘满" in out
 
 
 def test_explanation_persistence_corrupt_cause_never_says_free_space():
@@ -146,10 +146,10 @@ def test_explanation_persistence_corrupt_cause_never_says_free_space():
         "session_persistence_failed", "corrupt"
     )
     lower = out.lower()
-    assert "corrupt" in lower
-    assert "hermes doctor" in lower
-    assert "free some space" not in lower
-    assert "full disk" not in lower
+    assert "结构性损坏" in out
+    assert "coco cli doctor" in out
+    assert "腾点空间" not in out
+    assert "磁盘满" not in out
 
 
 def test_explanation_persistence_corrupt_backups_dir_follows_hermes_home(monkeypatch, tmp_path):
@@ -181,11 +181,11 @@ def test_explanation_persistence_fts_index_never_advises_recovery():
     assert "sessions recover" not in lower
     assert ".recover" not in lower
     # Negative advice ("do not ... restore a backup") is fine; instructions are not.
-    assert "recovery options" not in lower
-    assert "restore from a backup" not in lower and "backups/" not in lower
-    assert "would have been lost" not in lower
-    assert "free" not in lower  # never disk-space advice
-    assert "hermes doctor" in lower
+    assert "恢复办法" not in out
+    assert "别跑恢复工具" in out and "backups/" not in out  # 明确劝阻，而不是给出恢复步骤
+    assert "丢" not in out
+    assert "腾点空间" not in out  # never disk-space advice
+    assert "coco cli doctor" in out
 
 
 def test_explanation_persistence_replaced_cause_forbids_inplace_repair():
@@ -193,10 +193,10 @@ def test_explanation_persistence_replaced_cause_forbids_inplace_repair():
         "session_persistence_failed", "replaced"
     )
     lower = out.lower()
-    assert "replaced" in lower
+    assert "被换掉" in out
     assert "doctor --fix" in lower or "in-place" in lower
-    assert "free some space" not in lower
-    assert "full disk" not in lower
+    assert "腾点空间" not in out
+    assert "磁盘满" not in out
 
 
 def test_deleted_wal_cause_is_plain_first_steps_not_a_forensic_runbook():
@@ -208,7 +208,7 @@ def test_deleted_wal_cause_is_plain_first_steps_not_a_forensic_runbook():
         "session_persistence_failed", "deleted_wal"
     ).lower()
     assert "deleted_wal" in PERSISTENCE_ERROR_CAUSES
-    assert "hermes gateway stop" in out and "hermes doctor" in out
+    assert "coco cli gateway stop" in out and "coco cli doctor" in out
     for jargon in ("manifest", "state.db-wal", "sidecar", "header_only", "--inspect-only", "generation"):
         assert jargon not in out, jargon
     assert "~/.hermes" not in out  # display_hermes_home(), never a hardcoded path
@@ -227,8 +227,8 @@ def test_persistence_commands_are_pinned_to_the_failing_profile(monkeypatch, tmp
     assert selector.strip(), "fixture must resolve to a named profile"
     out = AIAgent._format_turn_completion_explanation("session_persistence_failed", cause)
     assert "{profile_arg}" not in out
-    assert f"`hermes {selector}doctor" in out
-    assert "`hermes doctor" not in out and "`hermes gateway" not in out
+    assert f"`coco cli {selector}doctor" in out
+    assert "`coco cli doctor" not in out and "`coco cli gateway" not in out
 
 
 def test_explanation_persistence_unknown_cause_is_neutral():
@@ -239,17 +239,17 @@ def test_explanation_persistence_unknown_cause_is_neutral():
         )
         lower = out.lower()
         assert out.strip() != ""
-        assert "disk space" not in lower
-        assert "full disk" not in lower
-        assert "hermes doctor" in lower
-        assert "again" in lower
+        assert "磁盘空间" not in out
+        assert "可能原因" in out  # 只是列出可能原因，不下"磁盘满了"的结论
+        assert "coco cli doctor" in out
+        assert "重发" in out  # 要求用户重发
 
 
 def test_explanation_persistence_one_arg_backward_compat():
     """Existing one-arg callers must keep working (optional second param)."""
     out = AIAgent._format_turn_completion_explanation("session_persistence_failed")
     assert out.strip() != ""
-    assert "hermes doctor" in out.lower()
+    assert "coco cli doctor" in out
 
 
 def test_explanation_cause_ignored_for_other_reasons():
@@ -496,7 +496,7 @@ def test_run_conversation_empty_exhausted_surfaces_explanation():
     # The user must NOT be left with a bare sentinel; the explanation wins.
     assert result["final_response"] != "(empty)"
     assert result["final_response"].strip() != ""
-    assert "No reply:" in result["final_response"]
+    assert "没有回复：" in result["final_response"]
 
 
 def test_run_conversation_partial_stream_recovery_surfaces_explanation():
@@ -526,7 +526,7 @@ def test_run_conversation_partial_stream_recovery_surfaces_explanation():
 
     assert result["turn_exit_reason"] == "partial_stream_recovery"
     assert result["final_response"].startswith(recovered)
-    assert "No reply:" in result["final_response"]
+    assert "没有回复：" in result["final_response"]
     assert result["response_previewed"] is False
 
 

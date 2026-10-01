@@ -114,7 +114,7 @@ def test_exhausted_truly_empty_keeps_existing_behavior(tmp_path, monkeypatch):
     final = result["final_response"]
     # Either the raw sentinel (explainer off) or the explainer's rewrite —
     # never the reasoning-excerpt frame, which requires reasoning to exist.
-    assert final == "(empty)" or final.startswith("⚠️ No reply:")
+    assert final == "(empty)" or final.startswith("⚠️ 没有回复：")
     assert "only internal reasoning" not in final
 
 

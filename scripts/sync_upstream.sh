@@ -282,6 +282,15 @@ MODIFIED=$(git diff --cached --numstat --diff-filter=M | wc -l)
 DELETED=$(git diff --cached --numstat --diff-filter=D | wc -l)
 NEW_SIZE=$(du -sm .git 2>/dev/null | cut -f1)
 
+# ── 自动重打中文文案（官方层文件被整批替换后会回到英文，这张表是我们自己的） ──
+CN_ANCHOR=0
+if [[ -f scripts/coco_cn_strings.py ]]; then
+  echo
+  echo "── 自动重打中文文案（scripts/coco_cn_strings.py --apply）"
+  python3 scripts/coco_cn_strings.py --apply 2>&1 | tail -3 | sed 's/^/   /' || true
+  CN_ANCHOR=$(python3 scripts/coco_cn_strings.py 2>&1 | grep -c "ANCHOR" || true)
+fi
+
 echo
 echo "=========================================================="
 echo " 同步完成 —— 但还没结束，按下面顺序继续"
@@ -291,9 +300,13 @@ echo "  仓库体积: ${CUR_SIZE}MB → ${NEW_SIZE}MB（增量 $((NEW_SIZE-CUR_S
 echo
 echo "  ① 重新应用 Coco 对官方文件的改动（按语义，别机械 apply；清单见 patches/README.md）："
 echo "       cat patches/README.md"
-echo "     其中「中文文案」那部分（第 23 / 24 处）有自动重打脚本，先跑它："
-echo "       python3 scripts/coco_cn_strings.py            # 先看有哪些被换回英文"
-echo "       python3 scripts/coco_cn_strings.py --apply    # 自动改回中文（锚点失效会报 ANCHOR，需人工）"
+echo "     中文文案那部分已自动跑过 --apply（见上面「自动重打中文文案」）"
+if [[ "${CN_ANCHOR:-0}" -gt 0 ]]; then
+  echo "     ⚠ 有 $CN_ANCHOR 条锚点失效（ANCHOR）：官方改过这些句子，要按 patches/README.md 人工重译"
+  echo "       python3 scripts/coco_cn_strings.py            # 看具体是哪些"
+else
+  echo "     （没有锚点失效：被换回英文的都自动改回中文了）"
+fi
 echo "     挂钩点备份在 .sync-backup/$STAMP/"
 echo
 echo "  ② 自检（应全 PASS）："

@@ -1054,6 +1054,37 @@ def check_eval_references(repo: Path):
     return results
 
 
+
+def check_cn_strings(repo: Path):
+    """同步官方后，中文文案重打表必须已经全部落地。
+
+    官方层文件被快照式替换时会整片回到英文；`scripts/coco_cn_strings.py --apply`
+    负责按表改回中文。这里跑一次「只检查」模式：
+      · 退出码 0        → 全部到位（或无需处理）
+      · 有待重打/ANCHOR → FAIL，明细在输出里（ANCHOR = 官方改过这句，要人工重译）
+    """
+    script = repo / "scripts" / "coco_cn_strings.py"
+    if not script.is_file():
+        return [("A41", "中文文案重打表已全部落地", False,
+                 "缺 scripts/coco_cn_strings.py —— 同步后必须把它恢复回来（patches/README.md 第 23 / 24 处）")]
+    try:
+        out = subprocess.run(
+            [sys.executable, str(script)], cwd=str(repo),
+            capture_output=True, text=True, timeout=300,
+        )
+    except Exception as exc:  # pragma: no cover
+        return [("A41", "中文文案重打表已全部落地", False, f"跑不起来：{exc}")]
+    text = (out.stdout or "") + (out.stderr or "")
+    tail = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    last = tail[-1] if tail else "(无输出)"
+    anchors = [ln.strip() for ln in text.splitlines() if "ANCHOR" in ln]
+    ok = out.returncode == 0
+    detail = ("已全部到位" if ok and "无需处理" in text else last)
+    if not ok:
+        detail = f"{detail} —— 跑 `python3 scripts/coco_cn_strings.py --apply`；带 ANCHOR 的 {len(anchors)} 条要按 patches/README.md 人工重译"
+    return [("A41", "中文文案重打表已全部落地", ok, detail)]
+
+
 def main() -> int:
     repo = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent
     print("=" * 74)
@@ -1061,7 +1092,8 @@ def main() -> int:
     print(f" 仓库：{repo}")
     print("=" * 74)
 
-    all_results = check_content(repo) + check_paths(repo) + check_eval_references(repo)
+    all_results = (check_content(repo) + check_paths(repo) + check_eval_references(repo)
+                   + check_cn_strings(repo))
 
     width = 34
     print(f"\n{'编号':<5}{'检查项':<{width}}{'结果':<6}说明")

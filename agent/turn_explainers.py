@@ -15,52 +15,46 @@ from agent.tool_result_classification import (
     FILE_MUTATING_TOOL_NAMES as _FILE_MUTATING_TOOLS, file_mutation_result_landed
 )
 
-_NO_REPLY = "⚠️ No reply: "
+_NO_REPLY = "⚠️ 没有回复："
 
 # One text for "the model produced nothing after retries" on every surface (CLI explainer,
 # gateway ``(empty)`` rewrite, desktop); the model name is filled in by the explainer.
 EMPTY_RESPONSE_EXPLANATION = (
-    "{model} didn't produce a reply this time, even after retries. "
-    "Send `continue` to try again, or switch models with /model."
+    "{model} 这次没能给出回复（已经重试过）。"
+    "发 `continue` 再试一次，或者用 /model 换个模型。"
 )
 
 # Exact ``turn_exit_reason`` → explanation body (prefixed with ``_NO_REPLY``).
 _EXIT_REASON_EXPLANATIONS: Dict[str, str] = {
     "empty_response_exhausted": EMPTY_RESPONSE_EXPLANATION,
     "all_retries_exhausted_no_response": (
-        "the model provider didn't answer after all retries. "
-        "Send /retry, or switch models with /model."
+        "模型服务商在所有重试之后都没响应。"
+        "发 /retry，或者用 /model 换个模型。"
     ),
     "partial_stream_recovery": (
-        "streaming stopped early and only a partial response was "
-        "recovered. Send `continue` to resume from where it stopped."
+        "流式输出中途断了，只恢复出一部分回复。"
+        "发 `continue` 从断的地方接着来。"
     ),
     "fallback_prior_turn_content": (
-        "no new content was produced this turn; showing recovered "
-        "prior context. Send `continue` to retry."
+        "这一轮没有产出新内容，显示的是恢复出来的上一轮上下文。发 `continue` 重试。"
     ),
     "redirect_restart_limit_exceeded": (
-        "the request was cancelled by a new correction on every attempt, "
-        "so the turn stopped instead of retrying forever. Your last "
-        "correction is queued as the next message."
+        "每次尝试都被新的纠正打断，所以这一轮停了，没有无限重试。"
+        "你最后那条纠正已排进下一条消息。"
     ),
     "rebuilt_restart_limit_exceeded": (
-        "every provider in the fallback chain kept failing over, so the "
-        "turn stopped instead of retrying forever. Send `continue` or "
-        "switch provider."
+        "备用链上的每个服务商都在反复失败，所以这一轮停了，没有无限重试。"
+        "发 `continue`，或者换个服务商。"
     ),
     "budget_exhausted": (
-        "the per-turn iteration/cost budget was exhausted before a "
-        "final answer. Send `continue` to keep going."
+        "单轮的迭代/花费额度用完了，还没到最终答案。发 `continue` 继续。"
     ),
     "ollama_runtime_context_too_small": (
-        "the local model's context window was too small to finish. "
-        "Increase the context size or use a larger model."
+        "本地模型的上下文窗口太小，没跑完。把上下文调大，或者换个更大的模型。"
     ),
     "pending_tool_result": (
-        "the turn stopped while a tool result was still pending and "
-        "the model produced no follow-up text. Send `continue` to "
-        "let it summarize."
+        "这一轮停在工具结果还没回来的时候，模型也没再补文字。"
+        "发 `continue` 让它接着总结。"
     ),
 }
 
@@ -68,108 +62,86 @@ _EXIT_REASON_EXPLANATIONS: Dict[str, str] = {
 _EXIT_REASON_PREFIX_EXPLANATIONS = (
     # ``interrupted_during_api_call(<issuer>)`` names a system watchdog (#112647).
     ("interrupted_during_api_call", (
-        "the request was interrupted mid-call before a reply was "
-        "received. Send `continue` to retry."
+        "请求在调用中途被打断，还没收到回复。发 `continue` 重试。"
     )),
     ("max_iterations_reached", (
-        "the maximum tool-iteration limit was reached before a "
-        "final answer. Send `continue` to keep going, or raise "
-        "`max_iterations`."
+        "还没给出最终答案就到了最大工具迭代次数。发 `continue` 继续，"
+        "或者把 `max_iterations` 调大。"
     )),
     ("error_near_max_iterations", (
-        "an error occurred near the iteration limit before a final "
-        "answer. Check the tool output above, then send `continue`."
+        "在接近迭代上限时报错，还没给出最终答案。看看上面的工具输出，然后发 `continue`。"
     )),
     ("repeated_outer_errors", (
-        "the turn kept failing with repeated errors and was stopped "
-        "early instead of retrying forever. Check the errors above, "
-        "then send `continue` to retry."
+        "这一轮反复报同样的错，所以提前停了，没有无限重试。"
+        "看看上面的报错，再发 `continue` 重试。"
     )),
 )
 
 # ``session_persistence_failed`` refined by the classified cause (lock contention ≠ disk full).
 _PERSISTENCE_CAUSE_EXPLANATIONS: Dict[str, str] = {
     "compression": (
-        "the turn was stopped because another process was "
-        "compressing this session. Your message should already be "
-        "saved — please send it again after compression completes."
+        "这一轮停了：另一个进程正在压缩这个会话。你的消息应该已经存好了 —— "
+        "等压缩完再发一次。"
     ),
     "compression_closed": (
-        "the turn was stopped because this session was rotated "
-        "by context compression and its live continuation could "
-        "not be adopted. The storage itself is healthy — refresh "
-        "the client (or start a new turn) so it picks up the new "
-        "session id, then send your message again."
+        "这一轮停了：这个会话被上下文压缩轮换了，续跑没能接上。"
+        "存储本身是好的 —— 刷新客户端（或者开新一轮）让新会话号生效，"
+        "然后再发一次。"
     ),
     "turn_lease": (
-        "the turn was stopped because another Hermes process "
-        "took over this session. Your reply was not saved — wait "
-        "for the other process to finish, then send your message "
-        "again."
+        "这一轮停了：另一个 Coco 进程接管了这个会话。你的回复没存下来 —— "
+        "等那个进程结束，然后再发一次。"
     ),
     "locked": (
-        "the turn was stopped because session storage was busy "
-        "(another Hermes process was writing to the state "
-        "database). Your message should already be saved — "
-        "please send it again in a moment."
+        "这一轮停了：会话存储正忙（另一个 Coco 进程在写 state 库）。"
+        "你的消息应该已经存好了 —— 过一会儿再发一次。"
     ),
     # The forensic runbook for both (WAL generations, manifest.json, sidecars) lives in the
     # logger.error at hermes_state.py::_raise_if_db_replaced — never in the chat reply.
     "replaced": (
-        "the session database file was replaced while Hermes was running, so this "
-        "message was not saved (a copy is kept in {home}/sessions/). Stop Hermes "
-        "(`hermes {profile_arg}gateway stop`), run `hermes {profile_arg}doctor` — not "
-        "`hermes {profile_arg}doctor --fix`, which would repair the wrong file in place — "
-        "then start it again and send your message once more. Advanced recovery steps are "
-        "in the log."
+        "会话数据库文件在 Coco 运行时被换掉了，所以这条消息没存下来"
+        "（{home}/sessions/ 里留了一份）。先停掉 Coco"
+        "（`coco cli {profile_arg}gateway stop`），跑 `coco cli {profile_arg}doctor` —— 别跑 "
+        "`coco cli {profile_arg}doctor --fix`，那会去修错的那个文件 —— "
+        "然后再启动、把消息重发一次。进阶恢复步骤在日志里。"
     ),
     "deleted_wal": (
-        "another Hermes process still holds an old copy of the session database's write-ahead "
-        "log, so Hermes stopped writing to keep the file safe and this message was not saved (a "
-        "copy is kept in {home}/sessions/). Nothing is lost. Quit every Hermes process on this "
-        "profile (Desktop app, `hermes {profile_arg}gateway stop`, dashboard, cron), run "
-        "`hermes {profile_arg}doctor` — it names any process still holding the log — then start "
-        "Hermes again and send your message once more. Do not run `doctor --fix` or delete "
-        "any state.db files while they run. Guide: {recovery_docs}"
+        "还有别的 Coco 进程占着会话数据库旧版本的预写日志（WAL），所以 Coco 为了保住"
+        "文件停了写入，这条消息没存下来（{home}/sessions/ 里留了一份）。什么都没丢。"
+        "把这个配置档上的 Coco 进程全退掉（桌面端、`coco cli {profile_arg}gateway stop`、"
+        "看板、定时任务），跑 `coco cli {profile_arg}doctor` —— 它会点名还占着日志的进程 —— "
+        "然后再启动 Coco、把消息重发一次。它们还在跑的时候别跑 `doctor --fix`，"
+        "也别删任何 state.db 文件。指南：{recovery_docs}"
     ),
     "corrupt": (
-        "the turn was stopped because the state database "
-        "reported structural corruption (the transcript would "
-        "have been lost on restart). Freeing disk space will "
-        "not help. Recovery options:\n"
-        "1. Run `hermes {profile_arg}doctor --fix`\n"
-        "2. Stop the gateway, then recover with:\n"
-        "   hermes {profile_arg}sessions recover --source {db_path} --inspect-only\n"
-        "   (if it reports recoverable) hermes {profile_arg}sessions recover "
+        "这一轮停了：state 库报了结构性损坏（转录会在重启时丢）。清磁盘空间没用。"
+        "恢复办法：\n"
+        "1. 跑 `coco cli {profile_arg}doctor --fix`\n"
+        "2. 停掉网关，然后这样恢复：\n"
+        "   coco cli {profile_arg}sessions recover --source {db_path} --inspect-only\n"
+        "   （如果它说可以恢复）coco cli {profile_arg}sessions recover "
         "--source {db_path} --output recovered-state.db\n"
-        "   — recovery snapshots the damaged file first; do NOT "
-        "run `sqlite3 ... \".recover\"` against the live "
-        "state.db, a vulnerable sqlite3 CLI can corrupt it "
-        "further\n"
-        "3. Restore from a backup in {backups_dir}/\n"
-        "Then send your message again."
+        "   —— 恢复会先给坏文件做快照；别对正在使用的 "
+        "state.db 跑 `sqlite3 ... \".recover\"`，有漏洞的 sqlite3 CLI 会把它弄得更坏\n"
+        "3. 从 {backups_dir}/ 里的备份恢复\n"
+        "然后重发你的消息。"
     ),
     # SQLite scoped the corruption to the FTS index and the derived indexes could not be
     # detached, so this write did not land; the message store itself is intact (#97794).
     "fts_index": (
-        "the turn was stopped because the session search index (FTS5) "
-        "is corrupt and could not be detached, so this message was not "
-        "saved. The message store itself is not damaged: do not run "
-        "recovery tools or restore a backup. Run `hermes {profile_arg}doctor --fix` "
-        "(or restart Hermes, which repairs the index on open), then "
-        "send your message again."
+        "这一轮停了：会话搜索索引（FTS5）损坏且没法剥离，所以这条消息没存下来。"
+        "消息库本身没坏：别跑恢复工具、也别回滚备份。跑 `coco cli {profile_arg}doctor --fix` "
+        "（或者重启 Coco，它打开时会修索引），然后重发消息。"
     ),
     "disk": (
-        "Hermes couldn't save this conversation to disk, so it stopped rather than lose "
-        "your messages. The disk is probably full: free some space (or fix the permissions "
-        "on {home}/state.db), then send your message again."
+        "Coco 没法把这段对话写进磁盘，所以停下来，而不是把你的消息弄丢。"
+        "多半是磁盘满了：腾点空间（或者修 {home}/state.db 的权限），然后重发消息。"
     ),
 }
 _PERSISTENCE_DEFAULT_EXPLANATION = (
-    "Hermes couldn't save this conversation, so it stopped rather than lose your messages. "
-    "Possible causes: the drive is out of room, or another Hermes process is holding the "
-    "database. Close other Hermes windows, run `hermes {profile_arg}doctor` to check "
-    "storage, then send your message again."
+    "Coco 没能把这段对话存下来，所以停下来，而不是把你的消息弄丢。 "
+    "可能原因：磁盘满了，或者别的 Coco 进程占着数据库。 "
+    "关掉其它 Coco 窗口，跑 `coco cli {profile_arg}doctor` 查一下存储，然后重发消息。"
 )
 
 
@@ -334,19 +306,18 @@ class TurnExplainersMixin:
         if not failed:
             return ""
         lines = [
-            "⚠️ File-mutation verifier: "
-            f"{len(failed)} file edit(s) FAILED this turn despite any "
-            "wording above that may suggest otherwise. Run `git status` or "
-            "`read_file` to confirm what actually landed."
+            "⚠️ 文件改动核对："
+            f"这一轮有 {len(failed)} 个文件编辑失败（上面若有说成功的，以这里为准）。"
+            "用 `git status` 或 `read_file` 看实际落盘了什么。"
         ]
         shown = list(failed.items())[:10]
         for path, info in shown:
             preview = (info.get("error_preview") or "").strip()
             tool = info.get("tool") or "patch"
-            lines.append(f"  • `{path}` — [{tool}] {preview or 'failed'}")
+            lines.append(f"  • `{path}` — [{tool}] {preview or '失败'}")
         remaining = len(failed) - len(shown)
         if remaining > 0:
-            lines.append(f"  • … and {remaining} more")
+            lines.append(f"  • … 还有 {remaining} 个")
         # Neutralize paths the preview echoed; the lookbehind prevents double-wrapping the bullet path.
         return cls._neutralize_footer_paths("\n".join(lines))
 
