@@ -9,7 +9,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
-from hermes_cli.setup import print_success  # def-time binding (table value)
+from hermes_cli.setup import _boxed, print_success  # def-time binding (table value)
 from hermes_cli.setup import print_warning  # def-time binding (table value)
 
 
@@ -186,23 +186,23 @@ def _set_platform_unauthorized_dm_behavior(platform_key: str, behavior: str) -> 
 
 def _print_setup_header(title: str) -> None:
     print()
-    print(_gw().color(f"  ─── {title} Setup ───", _gw().Colors.CYAN))
+    print(_gw().color(f"  ─── {title} 配置 ───", _gw().Colors.CYAN))
 
 
 def _confirm_reconfigure(label: str, *env_vars: str) -> bool:
     """False when ``label`` is already configured (all ``env_vars`` set) and the user declines."""
     if all(_gw().get_env_value(v) for v in env_vars):
         print()
-        _gw().print_success(f"{label} is already configured.")
-        return _gw().prompt_yes_no(f"  Reconfigure {label}?", False)
+        _gw().print_success(f"{label} 已经配好了。")
+        return _gw().prompt_yes_no(f"  要重新配置 {label} 吗？", False)
     return True
 
 
 def _offer_home_channel(home_var: str, user_id: str, what: str) -> None:
     """Offer to persist ``user_id`` as ``home_var`` (e.g. "your Telegram user ID")."""
-    if _gw().prompt_yes_no(f"  Use {what} ({user_id}) as the home channel?", True):
+    if _gw().prompt_yes_no(f"  把 {what}（{user_id}）设为主页频道吗？", True):
         _gw().save_env_value(home_var, user_id)
-        _gw().print_success(f"  Home channel set to {user_id}")
+        _gw().print_success(f"  主页频道已设为 {user_id}")
 
 
 def _save_env_values(**values: str) -> None:
@@ -218,15 +218,15 @@ def _prompt_csv(prompt_text: str, default: str) -> str:
 # (default index, *choices) for the no-allowlist access prompt, keyed by is_email.
 _UNAUTHORIZED_ACCESS_CHOICES = {
     True: (3,
-        "Enable open access (any email sender can message the bot)",
-        "Use DM pairing (unknown email senders receive a pairing code)",
-        "Politely decline unknown senders (one-time message, then silence)",
-        "Keep unknown senders silent"),
+        "开放访问（任何邮箱都能给我的机器人发消息）",
+        "配对授权（陌生邮箱会收到一个配对码）",
+        "礼貌拒绝（回一条提示，之后不再响应）",
+        "陌生来信一律不回应"),
     False: (1,
-        "Enable open access (anyone can message the bot)",
-        "Use DM pairing (unknown users request access, you approve with 'hermes pairing approve')",
-        "Politely decline unknown senders (one-time message, then silence)",
-        "Skip for now (bot will deny all users until configured)"),
+        "开放访问（谁都能给我的机器人发消息）",
+        "配对授权（陌生用户申请，你用「coco pairing approve」批准）",
+        "礼貌拒绝（回一条提示，之后不再响应）",
+        "先跳过（配置前机器人一律不回应）"),
 }
 
 
@@ -235,49 +235,49 @@ def _prompt_unauthorized_access(platform_key: str) -> None:
     is_email = platform_key == "email"
     print()
     default_idx, *access_choices = _UNAUTHORIZED_ACCESS_CHOICES[is_email]
-    access_idx = _gw().prompt_choice("  How should unauthorized users be handled?", access_choices, default_idx)
+    access_idx = _gw().prompt_choice("  陌生用户怎么处理？", access_choices, default_idx)
     if access_idx == 0:
         _gw().save_env_value("EMAIL_ALLOW_ALL_USERS" if is_email else "GATEWAY_ALLOW_ALL_USERS", "true")
-        _gw().print_warning("  Open access enabled — anyone can use your bot!")
+        _gw().print_warning("  已开放访问 —— 谁都能用你的机器人。")
     elif access_idx == 1:
         if is_email:
             _set_platform_unauthorized_dm_behavior("email", "pair")
-        _gw().print_success("  DM pairing mode — users will receive a code to request access.")
-        _gw().print_info("  Approve with: hermes pairing approve <platform> <code>")
+        _gw().print_success("  已设为配对授权 —— 陌生用户会收到一个配对码来申请。")
+        _gw().print_info("  批准方式：coco pairing approve <平台> <配对码>")
     elif access_idx == 2:
         _set_platform_unauthorized_dm_behavior(platform_key, "decline")
-        _gw().print_success("  Unknown senders get one polite decline, then silence (unauthorized_dm_behavior: decline).")
+        _gw().print_success("  陌生来信会收到一次礼貌拒绝，之后不再响应。")
     elif is_email:
-        _gw().print_success("  Unknown email senders will be ignored.")
+        _gw().print_success("  陌生邮箱来信一律不回应。")
     else:
-        _gw().print_info("  Skipped — configure later with 'hermes gateway setup'")
+        _gw().print_info("  已跳过 —— 以后可以跑「coco gateway setup」再配。")
 
 
 def _telegram_auto_setup(token_var: str) -> tuple[bool, object]:
     """Offer the managed-bot QR flow. Returns (token_saved, owner_user_id)."""
     print()
     _gw()._print_info_lines(
-        "  Telegram can be configured automatically with a managed bot:",
-        "  [1] Automatic (scan QR → confirm in Telegram → done)", "  [2] Manual BotFather token",
+        "  Telegram 可以自动配（托管机器人）：",
+        "  [1] 自动（扫码 → 在 Telegram 里确认 → 完成）", "  [2] 手动（用 BotFather 的 token）",
     )
-    if _gw().prompt("  Choice [1/2]", default="1").strip() != "1":
+    if _gw().prompt("  请选择 [1/2]", default="1").strip() != "1":
         return False, None
     try:
         from hermes_cli.telegram_managed_bot import (
             auto_setup_telegram_bot_result, is_valid_telegram_bot_token,
         )
     except ImportError:
-        _gw().print_warning("  Automatic setup is unavailable in this install.")
+        _gw().print_warning("  这台机器上没法自动配置。")
         return False, None
     result = auto_setup_telegram_bot_result()
     if result and is_valid_telegram_bot_token(result.token):
         _gw().save_env_value(token_var, result.token)
-        _gw().print_success("  Saved TELEGRAM_BOT_TOKEN")
+        _gw().print_success("  已保存 TELEGRAM_BOT_TOKEN")
         return True, result.owner_user_id
     if result:
-        _gw().print_warning("  Automatic setup returned an invalid Telegram token.")
+        _gw().print_warning("  自动配置返回的 Telegram token 不合法。")
     print()
-    _gw().print_info("  Falling back to manual setup...")
+    _gw().print_info("  改走手动配置…")
     return False, None
 
 
@@ -299,22 +299,21 @@ def _prompt_allowlist_var(var: dict, platform_key: str, auto_owner_user_id) -> s
     """Allowlist prompt for one var; returns the saved value or None (open-access prompt shown)."""
     if "TELEGRAM" in var["name"] and auto_owner_user_id:
         detected_id = str(auto_owner_user_id)
-        _gw().print_success(f"  Detected your Telegram user ID: {detected_id}")
-        if _gw().prompt_yes_no("  Allow this Telegram account to use the bot?", True):
-            extra = _gw().prompt("  Additional allowed user IDs (comma-separated, optional)", password=False)
+        _gw().print_success(f"  识别到你的 Telegram 用户 ID：{detected_id}")
+        if _gw().prompt_yes_no("  允许这个 Telegram 账号使用机器人吗？", True):
+            extra = _gw().prompt("  还要加哪些用户 ID（逗号分隔，可留空）", password=False)
             ids = [detected_id]
             for uid in extra.replace(" ", "").split(","):
                 if uid and uid not in ids:
                     ids.append(uid)
             cleaned = ",".join(ids)
             _gw().save_env_value(var["name"], cleaned)
-            _gw().print_success("  Saved — only these users can interact with the bot.")
+            _gw().print_success("  已保存 —— 只有这些用户能用这个机器人。")
             return cleaned
 
     _gw()._print_info_lines(
-        "  The gateway DENIES all users by default for security.",
-        "  Enter user IDs to create an allowlist, or leave empty",
-        "  and you'll be asked about open access next.",
+        "  出于安全，网关默认拒绝所有用户。",
+        "  填用户 ID 建白名单；留空的话，下一步我会问你开放访问怎么处理。",
     )
     value = _gw().prompt(f"  {var['prompt']}", password=False)
     if not value:
@@ -324,7 +323,7 @@ def _prompt_allowlist_var(var: dict, platform_key: str, auto_owner_user_id) -> s
     if "DISCORD" in var["name"]:
         cleaned = _clean_discord_ids(cleaned)
     _gw().save_env_value(var["name"], cleaned)
-    _gw().print_success("  Saved — only these users can interact with the bot.")
+    _gw().print_success("  已保存 —— 只有这些用户能用这个机器人。")
     return cleaned
 
 
@@ -359,10 +358,10 @@ def _setup_standard_platform(platform: dict):
         _gw().print_info(f"  {var['help']}")
         existing = _gw().get_env_value(var["name"])
         if existing and var["name"] != token_var:
-            _gw().print_info(f"  Current: {existing}")
+            _gw().print_info(f"  当前值：{existing}")
 
         if auto_token_saved and var["name"] == token_var:
-            _gw().print_info("  Token saved by automatic setup.")
+            _gw().print_info("  已由自动配置保存 token。")
             continue
 
         if var.get("is_allowlist"):
@@ -374,12 +373,12 @@ def _setup_standard_platform(platform: dict):
         value = _gw().prompt(f"  {var['prompt']}", password=var.get("password", False))
         if value:
             _gw().save_env_value(var["name"], value)
-            _gw().print_success(f"  Saved {var['name']}")
+            _gw().print_success(f"  已保存 {var['name']}")
         elif var["name"] == token_var:
-            _gw().print_warning(f"  Skipped — {label} won't work without this.")
+            _gw().print_warning(f"  已跳过 —— 没有这个，{label} 用不了。")
             return
         else:
-            _gw().print_info("  Skipped (can configure later)")
+            _gw().print_info("  已跳过（以后可以再配）")
 
     # Offer the first allowlisted user ID as home channel when none is set (Telegram DMs).
     home_var = f"{label.upper()}_HOME_CHANNEL"
@@ -390,7 +389,7 @@ def _setup_standard_platform(platform: dict):
             _offer_home_channel(home_var, first_id, "your user ID")
 
     print()
-    _gw().print_success(f"{emoji} {label} configured!")
+    _gw().print_success(f"{emoji} {label} 配置完成！")
 
 
 # Weixin DM policy by menu index (index 2 = allowlist is prompted separately).
@@ -728,9 +727,9 @@ def _configure_platform(platform: dict) -> None:
     _print_setup_header(f"{platform.get('emoji', '🔌')} {label}")
     required = entry.required_env if entry else []
     if required:
-        _gw().print_info(f"  Set these env vars in ~/.hermes/.env: {', '.join(required)}")
+        _gw().print_info(f"  需要在这些环境变量里填（~/.hermes/.env）：{', '.join(required)}")
     else:
-        _gw().print_info(f"  Configure {label} in config.yaml under gateway.platforms.{platform['key']}")
+        _gw().print_info(f"  在 config.yaml 的 gateway.platforms.{platform['key']} 里配置 {label}")
     if platform.get("install_hint"):
         _gw().print_info(f"  {platform['install_hint']}")
 
@@ -754,44 +753,44 @@ def _setup_service_action(
             _gw()._service_call(backend, action, None if action == "restart" else system)
         elif action == "restart" and windows:
             _gw().stop_profile_gateway()
-            _gw().print_info("Start manually: hermes gateway")
+            _gw().print_info("手动启动：coco gateway")
     except _gw().UserSystemdUnavailableError as e:
-        _gw().print_error(f"  {failed_label} — user systemd not reachable:")
+        _gw().print_error(f"  {failed_label} —— 连不上用户级 systemd：")
         _gw()._print_indented(str(e))
     except _gw().SystemScopeRequiresRootError as e:
         # Defense in depth: the wizard's root pre-check should have caught this.
-        _gw().print_error(f"  {failed_label}: {e}")
+        _gw().print_error(f"  {failed_label}：{e}")
         _gw()._print_system_scope_remediation(action)
     except subprocess.CalledProcessError as e:
-        _gw().print_error(f"  {failed_label}: {e}")
+        _gw().print_error(f"  {failed_label}：{e}")
 
 
 _WIZARD_BANNER = (
     "┌─────────────────────────────────────────────────────────┐",
-    "│             ☤ Gateway Setup                            │",
+    _boxed("             ☤ Coco 网关配置"),
     "├─────────────────────────────────────────────────────────┤",
-    "│  Configure messaging platforms and the gateway service. │",
-    "│  Press Ctrl+C at any time to exit.                     │",
+    _boxed("  配置接入通道与网关服务。"),
+    _boxed("  任何时候按 Ctrl+C 都可以退出。"),
     "└─────────────────────────────────────────────────────────┘",
 )
 
 
-_WIZARD_BACKEND_LABELS = {"systemd": "systemd", "launchd": "launchd", "windows": "Scheduled Task"}
+_WIZARD_BACKEND_LABELS = {"systemd": "systemd", "launchd": "launchd", "windows": "计划任务"}
 
 
 # Post-setup guidance when no service backend applies, keyed by the fallthrough reason.
 _WIZARD_NO_SERVICE_LINES = {
     "wsl": (
-        "  WSL detected but systemd is not running.", "  Run in foreground: hermes gateway run",
-        "  For persistence:   tmux new -s hermes 'hermes gateway run'",
-        "  To enable systemd: add systemd=true to /etc/wsl.conf, then 'wsl --shutdown'",
+        "  检测到 WSL，但 systemd 没在跑。", "  前台运行：coco gateway run",
+        "  想让它常驻：tmux new -s coco 'coco gateway run'",
+        "  想启用 systemd：在 /etc/wsl.conf 里加 systemd=true，然后执行 wsl --shutdown",
     ),
     "termux": (
-        "  Termux does not use systemd/launchd services.", "  Run in foreground: hermes gateway run",
-        "  Or start it manually in the background (best effort): nohup hermes gateway run >{home}/logs/gateway.log 2>&1 &",
+        "  Termux 不用 systemd/launchd 服务。", "  前台运行：coco gateway run",
+        "  或在后台手动拉起（尽力而为）：nohup coco gateway run >{home}/logs/gateway.log 2>&1 &",
     ),
     "unsupported": (
-        "  Service install not supported on this platform.", "  Run in foreground: hermes gateway run",
+        "  这个平台不支持安装服务。", "  前台运行：coco gateway run",
     ),
 }
 
@@ -811,23 +810,23 @@ def _wizard_service_status_block() -> None:
         print()
 
     if service_installed and service_running:
-        _gw().print_success("Gateway service is installed and running.")
+        _gw().print_success("网关服务已安装并在运行。")
     elif service_installed:
-        _gw().print_warning("Gateway service is installed but not running.")
-        _wizard_offer_service_action("start", "  Start it now?", "Failed to start", windows=False)
+        _gw().print_warning("网关服务已安装，但没在运行。")
+        _wizard_offer_service_action("start", "  现在启动吗？", "启动失败", windows=False)
     else:
-        _gw().print_info("Gateway service is not installed yet.")
-        _gw().print_info("You'll be offered to install it after configuring platforms.")
+        _gw().print_info("网关服务还没安装。")
+        _gw().print_info("配完平台后我会问你要不要安装。")
 
 
 def _wizard_platform_loop() -> None:
     while True:
         print()
-        _gw().print_header("Messaging Platforms")
+        _gw().print_header("接入通道")
 
         platforms = _gw()._all_platforms()
-        menu_items = [f"{p['emoji']} {p['label']}  ({_platform_status(p)})" for p in platforms] + ["Done"]
-        choice = _gw().prompt_choice("Select a platform to configure:", menu_items, len(menu_items) - 1)
+        menu_items = [f"{p['emoji']} {p['label']}  ({_platform_status(p)})" for p in platforms] + ["完成"]
+        choice = _gw().prompt_choice("选择要配置的平台：", menu_items, len(menu_items) - 1)
         if choice == len(platforms):
             break
         _gw()._configure_platform(platforms[choice])
@@ -841,19 +840,19 @@ def _wizard_install_service(backend: str) -> None:
     installs and starts in the elevated child), so the wizard forwards the answers
     and returns without a second start. Each install-intent question is asked exactly
     once per setup run."""
-    wsl_note = " (note: services may not survive WSL restarts)" if _gw().is_wsl() else ""
-    start_now = _gw().prompt_yes_no("  Start the gateway now?", True)
+    wsl_note = "（注意：WSL 重启后服务可能不会自动起）" if _gw().is_wsl() else ""
+    start_now = _gw().prompt_yes_no("  现在启动网关吗？", True)
     start_on_login = _gw().prompt_yes_no(
-        f"  Start the gateway automatically on login/boot as a {_WIZARD_BACKEND_LABELS[backend]} service?"
+        f"  要不要把网关装成 {_WIZARD_BACKEND_LABELS[backend]} 服务，登录/开机自动起？"
         f"{wsl_note}",
         True,
     )
     if not (start_now or start_on_login):
-        _gw().print_info("  Skipped start and auto-start setup.")
-        _gw().print_info("  You can install later: hermes gateway install")
+        _gw().print_info("  已跳过启动与开机自启设置。")
+        _gw().print_info("  以后想装：coco gateway install")
         if _gw().supports_systemd_services():
-            _gw().print_info("  Or as a boot-time service: sudo hermes gateway install --system")
-        _gw().print_info("  Or run in foreground:  hermes gateway run")
+            _gw().print_info("  或装成开机服务：sudo coco gateway install --system")
+        _gw().print_info("  或前台直接跑：coco gateway run")
         return
     try:
         installed_scope, did_install = None, True
@@ -868,10 +867,10 @@ def _wizard_install_service(backend: str) -> None:
             return
         print()
         if did_install and start_now:
-            _gw()._setup_service_action("start", failed_label="Start failed", system=installed_scope == "system")
+            _gw()._setup_service_action("start", failed_label="启动失败", system=installed_scope == "system")
     except subprocess.CalledProcessError as e:
-        _gw().print_error(f"  Install failed: {e}")
-        _gw().print_info("  You can try manually: hermes gateway install")
+        _gw().print_error(f"  安装失败：{e}")
+        _gw().print_info("  可以手动重试：coco gateway install")
 
 
 def _wizard_post_setup() -> None:
@@ -884,9 +883,9 @@ def _wizard_post_setup() -> None:
     service_running = _gw()._is_service_running()
 
     if service_running:
-        _wizard_offer_service_action("restart", "  Restart the gateway to pick up changes?", "Restart failed")
+        _wizard_offer_service_action("restart", "  重启网关让改动生效吗？", "重启失败")
     elif service_installed:
-        _wizard_offer_service_action("start", "  Start the gateway service?", "Start failed")
+        _wizard_offer_service_action("start", "  启动网关服务吗？", "启动失败")
     else:
         print()
         backend = _gw()._service_backend()
@@ -925,6 +924,6 @@ def gateway_setup():
         _gw()._wizard_post_setup()
     else:
         print()
-        _gw().print_info("No platforms configured. Run 'hermes gateway setup' when ready.")
+        _gw().print_info("还没配任何平台。想配的时候跑「coco gateway setup」。")
 
     print()

@@ -44,7 +44,7 @@ def declines_reconfigure(label: str, question: str, *env_vars: str) -> bool:
     from hermes_cli.setup import get_env_value, print_info, prompt_yes_no
     if not any(get_env_value(v) for v in env_vars):
         return False
-    print_info(f"{label}: already configured")
+    print_info(f"{label}：已经配好了")
     return not prompt_yes_no(question, False)
 
 
@@ -90,20 +90,20 @@ def _save_port(env_var: str, value: str, default: str) -> None:
         return
     try:
         save_env_value(env_var, str(int(value)))
-        print_success(f"Webhook port set to {value}")
+        print_success(f"Webhook 端口已设为 {value}")
     except ValueError:
-        print_warning(f"Invalid port number, using default {default}")
+        print_warning(f"端口不是数字，改用默认值 {default}")
 
 
 def _prompt_telegram_bot_token() -> str | None:
     from hermes_cli.setup import print_error, print_info, prompt
-    print_info("Create a bot via @BotFather on Telegram")
+    print_info("在 Telegram 里找 @BotFather 建一个机器人")
     while True:
-        token = prompt("Telegram bot token", password=True)
+        token = prompt("Telegram 机器人 token", password=True)
         if not token or _is_valid_telegram_bot_token(token):
             return token or None
-        print_error("Invalid token format. Expected: <numeric_id>:<alphanumeric_hash> "
-                    "(e.g., 123456789:ABCdefGHI-jklMNOpqrSTUvwxYZ)")
+        print_error("token 格式不对，应该是「数字ID:字母数字串」"
+                    "（例如 123456789:ABCdefGHI-jklMNOpqrSTUvwxYZ）")
 
 
 def _telegram_allowlist_nudge() -> None:
@@ -111,33 +111,33 @@ def _telegram_allowlist_nudge() -> None:
     from hermes_cli.setup import get_env_value, print_info, prompt, prompt_yes_no
     if get_env_value("TELEGRAM_ALLOWED_USERS"):
         return
-    print_info("⚠️  Telegram has no user allowlist - anyone can use your bot!")
-    if prompt_yes_no("Add allowed users now?", True):
-        print_info("   To find your Telegram user ID: message @userinfobot")
-        allowed_users = prompt("Allowed user IDs (comma-separated)")
+    print_info("⚠️ Telegram 没设白名单 —— 谁都能用你的机器人。")
+    if prompt_yes_no("现在就加白名单用户吗？", True):
+        print_info("   查自己的 Telegram 用户 ID：给 @userinfobot 发条消息")
+        allowed_users = prompt("白名单用户 ID（逗号分隔）")
         if allowed_users:
-            _save_allowlist("TELEGRAM_ALLOWED_USERS", allowed_users, "Telegram allowlist configured")
+            _save_allowlist("TELEGRAM_ALLOWED_USERS", allowed_users, "白名单已保存（只有名单里的用户能用机器人）")
 
 
 def _obtain_telegram_token():
     """Return (token, setup_result); auto flow first when chosen, else manual paste."""
     from hermes_cli.setup import _info, print_error, prompt
-    _info("How would you like to create your Telegram bot?", None,
+    _info("你想怎么建这个 Telegram 机器人？", None,
           "  [1] 自动（推荐）",
-          "      Scan a QR code → confirm in Telegram → done.",
-          "      No token copy-paste needed.", None,
-          "  [2] Manual",
-          "      Create a bot via @BotFather yourself and paste the token.", None)
+          "      扫码 → 在 Telegram 里确认 → 完成。",
+          "      不用手动复制 token。", None,
+          "  [2] 手动",
+          "      自己去 @BotFather 建，再把 token 粘进来。", None)
     token = setup_result = None
-    if prompt("Choice [1/2]", default="1").strip() == "1":
+    if prompt("请选择 [1/2]", default="1").strip() == "1":
         setup_result = _setup_telegram_auto_result()
         if setup_result:
             token = setup_result.token
             if not _is_valid_telegram_bot_token(token):
-                print_error("Automatic setup returned an invalid Telegram bot token.")
+                print_error("自动配置返回的 Telegram token 不合法。")
                 token = setup_result = None
         if not token:
-            _info(None, "Falling back to manual setup...", None)
+            _info(None, "改走手动配置…", None)
     if not token:
         token = _prompt_telegram_bot_token()
     return token, setup_result
@@ -147,41 +147,40 @@ def _setup_telegram():
     """Configure Telegram bot credentials and allowlist."""
     from hermes_cli.setup import _info, print_info, print_header, print_success, prompt, prompt_yes_no, save_env_value
     print_header("Telegram")
-    if declines_reconfigure("Telegram", "Reconfigure Telegram?", "TELEGRAM_BOT_TOKEN"):
+    if declines_reconfigure("Telegram", "要重新配置 Telegram 吗？", "TELEGRAM_BOT_TOKEN"):
         _telegram_allowlist_nudge()
         return
     token, setup_result = _obtain_telegram_token()
     if not token:
         return
     save_env_value("TELEGRAM_BOT_TOKEN", token)
-    print_success("Telegram token saved")
-    _info(None, "🔒 Security: Restrict who can use your bot",
-          "   To find your Telegram user ID:",
-          "   1. Message @userinfobot on Telegram",
-          "   2. It will reply with your numeric ID (e.g., 123456789)", None)
+    print_success("Telegram token 已保存")
+    _info(None, "🔒 安全：限制谁能用你的机器人",
+          "   查自己的 Telegram 用户 ID：",
+          "   1. 在 Telegram 里给 @userinfobot 发条消息",
+          "   2. 它会回你的数字 ID（例如 123456789）", None)
     allowed_users = None
     detected_id = str(getattr(setup_result, "owner_user_id", None) or "")
     if detected_id:
-        print_success(f"Detected your Telegram user ID: {detected_id}")
-        if prompt_yes_no("Allow this Telegram account to use the bot?", True):
-            extra = prompt("Additional allowed user IDs (comma-separated, optional)")
+        print_success(f"识别到你的 Telegram 用户 ID：{detected_id}")
+        if prompt_yes_no("允许这个 Telegram 账号使用机器人吗？", True):
+            extra = prompt("还要加哪些用户 ID（逗号分隔，可留空）")
             allowed_users = ",".join(dict.fromkeys([detected_id, *filter(None, extra.replace(" ", "").split(","))]))
     allowed_users = _prompt_allowlist(
-        "TELEGRAM_ALLOWED_USERS", "Allowed user IDs (comma-separated, leave empty for open access)",
-        "Telegram allowlist configured - only listed users can use the bot",
-        "⚠️  No allowlist set - anyone who finds your bot can use it!", preset=allowed_users)
-    _info(None, "📬 Home Channel: where Coco delivers cron job results,",
-          "   cross-platform messages, and notifications.",
-          "   For Telegram DMs, this is your user ID (same as above).")
+        "TELEGRAM_ALLOWED_USERS", "白名单用户 ID（逗号分隔；留空 = 谁都能用）",
+        "白名单已保存 —— 只有名单里的用户能用机器人",
+        "⚠️ 没设白名单 —— 谁找到你的机器人都能用。", preset=allowed_users)
+    _info(None, "📬 主页频道：Coco 把定时任务结果、跨平台消息和通知送到这里。",
+          "   Telegram 私聊就填你的用户 ID（和上面同一个）。")
     first_user_id = allowed_users.split(",")[0].strip() if allowed_users else ""
     if not first_user_id:
-        print_info("   You can also set this later by typing /set-home in your Telegram chat.")
-        save_prompted("TELEGRAM_HOME_CHANNEL", "Home channel ID (leave empty to set later)")
-    elif prompt_yes_no(f"Use your user ID ({first_user_id}) as the home channel?", True):
+        print_info("   以后也可以在 Telegram 聊天里发 /set-home 设置。")
+        save_prompted("TELEGRAM_HOME_CHANNEL", "主页频道 ID（留空表示以后再设）")
+    elif prompt_yes_no(f"把你的用户 ID（{first_user_id}）设为主页频道吗？", True):
         save_env_value("TELEGRAM_HOME_CHANNEL", first_user_id)
-        print_success(f"Telegram home channel set to {first_user_id}")
+        print_success(f"Telegram 主页频道已设为 {first_user_id}")
     else:
-        save_prompted("TELEGRAM_HOME_CHANNEL", "Home channel ID (or leave empty to set later with /set-home in Telegram)")
+        save_prompted("TELEGRAM_HOME_CHANNEL", "主页频道 ID（或留空，以后在 Telegram 里用 /set-home 设置）")
 
 
 # _setup_slack and _write_slack_manifest_and_instruct moved to the slack plugin:
@@ -191,66 +190,66 @@ def _setup_bluebubbles():
     """Configure BlueBubbles iMessage gateway."""
     from hermes_cli.setup import _info, print_header, print_success, prompt, prompt_yes_no
     print_header("BlueBubbles (iMessage)")
-    if declines_reconfigure("BlueBubbles", "Reconfigure BlueBubbles?", "BLUEBUBBLES_SERVER_URL"):
+    if declines_reconfigure("BlueBubbles", "要重新配置 BlueBubbles 吗？", "BLUEBUBBLES_SERVER_URL"):
         return
-    _info("Connects Hermes to iMessage via BlueBubbles — a free, open-source",
-          "macOS server that bridges iMessage to any device.",
-          "   Requires a Mac running BlueBubbles Server v1.0.0+",
-          "   Download: https://bluebubbles.app/", None,
-          "In BlueBubbles Server → Settings → API, note your Server URL and Password.", None)
+    _info("把 Coco 接到 iMessage：靠 BlueBubbles —— 一个免费开源的 macOS 服务端，",
+          "把 iMessage 转给任何设备。",
+          "   需要一台 Mac 跑 BlueBubbles Server v1.0.0+",
+          "   下载：https://bluebubbles.app/", None,
+          "在 BlueBubbles Server → Settings → API 里记下 Server URL 和 Password。", None)
     for label, env_var, secret, what, transform in (
-        ("BlueBubbles server URL (e.g. http://192.168.1.10:1234)", "BLUEBUBBLES_SERVER_URL", False, "Server URL",
+        ("BlueBubbles 服务端地址（如 http://192.168.1.10:1234）", "BLUEBUBBLES_SERVER_URL", False, "服务端地址",
          lambda v: v.rstrip("/")),
-        ("BlueBubbles server password", "BLUEBUBBLES_PASSWORD", True, "Password", None),
+        ("BlueBubbles 服务端密码", "BLUEBUBBLES_PASSWORD", True, "密码", None),
     ):
         if not save_prompted(env_var, label, password=secret, transform=transform,
-                              skip_msg=f"{what} is required — skipping BlueBubbles setup"):
+                              skip_msg=f"{what} 是必填的 —— 跳过 BlueBubbles 配置"):
             return
-    print_success("BlueBubbles credentials saved")
-    _info(None, "🔒 Security: Restrict who can message your bot",
-          "   Use iMessage addresses: email (user@icloud.com) or phone (+15551234567)", None)
-    _prompt_allowlist("BLUEBUBBLES_ALLOWED_USERS", "Allowed iMessage addresses (comma-separated, leave empty for open access)",
-                      "BlueBubbles allowlist configured", "⚠️  No allowlist set — anyone who can iMessage you can use the bot!")
-    _info(None, "📬 Home Channel: phone or email for cron job delivery and notifications.",
-          "   You can also set this later with /set-home in your iMessage chat.")
-    save_prompted("BLUEBUBBLES_HOME_CHANNEL", "Home channel address (leave empty to set later)")
-    _info(None, "Advanced settings (defaults are fine for most setups):")
-    if prompt_yes_no("Configure webhook listener settings?", False):
-        _save_port("BLUEBUBBLES_WEBHOOK_PORT", prompt("Webhook listener port (default: 8645)"), "8645")
-    _info(None, "Requires the BlueBubbles Private API helper for typing indicators,",
-          "read receipts, and tapback reactions. Basic messaging works without it.",
-          "   Install: https://docs.bluebubbles.app/helper-bundle/installation")
+    print_success("BlueBubbles 凭据已保存")
+    _info(None, "🔒 安全：限制谁能给我的机器人发消息",
+          "   用 iMessage 地址：邮箱（user@icloud.com）或手机号（+155****4567 这种带区号的格式）", None)
+    _prompt_allowlist("BLUEBUBBLES_ALLOWED_USERS", "iMessage 白名单（逗号分隔；留空 = 谁都能用）",
+                      "BlueBubbles 白名单已保存", "⚠️ 没设白名单 —— 能给你发 iMessage 的人都能用这个机器人。")
+    _info(None, "📬 主页频道：填手机号或邮箱，用来接收定时任务结果和通知。",
+          "   以后也可以在 iMessage 聊天里用 /set-home 设置。")
+    save_prompted("BLUEBUBBLES_HOME_CHANNEL", "主页频道地址（留空表示以后再设）")
+    _info(None, "高级设置（多数情况用默认值就行）：")
+    if prompt_yes_no("要配置 Webhook 监听端口吗？", False):
+        _save_port("BLUEBUBBLES_WEBHOOK_PORT", prompt("Webhook 监听端口（默认 8645）"), "8645")
+    _info(None, "想要「正在输入」、已读回执和表情回应，需要装 BlueBubbles Private API 辅助程序；",
+          "不装也能正常收发消息。",
+          "   安装：https://docs.bluebubbles.app/helper-bundle/installation")
 
 
 def _setup_webhooks():
     """Configure webhook integration."""
     from hermes_cli.setup import _info, print_header, print_success, print_warning, prompt, save_env_value
     print_header("Webhooks")
-    if declines_reconfigure("Webhooks", "Reconfigure webhooks?", "WEBHOOK_ENABLED"):
+    if declines_reconfigure("Webhooks", "要重新配置 Webhook 吗？", "WEBHOOK_ENABLED"):
         return
     print()
-    print_warning("⚠  Webhook and SMS platforms require exposing gateway ports to the")
-    print_warning("   internet. For security, run the gateway in a sandboxed environment")
-    print_warning("   (Docker, VM, etc.) to limit blast radius from prompt injection.")
+    print_warning("⚠  Webhook 与短信类平台需要把网关端口暴露到公网。")
+    print_warning("   为了安全，建议把网关跑在沙箱环境（Docker、虚拟机等）里，")
+    print_warning("   万一被提示词注入攻击，影响范围也小得多。")
     print()
-    _info("   Full guide: https://hermes-agent.nousresearch.com/docs/user-guide/messaging/webhooks/", None)
-    _save_port("WEBHOOK_PORT", prompt("Webhook port (default 8644)"), "8644")
-    save_prompted("WEBHOOK_SECRET", "Global HMAC secret (shared across all routes)", password=True,
-                   success_msg="Webhook secret saved",
-                   skip_msg="No secret set — you must configure per-route secrets in config.yaml")
+    _info("   完整文档：https://hermes-agent.nousresearch.com/docs/user-guide/messaging/webhooks/", None)
+    _save_port("WEBHOOK_PORT", prompt("Webhook 端口（默认 8644）"), "8644")
+    save_prompted("WEBHOOK_SECRET", "全局 HMAC 密钥（所有路由共用）", password=True,
+                   success_msg="Webhook 密钥已保存",
+                   skip_msg="没设密钥 —— 你需要在 config.yaml 里给每条路由单独配密钥")
     save_env_value("WEBHOOK_ENABLED", "true")
     print()
-    print_success("Webhooks enabled! Next steps:")
+    print_success("Webhook 已启用，接下来：")
     from hermes_constants import display_hermes_home as _dhh
-    _info(f"   1. Define webhook routes in {_dhh()}/config.yaml",
-          "   2. Point your service (GitHub, GitLab, etc.) at:",
+    _info(f"   1. 在 {_dhh()}/config.yaml 里定义 webhook 路由",
+          "   2. 把你的服务（GitHub、GitLab 等）指向：",
           "      http://your-server:8644/webhooks/<route-name>", None,
-          "   Route configuration guide:",
+          "   路由配置文档：",
           "   https://hermes-agent.nousresearch.com/docs/user-guide/messaging/webhooks/#configuring-routes",
           None,
           # Printed twice upstream; kept verbatim for output parity.
-          "   Open config in your editor:  hermes config edit",
-          "   Open config in your editor:  hermes config edit")
+          "   用编辑器打开配置：coco config edit",
+          "   用编辑器打开配置：coco config edit")
 
 
 # (platform label, credential env var, home-channel env vars — any one satisfies)
@@ -276,11 +275,10 @@ def _warn_missing_home_channels() -> None:
     if not missing_home:
         return
     print()
-    print_warning(f"No home channel set for: {', '.join(missing_home)}")
-    _info("   Without a home channel, cron jobs and cross-platform",
-          "   messages can't be delivered to those platforms.",
-          "   Set one later with /set-home in your chat, or:",
-          *(f"     hermes config set {plat.upper()}_HOME_CHANNEL <channel_id>" for plat in missing_home))
+    print_warning(f"这些平台还没设主页频道：{', '.join(missing_home)}")
+    _info("   没设主页频道，定时任务和跨平台消息就送不到这些平台。",
+          "   以后可以在聊天里发 /set-home 设置，或者：",
+          *(f"     coco config set {plat.upper()}_HOME_CHANNEL <频道ID>" for plat in missing_home))
 
 
 def _restart_running_gateway(any_messaging: bool, supports_systemd: bool) -> None:
@@ -295,7 +293,7 @@ def _restart_running_gateway(any_messaging: bool, supports_systemd: bool) -> Non
     if supports_systemd and _system_scope_wizard_would_need_root():
         _print_system_scope_remediation("restart")
         return
-    if not (any_messaging and prompt_yes_no("  Restart the gateway to pick up changes?", True)):
+    if not (any_messaging and prompt_yes_no("  重启网关让改动生效吗？", True)):
         return
     try:
         if supports_systemd:
@@ -306,34 +304,34 @@ def _restart_running_gateway(any_messaging: bool, supports_systemd: bool) -> Non
             from hermes_cli import gateway_windows
             gateway_windows.restart()
     except UserSystemdUnavailableError as e:
-        print_error("  Restart failed — user systemd not reachable:")
+        print_error("  重启失败 —— 连不上用户级 systemd：")
         for line in str(e).splitlines():
             print(f"  {line}")
     except SystemScopeRequiresRootError as e:
         # Defense in depth: a race (unit file appearing mid-run) can slip past the pre-check;
         # this used to sys.exit(1) the whole wizard.
-        print_error(f"  Restart failed: {e}")
+        print_error(f"  重启失败：{e}")
         _print_system_scope_remediation("restart")
     except Exception as e:
-        print_error(f"  Restart failed: {e}")
+        print_error(f"  重启失败：{e}")
 
 
 def setup_gateway(config: dict):
     """Configure messaging platform integrations."""
     from hermes_cli.setup import _info, print_header, print_info, print_success, prompt_checklist
     from hermes_cli.gateway import _all_platforms, _platform_status, _configure_platform
-    print_header("Messaging Platforms")
-    _info("Connect to messaging platforms to chat with Hermes from anywhere.",
-          "Toggle with Space, confirm with Enter.", None)
+    print_header("接入通道")
+    _info("接上你的聊天工具，随时随地跟 Coco 对话。",
+          "空格键勾选，回车确认。", None)
     platforms = _all_platforms()
 
     # Build checklist, pre-selecting already-configured platforms.
     statuses = [_platform_status(plat) for plat in platforms]
     items = [f"{plat['emoji']} {plat['label']}  ({status})" for plat, status in zip(platforms, statuses)]
     pre_selected = [i for i, status in enumerate(statuses) if status == "configured"]
-    selected = prompt_checklist("Select platforms to configure:", items, pre_selected)
+    selected = prompt_checklist("选择要配置的平台：", items, pre_selected)
     if not selected:
-        print_info("No platforms selected. Run 'hermes setup gateway' later to configure.")
+        print_info("没有选择平台。以后想配，跑「coco setup gateway」。")
     for idx in selected or ():
         _configure_platform(platforms[idx])
 
@@ -343,7 +341,7 @@ def setup_gateway(config: dict):
     if any_messaging:
         print()
         print_info(_RULE)
-        print_success("Messaging platforms configured!")
+        print_success("接入通道已配置好。")
         _warn_missing_home_channels()
 
     # Gateway service setup runs UNCONDITIONALLY — a gateway with zero platforms is a supported

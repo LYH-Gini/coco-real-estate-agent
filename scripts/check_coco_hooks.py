@@ -400,7 +400,7 @@ CONTENT_CHECKS = [
         "25",
         "设置向导的平台说明",
         "hermes_cli/setup_platforms.py",
-        [r"where Coco delivers"],
+        [r"主页频道：Coco 把定时任务结果"],
         "设置向导打印的「Home Channel」说明里写着 Hermes。\n处理：改成 Coco。",
     ),
     (

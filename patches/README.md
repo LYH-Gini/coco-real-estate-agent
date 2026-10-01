@@ -414,3 +414,18 @@ python3 scripts/smoke_test_real_estate.py
   `tests/real_estate/test_setup_wizard_defaults.py`，以及自检第 **14** 项守向导默认值那两条提示正则。
 - **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回；
   报 `ANCHOR`（官方改写过这段）才需人工按本条重做并更新表。
+
+### 27 网关配置向导文案中文化（骨架 + Telegram / BlueBubbles / Webhooks）
+
+- **改了什么**：`hermes_cli/gateway_setup_wizard.py`（向导横幅、平台选择菜单、未授权用户四选项、
+  allowlist 与主页频道询问、服务安装/启动/重启询问与失败提示、WSL/Termux/不支持平台的兜底说明）
+  与 `hermes_cli/setup_platforms.py`（平台清单与收尾、Telegram / BlueBubbles / Webhooks 三条流程、
+  Home Channel 缺失提醒、重启失败提示），共 120 处；命令一律 `coco`、产品名一律 `Coco`。
+- **同处①的两个手法**：横幅复用 `setup.py` 的 `_boxed()` 按显示列宽补空格（中文双宽）；
+  未授权处理的四个选项、去掉了句尾的内部配置键（`unauthorized_dm_behavior: decline`）。
+- **连带改动**：官方用例断言（`tests/hermes_cli/test_setup_irc.py` 两处：收尾文案 + 平台选择提问的
+  查找条件）与自有用例/自检（`tests/real_estate/test_coco_branding.py` 与自检第 **25** 项的品牌针）。
+- **还没做（下一处）**：平台注册表里的说明与 help（Mattermost 等）、Weixin / QQ Bot / Signal 三条流程，
+  以及平台清单每行括号里的状态词（`configured` / `not configured` / `partially configured`）——
+  后者是**语义值**（三处判断逻辑在比它），建议在**显示层**翻译，不要动比较逻辑。
+- **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。

@@ -61,7 +61,7 @@ class TestBrandRuleInPrompt:
 BRANDED_NOTICE_FILES = {
     "gateway/run_notifications.py": ["Coco update finished", "Coco is back and ready"],
     "gateway/run_busy.py": ["Coco wasn't paused", "Coco is already paused"],
-    "hermes_cli/setup_platforms.py": ["where Coco delivers"],
+    "hermes_cli/setup_platforms.py": ["主页频道：Coco 把定时任务结果"],
     # 官方 v0.21.5 把 Mattermost 向导从 hermes_cli/gateway.py 搬到 gateway_setup_wizard.py
     "hermes_cli/gateway_setup_wizard.py": ["where Coco delivers"],
 }

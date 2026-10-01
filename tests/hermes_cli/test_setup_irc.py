@@ -173,7 +173,7 @@ class TestIRCGatewaySetupFreshInstall:
 
             # Find the platform-selection prompt
             platform_prompt = next(
-                (c for c in checklist_calls if "platform" in c["question"].lower()),
+                (c for c in checklist_calls if "平台" in c["question"]),
                 None,
             )
             assert platform_prompt is not None, \
@@ -218,6 +218,6 @@ class TestIRCGatewaySetupFreshInstall:
             setup_mod.setup_gateway({})
 
             out = capsys.readouterr().out
-            assert "Messaging platforms configured!" in out
+            assert "接入通道已配置好。" in out
         finally:
             _unregister_irc_platform()
