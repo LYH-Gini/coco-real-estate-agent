@@ -518,3 +518,14 @@ python3 scripts/smoke_test_real_estate.py
 - **连带改的用例**：`tests/hermes_cli/test_setup.py`（用问题原文做桩的 4 处 + `Keep current (` 前缀断言）、
   `test_setup_terminal.py`（`Podman found:` → `Podman 已找到：`）。
 - **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
+
+### 34 快速向导与 Blank Slate 文案中文化（`setup_quick.py`）
+
+- **改了什么**：84 处（52 个替换块）—— Blank Slate 主屏（默认全关的说明、强制打开项、最小基线、
+  「走到哪一步」两选项）、技能 / 工具 / 平台三段、Nous Portal 一次性配置（含横幅，复用 `_boxed()`）、
+  常规快速向导收尾与 macOS 提示、缺项补齐（必填缺项、工具密钥清单、平台清单、补配置项）。
+- **口径**：`hermes skills/mcp/portal …` → `coco cli …`（无对应子命令走逃生口）；`hermes setup [agent]` → `coco setup [agent]`；
+  `Run \`hermes\` to start chatting.` → `跑「coco cli」可以进命令行聊天。`；`Hermes.app`、工具集名、技能名、URL 保留。
+- **本批一次过**：扫的时候把 `prompt_choice/prompt_checklist` 的选项、以及 `_info(...)` 的整块提示一起抓了，
+  没有再出现补扫 —— 前面几批的教训照做了。
+- **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。

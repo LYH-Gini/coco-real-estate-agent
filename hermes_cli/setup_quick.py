@@ -19,9 +19,9 @@ def _blank_slate_done(config: dict, hermes_home, tools_line: str, *extra: str, i
     """Shared Blank Slate epilogue: success banner, the "enable later" hints, then the summary."""
     from hermes_cli.setup import _info, _print_setup_summary, print_success
     print()
-    print_success("Blank Slate setup complete — minimal agent ready.")
-    _info(*([intro] if intro else []), tools_line, "  Seed skills:         hermes skills opt-in --sync",
-          "  Add MCP servers:     hermes mcp add", *extra, "  Tune agent settings: hermes setup agent", None)
+    print_success("空白起步配置完成 —— 最小可用的助手就绪。")
+    _info(*([intro] if intro else []), tools_line, "  装回技能：           coco cli skills opt-in --sync",
+          "  添加 MCP 服务：      coco cli mcp add", *extra, "  调助手参数：         coco setup agent", None)
     _print_setup_summary(config, hermes_home)
 
 
@@ -56,12 +56,12 @@ def _run_nous_flow(config: dict, *, context: str, cancel_exc: tuple, cancel_line
 
 def _run_portal_one_shot(config: dict) -> None:
     """One-shot Nous Portal setup (``hermes setup --portal`` / ``hermes portal``)."""
-    from hermes_cli.setup import _info, _print_banner, print_error, print_info, print_success
-    _print_banner("│     ☤ Hermes Setup — Nous Portal (one-shot)             │")
-    _info(None, "  One subscription, 300+ models, plus the Tool Gateway:",
-          "    web search, image generation, TTS, browser automation",
-          "    — all routed through your Nous Portal sub.", None,
-          "  Sign up: https://portal.nousresearch.com/manage-subscription", None)
+    from hermes_cli.setup import _boxed, _info, _print_banner, print_error, print_info, print_success
+    _print_banner(_boxed("     ☤ Coco 配置向导 —— Nous Portal（一次性）"))
+    _info(None, "  一份订阅，300 多个模型，外加工具网关：",
+          "    联网搜索、图片生成、语音合成、浏览器自动化",
+          "    —— 全部走你的 Nous Portal 订阅。", None,
+          "  注册地址：https://portal.nousresearch.com/manage-subscription", None)
 
     def _on_error(exc: Exception) -> None:
         from hermes_cli.auth_error_copy import provider_setup_failure_lines
@@ -80,8 +80,8 @@ def _run_portal_one_shot(config: dict) -> None:
     with contextlib.suppress(Exception):
         _reload_config_into(config, dict_only=True)
     print()
-    print_success("Portal setup complete.")
-    _info("  Run `hermes portal info` to inspect routing.", "  Run `hermes` to start chatting.")
+    print_success("Portal 配置完成。")
+    _info("  跑「coco cli portal info」可以看路由情况。", "  跑「coco cli」可以进命令行聊天。")
 
 
 def _run_first_time_quick_setup(config: dict, hermes_home, is_existing: bool):
@@ -93,9 +93,9 @@ def _run_first_time_quick_setup(config: dict, hermes_home, is_existing: bool):
     )
     # Step 1: Nous Portal — OAuth login + model selection (provider set to "nous" by the save).
     print_header("Nous Portal", gap=True)
-    _info("One subscription, 300+ models, plus the Tool Gateway:",
-          "  web search, image generation, TTS, browser automation.",
-          "Sign up: https://portal.nousresearch.com/manage-subscription", None)
+    _info("一份订阅，300 多个模型，外加工具网关：",
+          "  联网搜索、图片生成、语音合成、浏览器自动化。",
+          "注册地址：https://portal.nousresearch.com/manage-subscription", None)
 
     def _on_error(exc: Exception) -> None:
         from hermes_cli.auth_error_copy import provider_setup_failure_lines
@@ -116,7 +116,7 @@ def _run_first_time_quick_setup(config: dict, hermes_home, is_existing: bool):
 
     # Step 4: Offer messaging gateway setup
     print()
-    gateway_choice = prompt_choice("Connect a messaging platform? (Telegram, Discord, etc.)", [
+    gateway_choice = prompt_choice("要接一个聊天工具吗？（Telegram、Discord 等）", [
         "现在就接消息通道（推荐）", "先跳过 —— 之后用 'coco setup gateway' 再接",
     ], 0)
     if gateway_choice == 0:
@@ -128,10 +128,10 @@ def _run_first_time_quick_setup(config: dict, hermes_home, is_existing: bool):
         from hermes_cli.gateway import ensure_gateway_service
         ensure_gateway_service(context="setup")
     print()
-    print_success("Setup complete! You're ready to go.")
-    _info(None, "  Configure all settings:    hermes setup")
+    print_success("配置完成，可以开始用了。")
+    _info(None, "  配置全部项：        coco setup")
     if gateway_choice != 0:
-        print_info("  Connect Telegram/Discord:  coco setup gateway")
+        print_info("  接 Telegram/Discord：coco setup gateway")
     _print_macos_fda_tip()
     print()
     _print_setup_summary(config, hermes_home)
@@ -154,11 +154,11 @@ def _print_macos_fda_tip() -> None:
         pass
     except OSError:
         return  # indeterminate — don't nag
-    _info(None, "  macOS tip: silence ALL folder permission prompts with one switch —",
-          "  System Settings → Privacy & Security → Full Disk Access → enable",
-          "  your terminal (and Hermes.app if you use Desktop), or run:",
+    _info(None, "  macOS 小技巧：一个开关就能免掉所有文件夹权限弹窗 ——",
+          "  系统设置 → 隐私与安全性 → 完全磁盘访问权限 → 打开",
+          "  你的终端（用桌面版的话还有 Hermes.app），或者执行：",
           "    open \"x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles\"",
-          "  The grant is permanent — it survives every Hermes update.")
+          "  这个授权是永久的 —— 每次 Coco 更新都不会丢。")
 
 
 def _blank_slate_minimal_toolsets(config: dict):
@@ -227,23 +227,20 @@ def _run_blank_slate_setup(config: dict, hermes_home, is_existing: bool):
         _info, print_header, print_info, print_success, prompt_choice, save_config, setup_model_provider,
         setup_terminal_backend
     )
-    print_header("Blank Slate Setup", gap=True)
-    _info("Everything starts OFF. First we force-enable only what's required",
-          "to run an agent, then you choose whether to stop there or walk",
-          "through enabling more — opting in to exactly what you want.", "",
-          "Forced on: Provider & Model, File Operations, Terminal, Vision, Skills.",
-          "Everything else (web, browser, code exec, memory,",
-          "delegation, cron, plugins, MCP, …) starts disabled. The",
-          "essential `hermes-agent` skill is always kept so the agent",
-          "can help you drive and configure Hermes itself.", None)
+    print_header("空白起步", gap=True)
+    _info("默认全部关闭。先只强制打开跑起来必需的那几项，",
+          "然后你决定是就此打住，还是继续走一遍，按需一项项打开。", "",
+          "强制打开：模型与密钥、文件操作、终端、图像理解、技能。",
+          "其他全部（联网、浏览器、代码执行、记忆、委派、定时任务、插件、MCP……）一开始都是关的。",
+          "必装的 `hermes-agent` 技能一直保留，这样助手才能帮你操作和配置 Coco 自己。", None)
 
     # Step 1: Provider & Model (REQUIRED — the agent cannot run without it)
-    print_header("Step 1 — Provider & Model (required)")
+    print_header("第 1 步 —— 模型与密钥（必做）")
     setup_model_provider(config)
     save_config(config)
 
     # Step 2: Terminal backend (where commands run — a core decision)
-    print_header("Step 2 — Terminal Backend")
+    print_header("第 2 步 —— 终端后端")
     setup_terminal_backend(config)
 
     # Step 3: Lock in the minimal toolset + minimized config knobs
@@ -251,15 +248,15 @@ def _run_blank_slate_setup(config: dict, hermes_home, is_existing: bool):
     _blank_slate_minimize_config(config)
     save_config(config)
     print()
-    print_success("Minimal baseline applied:")
-    print_info("  Toolsets: file, terminal, vision, skills (everything else off)")
-    print_info("  Compression, memory, checkpoints, smart routing: off")
+    print_success("已套用最小基线：")
+    print_info("  工具集：file、terminal、vision、skills（其他全关）")
+    print_info("  压缩、记忆、检查点、智能路由：关")
 
     # The fork: stop here, or walk through enabling things
-    print_header("How far do you want to go?", gap=True)
-    path = prompt_choice("Your minimal agent is ready. What next?", [
-        "Start with everything disabled — finish now (most minimal)",
-        "Walk through all configurations — opt in to tools, skills, plugins, MCP",
+    print_header("要走到哪一步？", gap=True)
+    path = prompt_choice("最小可用的助手已经就绪。接下来做什么？", [
+        "保持全部关闭 —— 现在就结束（最精简）",
+        "走完所有配置 —— 按需打开工具、技能、插件、MCP",
     ], 0)
     if path != 0:
         _blank_slate_walkthrough(config, hermes_home)
@@ -278,40 +275,39 @@ def _blank_slate_walkthrough(config: dict, hermes_home):
         _info, print_header, print_info, print_success, print_warning, prompt_yes_no, save_config, setup_gateway,
     )
     # Bundled skills — default to NONE, offer to seed all
-    print_header("Bundled Skills", gap=True)
-    print_info("Blank Slate ships with NO bundled skills by default.")
-    seed_skills = prompt_yes_no("Seed the full bundled skill catalog? (No = start with zero skills)", default=False)
+    print_header("内置技能", gap=True)
+    print_info("空白起步默认不带任何内置技能。")
+    seed_skills = prompt_yes_no("要把整套内置技能装回来吗？（选 No = 从零个技能开始）", default=False)
 
     def _seeded(result) -> None:
         copied = len(result.get("copied", [])) if isinstance(result, dict) else 0
-        print_success(f"Seeded {copied} bundled skills.")
+        print_success(f"已装回 {copied} 个内置技能。")
 
     def _opted_out(_result) -> None:
-        _info("No skills seeded (except the essential `hermes-agent`",
-              "skill). A .no-bundled-skills marker keeps future",
-              "`hermes update` runs from re-injecting them. Opt back in any",
-              "time with `hermes skills opt-in --sync`.")
+        _info("没有装回任何技能（除了必需的 `hermes-agent` 技能）。",
+              "一个 .no-bundled-skills 标记文件，会让以后每次「coco update」都不再塞回来。",
+              "想装回来随时跑「coco cli skills opt-in --sync」。")
 
     # Seeding first clears any stale opt-out marker; declining sets it (essential skills still seed).
     _set_bundled_skills_opt_out(
         not seed_skills, "skill handling", on_success=_seeded if seed_skills else _opted_out,
-        on_error=lambda exc: print_warning(f"Skill setup step encountered an error: {exc}"),
+        on_error=lambda exc: print_warning(f"技能配置这一步出错：{exc}"),
     )
 
     # Walk through enabling additional tools
-    print_header("Tools", gap=True)
-    _info("Pick exactly which additional toolsets to turn on.",
-          "(file and terminal are already on; leave the rest off if you want", " the most minimal agent.)")
-    if prompt_yes_no("Open the tool selector to enable more tools?", default=False):
+    print_header("工具", gap=True)
+    _info("挑一下要额外打开哪些工具集。",
+          "（file 和 terminal 已经开了；想要最精简就别开其他的。）")
+    if prompt_yes_no("要打开工具选择器再开一些吗？", default=False):
         try:
             from hermes_cli.tools_config import tools_command
             tools_command(first_install=False, config=config)
             _reload_config_into(config)  # tools_command saves via its own load/save cycle
         except Exception as exc:
             logger.debug("blank-slate tools_command error: %s", exc)
-            print_warning(f"Tool selector encountered an error: {exc}")
+            print_warning(f"工具选择器出错：{exc}")
     else:
-        print_info("Keeping the minimal toolset. Add tools later with `coco tools`.")
+        print_info("保持最小工具集。以后想加工具，跑「coco tools」。")
 
     # Built-in plugins and MCP servers (off unless chosen)
     for header, question, yes_msg, no_msg in (
@@ -327,7 +323,7 @@ def _blank_slate_walkthrough(config: dict, hermes_home):
 
     # Optional messaging gateway
     print()
-    if prompt_yes_no("Connect a messaging platform (Telegram, Discord, …)?", default=False):
+    if prompt_yes_no("要接一个聊天工具吗（Telegram、Discord…）？", default=False):
         setup_gateway(config)
     save_config(config)
     _blank_slate_done(config, hermes_home, "  Enable more tools:   hermes tools")
@@ -340,7 +336,7 @@ def _run_quick_setup(config: dict, hermes_home):
         _prompt_and_save_env_var, _prompt_api_key, _section_rule, prompt_checklist, save_config,
     )
     from hermes_cli.config import (get_missing_env_vars, get_missing_config_fields, check_config_version)
-    print_header("Quick Setup — Missing Items Only", gap=True)
+    print_header("快速配置 —— 只补缺的项", gap=True)
 
     # Check what's missing
     missing_env = get_missing_env_vars(required_only=False)
@@ -349,12 +345,12 @@ def _run_quick_setup(config: dict, hermes_home):
     missing_config = get_missing_config_fields()
     current_ver, latest_ver = check_config_version()
     if not (missing_required or missing_optional or missing_config or current_ver < latest_ver):
-        print_success("Everything is configured! Nothing to do.")
-        _info(None, "Run 'hermes setup' and choose 'Full Setup' to reconfigure,",
-              "or pick a specific section from the menu.")
+        print_success("全都配好了，没有要做的。")
+        _info(None, "想重新配置，跑「coco setup」并选「完整配置」，",
+              "或者从菜单里挑某一节。")
         return
     if missing_required:
-        _info(None, f"{len(missing_required)} required setting(s) missing:")
+        _info(None, f"还缺 {len(missing_required)} 项必填设置：")
         for var in missing_required:
             print(f"     • {var['name']}")
         print()
@@ -363,20 +359,20 @@ def _run_quick_setup(config: dict, hermes_home):
             print(color(f"  {var['name']}", Colors.CYAN))
             print_info(f"  {var.get('description', '')}")
             if var.get("url"):
-                print_info(f"  Get key at: {var['url']}")
-            _prompt_and_save_env_var(var, f"  Saved {var['name']}", f"  Skipped {var['name']}")
+                print_info(f"  密钥申请地址：{var['url']}")
+            _prompt_and_save_env_var(var, f"  已保存 {var['name']}", f"  已跳过 {var['name']}")
     missing_tools = [v for v in missing_optional if v.get("category") == "tool"]
     missing_messaging = [v for v in missing_optional if v.get("category") == "messaging" and not v.get("advanced")]
     if missing_tools:  # checklist, then the API-key screen for each pick
-        print_header("Tool API Keys", gap=True)
+        print_header("工具的 API Key", gap=True)
         labels = [var.get("description", var["name"]) + (f" → {', '.join(var['tools'][:2])}" if var.get("tools") else "")
                   for var in missing_tools]
-        for idx in prompt_checklist("Which tools would you like to configure?", labels):
+        for idx in prompt_checklist("要配置哪些工具？", labels):
             _prompt_api_key(missing_tools[idx])
     if missing_messaging:  # checklist, then prompt for each selected platform's vars
-        print_header("Messaging Platforms", gap=True)
-        _info("Connect Hermes to messaging apps to chat from anywhere.",
-              "You can configure these later with 'hermes setup gateway'.")
+        print_header("接入通道", gap=True)
+        _info("接上聊天工具，随时随地跟 Coco 对话。",
+              "以后想配，跑「coco setup gateway」。")
         # Group by platform in first-seen order; vars matching no platform are dropped.
         grouped: dict[str, list] = {}
         emojis = {}
@@ -387,21 +383,21 @@ def _run_quick_setup(config: dict, hermes_home):
                 emojis[match[0]] = match[1]
         platform_order = list(grouped)
         labels = [f"{emojis[p]} {p}" for p in platform_order]
-        for idx in prompt_checklist("Which platforms would you like to set up?", labels):
+        for idx in prompt_checklist("要配置哪些平台？", labels):
             plat = platform_order[idx]
             _section_rule(f"{emojis[plat]} {plat}")
             for var in grouped[plat]:
                 print_info(f"  {var.get('description', '')}")
                 if var.get("url"):
                     print_info(f"  {var['url']}")
-                _prompt_and_save_env_var(var, "  ✓ Saved", "  Skipped")
+                _prompt_and_save_env_var(var, "  ✓ 已保存", "  已跳过")
                 print()
 
     # Handle missing config fields
     if missing_config:
-        _info(None, f"Adding {len(missing_config)} new config option(s) with defaults...")
+        _info(None, f"正在按默认值补 {len(missing_config)} 个新配置项…")
         for field in missing_config:
-            print_success(f"  Added {field['key']} = {field['default']}")
+            print_success(f"  已加 {field['key']} = {field['default']}")
         config["_config_version"] = latest_ver
         save_config(config)
     _print_setup_summary(config, hermes_home)
