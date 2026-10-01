@@ -99,8 +99,8 @@ class TestGatewayCommandWSLMessages:
         assert exc_info.value.code == 1
 
         out = capsys.readouterr().out
-        assert "WSL detected" in out
-        assert "hermes gateway run" in out
+        assert "检测到 WSL" in out
+        assert "coco gateway run" in out
 
 
 

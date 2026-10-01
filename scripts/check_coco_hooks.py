@@ -472,11 +472,10 @@ CONTENT_CHECKS = [
         # 官方层文件：上游同步会整批覆盖，故登记为挂钩点。
         "hermes_cli/gateway.py",
         [
-            r"Check status: \{sudo\}coco gateway status",
-            r"check `coco gateway status` or logs for final shutdown state",
-            r"check `coco gateway status` or logs for final state",
+            r"看状态：\{sudo\}coco gateway status",
+            r"用「coco gateway status」或日志看最终状态",
             r"Use `coco gateway \{verb\}` from a shell outside the running gateway",
-            r"!Check status: \{sudo\}hermes gateway status",
+            r"!看状态：\{sudo\}hermes gateway status",
         ],
         "网关重启/停止超时、以及会话内尝试改动服务时，提示里印的是官方 `hermes gateway …`；\n"
         "Coco 实例上没有 hermes 命令入口（install/update 会移除指向本安装目录的软链），\n"

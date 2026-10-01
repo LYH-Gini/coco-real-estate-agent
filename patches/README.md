@@ -529,3 +529,22 @@ python3 scripts/smoke_test_real_estate.py
 - **本批一次过**：扫的时候把 `prompt_choice/prompt_checklist` 的选项、以及 `_info(...)` 的整块提示一起抓了，
   没有再出现补扫 —— 前面几批的教训照做了。
 - **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
+
+### 35 网关服务类提示中文化（`hermes_cli/gateway.py`，install/start/stop/restart/status）
+
+- **改了什么**：141 处 —— 安装/卸载/修复提示、启动/停止/重启的进度与超时提示、`status` 的
+  运行状态与 linger/D-Bus 提示、遗留单元迁移、`_NO_BACKEND_MESSAGES` 那张按平台（termux / wsl /
+  s6 / container / unsupported）分发的整表、WSL 前台提示块、以及 `_service_scope_label` 的状态词
+  （`user`/`system` → `用户级`/`系统级`，模板同步去掉多余空格，否则会出现「User 服务已重启」这种半中半英）。
+- **口径**：`hermes gateway …` → `coco gateway …`；`systemctl` / `journalctl` / `loginctl` 这类**系统命令保持原样**
+  （要照敲）；服务名 `hermes-gateway`、PID、端口、`--force` 等参数保留。
+- **改法（血泪）**：`gateway.py` 里同一行/同一节点常有**多条待改文案**，用「key 命中 → 整节点替换」时，
+  同一节点被两条以上规则命中会**只生效最后一条**，结果就是半中半英（本轮踩到：`Repairing outdated … systemd 服务`、
+  `✗ Gateway is 未运行`、`is already 由默认多路复用器提供`）。**收尾必须扫一遍 diff 里「既有中文又有英文词」的行**（用
+  `is|not|the|service|Gateway|Profile|User|System` 这类词做正则），逐个补齐。
+- **连带改的用例**：`test_gateway_service.py`（6 处断言）、`test_gateway_multiplex_status.py`（3 处 `startswith`）、
+  `test_gateway_multiplex_served_record.py`（2 处）、`test_gateway_wsl.py`（2 处）；自检第 **31** 项的四条针
+  一并换成中文针（`看状态：…` / `用「coco gateway status」或日志看最终状态`）。
+- **还没做（⑤b，低优先级）**：Windows SCM 服务检查、容器拒绝安装、多路复用/迁移拒绝与孤儿进程、
+  Docker root 提示、s6 细节等边缘分支（选到才出现）。
+- **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。

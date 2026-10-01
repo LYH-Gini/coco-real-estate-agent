@@ -96,7 +96,7 @@ class TestSystemdServiceRefresh:
         gateway_cli.systemd_restart()
 
         output = capsys.readouterr().out
-        assert "still restarting after 90s" in output
+        assert "还在重启" in output
         # Coco 口径（2026-09-27）：提示里印 coco 命令（Coco 实例上没有 hermes 命令入口）。
         assert "coco gateway status" in output
 
@@ -183,7 +183,7 @@ class TestRequireServiceInstalled:
 
         assert exc_info.value.code == 1
         out = capsys.readouterr().out
-        assert "not installed" in out
+        assert "还没安装" in out
         # Coco 口径（2026-09-27）：提示里印 coco 命令（Coco 实例上没有 hermes 命令入口）。
         assert "coco gateway install" in out
 
@@ -948,7 +948,7 @@ class TestGatewaySystemServiceRouting:
         assert ("graceful", 654, 27.0) in calls
         assert ("wait", False, 654) in calls
         out = capsys.readouterr().out.lower()
-        assert "restarting gracefully" in out
+        assert "优雅重启" in out
         assert "21627" not in out  # must use the mocked budget, not live defaults
         assert "27" in out
 
@@ -986,7 +986,7 @@ class TestGatewaySystemServiceRouting:
         gateway_cli.systemd_restart()
 
         assert [call[0][0] for call in calls] == ["reset-failed", "start"]
-        assert "did not relaunch" in capsys.readouterr().out
+        assert "没有重新拉起网关" in capsys.readouterr().out
 
     def test_systemd_restart_does_not_force_an_unready_replacement(self, monkeypatch):
         calls = []
@@ -1132,7 +1132,7 @@ class TestGatewaySystemServiceRouting:
         result = gateway_cli._wait_for_systemd_service_restart(previous_pid=654, timeout=1.0)
 
         assert result is True
-        assert "DEGRADED" in capsys.readouterr().out
+        assert "降级" in capsys.readouterr().out
 
     def test_launchd_restart_uses_sigusr1_and_exit_wait_budget(self, monkeypatch, capsys):
         """launchd_restart must take the same graceful path as systemd_restart.
@@ -1566,7 +1566,7 @@ class TestSystemServiceIdentityRootHandling:
         monkeypatch.setenv("USER", "root")
         monkeypatch.setenv("LOGNAME", "root")
 
-        with pytest.raises(ValueError, match="pass --run-as-user root to override"):
+        with pytest.raises(ValueError, match="--run-as-user root"):
             gateway_cli._system_service_identity(run_as_user=None)
 
     def test_explicit_root_is_allowed(self, monkeypatch):
@@ -1671,7 +1671,7 @@ class TestPreflightUserSystemd:
         # Should not raise.
         gateway_cli._preflight_user_systemd()
         out = capsys.readouterr().out
-        assert "Enabled linger" in out
+        assert "开启 linger" in out
 
 
 class TestProfileArg:
@@ -2307,7 +2307,7 @@ class TestGatewayCommandCatchesSystemScopeError:
         assert excinfo.value.code == 1
         out = capsys.readouterr().out
         # Renders the message, NOT the ``('msg', 'action')`` tuple repr
-        assert "requires root" in out
+        assert "需要 root" in out
         assert "('" not in out  # no tuple repr leaking through
 
 

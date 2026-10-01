@@ -98,7 +98,7 @@ def test_setup_wizard_skips_service_install_for_profile_served_by_multiplexer(
     gw._wizard_post_setup()
 
     assert calls == []
-    assert "already served by the default multiplexer" in capsys.readouterr().out
+    assert "已经由默认多路复用器提供服务" in capsys.readouterr().out
 
 
 def test_setup_gateway_service_step_skips_install_for_served_profile(served_root, monkeypatch, capsys):
@@ -119,7 +119,7 @@ def test_setup_gateway_service_step_skips_install_for_served_profile(served_root
 
     assert gw.ensure_gateway_service(context="setup") is True
     assert calls == []
-    assert "already served by the default multiplexer" in capsys.readouterr().out
+    assert "已经由默认多路复用器提供服务" in capsys.readouterr().out
 
     monkeypatch.setenv("HERMES_HOME", str(served_root / "profiles" / "other"))  # not in the live record
     assert gw.ensure_gateway_service(context="setup") is True

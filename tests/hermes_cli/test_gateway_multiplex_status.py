@@ -62,7 +62,7 @@ def test_served_named_profile_reports_running(monkeypatch, tmp_path):
 
     beta = next(p for p in list_profiles() if p.name == "beta")
     assert beta.gateway_running is True
-    assert _run_status().startswith("✓ Gateway is running via the default-profile multiplexer")
+    assert _run_status().startswith("✓ 网关通过默认档的多路复用器在跑")
 
 
 def test_unserved_named_profile_still_reports_stopped(monkeypatch, tmp_path):
@@ -72,7 +72,7 @@ def test_unserved_named_profile_still_reports_stopped(monkeypatch, tmp_path):
 
     beta = next(p for p in list_profiles() if p.name == "beta")
     assert beta.gateway_running is False
-    assert _run_status().startswith("✗ Gateway is not running")
+    assert _run_status().startswith("✗ 网关没在运行")
 
 
 def test_served_named_profile_reports_running_without_default_pid_file(monkeypatch, tmp_path):
@@ -83,7 +83,7 @@ def test_served_named_profile_reports_running_without_default_pid_file(monkeypat
 
     beta = next(p for p in list_profiles() if p.name == "beta")
     assert beta.gateway_running is True
-    assert _run_status().startswith("✓ Gateway is running via the default-profile multiplexer")
+    assert _run_status().startswith("✓ 网关通过默认档的多路复用器在跑")
 
 
 def test_standalone_profile_status_reports_standalone_by_config(monkeypatch, tmp_path):
