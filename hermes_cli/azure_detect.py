@@ -215,7 +215,7 @@ def detect(base_url: str, api_key: Any = "", *, token_provider: TokenProvider = 
     if _looks_like_anthropic_path(base_url):
         result.is_anthropic = True
         result.api_mode = "anthropic_messages"
-        result.reason = "URL path ends in /anthropic → Anthropic Messages API"
+        result.reason = "地址路径以 /anthropic 结尾 → 用 Anthropic Messages 接口"
         return result
 
     # 2. OpenAI-style /models probe — success means the endpoint definitely speaks OpenAI wire.
@@ -225,8 +225,8 @@ def detect(base_url: str, api_key: Any = "", *, token_provider: TokenProvider = 
         result.models = models
         result.api_mode = "chat_completions"
         result.reason = (
-            f"GET /models returned {len(models)} model(s) — OpenAI-style endpoint" if models
-            else "GET /models returned an OpenAI-shaped empty list — OpenAI-style endpoint"
+            f"GET /models 返回了 {len(models)} 个模型 —— OpenAI 风格端点" if models
+            else "GET /models 返回了 OpenAI 形状的空列表 —— OpenAI 风格端点"
         )
         return result
 
@@ -234,12 +234,12 @@ def detect(base_url: str, api_key: Any = "", *, token_provider: TokenProvider = 
     if _probe_anthropic_messages(base_url, api_key, token_provider=token_provider):
         result.is_anthropic = True
         result.api_mode = "anthropic_messages"
-        result.reason = "Endpoint accepts Anthropic Messages shape"
+        result.reason = "端点接受 Anthropic Messages 格式"
         return result
 
     result.reason = (
-        "Could not probe endpoint (private network, missing model list, or "
-        "non-standard path) — falling back to manual API-mode selection"
+        "没法探测这个端点（内网、没有模型列表，或者路径不标准）"
+        " —— 改用手动选择接口格式"
     )
     return result
 

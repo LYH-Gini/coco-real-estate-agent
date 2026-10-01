@@ -484,3 +484,21 @@ python3 scripts/smoke_test_real_estate.py
   `\be\.g\.\b` 匹配不到 `e.g. ` —— 两处都漏过条目（`Allowed Slack member IDs`、
   `SearXNG URL (e.g. …)`），靠渲染抽查才发现。**挑选后必须抽查渲染**，别只信正则。
 - **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
+
+### 32 冷门服务商流程文案中文化（自定义端点 / Azure Foundry / AWS Bedrock）
+
+- **改了什么**：4 个文件共 119 处 —— `model_setup_flows_custom.py`（48：自定义 OpenAI 兼容端点、
+  /v1 提示、上下文长度、模型列表与选择）、`model_setup_flows_azure.py`（43：Entra ID 凭据链、
+  接口格式与鉴权选择、探测结果）、`model_setup_flows_bedrock.py`（23：Bedrock API Key、区域、
+  模型探测与凭据链说明）、**`azure_detect.py`（5：探测原因句，会出现在 `    (原因)` 里）**。
+- **口径**：`OpenAI-style` / `Anthropic-style` 译成 `OpenAI 风格` / `Anthropic 风格`；请求形态与权限名
+  （`POST /v1/chat/completions`、`bedrock:ListFoundationModels`、`AZURE_*` 变量、`discover_models: false`）保留。
+- **一条送审项没做**：`Requires the 'Azure AI User' role…` 其实在**文档字符串**里、不在屏上 —— 未改（如实汇报过）。
+- **同批补扫出来的 12 条**：首轮扫描只认 `print()`/`_ask()` 等直白入口，漏了走 `_say(...)` 包装的整块提示
+  （Azure 的 `credential chain exhausted` / `Hint:` / `Azure Foundry Configuration` / `Authentication:` 与两个选项 /
+  `✓ Azure Foundry configured:` 四行；自定义端点的 `Model name (e.g. …)` 与 `e.g. …/v1`）。
+  **教训：扫英文时把文件里所有本地打印助手（`_say`/`_line`/`_print_*`）一起列进去。**
+- **一个中间态条目**：bedrock 里批次②留下的那条（`1. IAM credential chain (recommended)`）夹在我本批改动中间，
+  生成新条目时会把它顶成 ANCHOR —— 已把它改成「官方原文 → 当前中文」（表格只留一条，不留中间态）。
+- **既有红灯（与本批无关，已在 HEAD 干净工作树复现）**：`test_model*.py + test_setup*.py + test_config*.py`
+  多文件同跑时有 **8 例顺序污染**（单跑各文件全绿）；另有 `test_model_catalog.py` 读已删除的 `website/…` 那条。

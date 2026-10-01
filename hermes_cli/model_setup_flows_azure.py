@@ -13,7 +13,7 @@ from hermes_cli.model_setup_flows_common import _HTTP, _ask, _commit_model_confi
 
 
 def _azure_mode_label(mode: str) -> str:
-    return "OpenAI-style" if mode == "chat_completions" else "Anthropic-style"
+    return "OpenAI 风格" if mode == "chat_completions" else "Anthropic 风格"
 
 
 @dataclass
@@ -48,14 +48,14 @@ def _azure_entra_preflight(current_entra: dict):
             EntraIdentityConfig, SCOPE_AI_AZURE_DEFAULT, build_token_provider, describe_active_credential,
             has_azure_identity_installed)
     except ImportError as exc:
-        _say("", f"⚠ Could not import azure-identity adapter: {exc}", "  Falling back to API key auth.")
+        _say("", f"⚠ 加载 azure-identity 适配器失败：{exc}", "  改用 API key 鉴权。")
         return False
 
     print()
     if not has_azure_identity_installed():
-        _say("◐ The 'azure-identity' package is not installed yet.",
-             "  Hermes will install it now (the preflight below triggers the lazy-install). "
-             "To skip lazy installs, run:  pip install azure-identity")
+        _say("◐ 还没装 azure-identity 包。",
+             "  Coco 现在会装上它（下面的预检查会触发按需安装）。 "
+             "想跳过按需安装，可以先跑：pip install azure-identity")
 
     # Only the optional scope override is persisted; identity selection (tenant,
     # user-assigned MI, workload identity, SP) stays in AZURE_* SDK env vars.
@@ -65,7 +65,7 @@ def _azure_entra_preflight(current_entra: dict):
     if _persisted_scope_override:
         entra_overrides["scope"] = _persisted_scope_override
 
-    _say("", "◐ Probing Microsoft Entra ID credential chain (up to 10s)...")
+    _say("", "◐ 正在探测 Microsoft Entra ID 的凭据链（最多 10 秒）…")
     _config = EntraIdentityConfig(scope=entra_scope)
     info = describe_active_credential(config=_config, timeout_seconds=10.0)
     if info.get("ok"):
@@ -73,16 +73,16 @@ def _azure_entra_preflight(current_entra: dict):
         tag = ", ".join(env_sources) if env_sources else "default chain"
         print(f"✓ Entra ID token acquired ({tag}, scope={entra_scope})")
     else:
-        err = info.get("error") or "credential chain exhausted"
+        err = info.get("error") or "凭据链都试过了，没成功"
         hint = info.get("hint") or (
-            "Run `az login`, attach a managed identity to this VM, or set AZURE_TENANT_ID/AZURE_CLIENT_ID/AZURE_CLIENT_SECRET."
+            "跑 `az login`、给这台机器挂一个托管身份，或者设 AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET。"
         )
-        _say(f"⚠ {err}", f"  Hint: {hint}")
-        ans = _ask("Save Entra config anyway and validate later? [Y/n]: ", raw=True)
+        _say(f"⚠ {err}", f"  提示：{hint}")
+        ans = _ask("还是先保存 Entra 配置、之后再校验吗？[Y/n]： ", raw=True)
         if ans is None:
             return None
         if ans.lower() not in ("", "y", "yes"):
-            print("Cancelled.")
+            print("已取消。")
             return None
 
     # Best-effort token provider for the detection probe; on failure the probe falls back
@@ -90,7 +90,7 @@ def _azure_entra_preflight(current_entra: dict):
     try:
         token_provider = build_token_provider(config=_config)
     except Exception as exc:
-        print(f"⚠ Could not build token provider for probing: {exc}")
+        print(f"⚠ 没法构造探测用的令牌提供方：{exc}")
         token_provider = None
     return token_provider, entra_overrides
 
@@ -98,15 +98,15 @@ def _azure_entra_preflight(current_entra: dict):
 def _azure_pick_model(discovered_models: list, current_model: str):
     """Model/deployment step of the Azure flow; None when cancelled."""
     if not discovered_models:
-        model_name = _ask(f"Model / deployment name [{current_model or 'e.g. gpt-5.4, claude-sonnet-4-6'}]: ")
+        model_name = _ask(f"模型/部署名 [{current_model or '如 gpt-5.4、claude-sonnet-4-6'}]: ")
         return None if model_name is None else (model_name or current_model)
-    print("Available models on this endpoint:")
+    print("这个端点上可用的模型：")
     for i, mid in enumerate(discovered_models[:30], start=1):
         print(f"  {i:>2}. {mid}")
     if len(discovered_models) > 30:
-        print(f"  ... and {len(discovered_models) - 30} more (type name manually if not shown)")
+        print(f"  …… 还有 {len(discovered_models) - 30} 个（没列出的直接手动填）")
     print()
-    pick = _ask(f"Pick by number, or type a deployment name [{current_model or discovered_models[0]}]: ", raw=True)
+    pick = _ask(f"按编号选，或直接填部署名 [{current_model or discovered_models[0]}]： ", raw=True)
     if pick is None:
         return None
     if not pick:
@@ -121,25 +121,25 @@ def _azure_detect_transport(effective_url: str, effective_key: str, token_provid
     format when detection is incomplete) or None when cancelled."""
     from hermes_cli import azure_detect
 
-    _say("", "◐ Probing endpoint to auto-detect transport and models...")
+    _say("", "◐ 正在探测端点，自动识别接口格式与模型…")
     detection = azure_detect.detect(effective_url, api_key=effective_key, token_provider=token_provider)
     discovered_models: list[str] = list(detection.models)
     api_mode: str = detection.api_mode or ""
     if api_mode:
-        print(f"✓ Detected API transport: {_azure_mode_label(api_mode)}")
+        print(f"✓ 识别到接口格式：{_azure_mode_label(api_mode)}")
         if detection.reason:
             print(f"    ({detection.reason})")
         if discovered_models:
-            print(f"✓ Found {len(discovered_models)} deployed model(s) on this endpoint")
+            print(f"✓ 这个端点上找到 {len(discovered_models)} 个已部署模型")
         return api_mode, discovered_models
-    _say(f"⚠ Auto-detection incomplete: {detection.reason}", "",
-         "Select the API format your Azure Foundry endpoint uses:",
-         "  1. OpenAI-style  (POST /v1/chat/completions)",
-         "     For: GPT models, Llama, Mistral, and most open models",
-         "  2. Anthropic-style  (POST /v1/messages)",
-         "     For: Claude models deployed via Anthropic API format")
+    _say(f"⚠ 自动识别没完成：{detection.reason}", "",
+         "选一下你的 Azure Foundry 端点用哪种接口格式：",
+         "  1. OpenAI 风格（POST /v1/chat/completions）",
+         "     适用于：GPT 系列、Llama、Mistral 等大多数开源模型",
+         "  2. Anthropic 风格（POST /v1/messages）",
+         "     适用于：以 Anthropic 接口格式部署的 Claude 模型")
     default_choice = "2" if current_api_mode == "anthropic_messages" else "1"
-    mode_choice = _ask(f"API format [1/2] ({default_choice}): ", raw=True)
+    mode_choice = _ask(f"接口格式 [1/2]（默认 {default_choice}）： ", raw=True)
     if mode_choice is None:
         return None
     return ("anthropic_messages" if (mode_choice or default_choice) == "2" else "chat_completions"), discovered_models
@@ -155,38 +155,37 @@ def _model_flow_azure_foundry(config, current_model=""):
     from hermes_cli import azure_detect
 
     cur = _azure_current(config)
-    _say("", "Azure Foundry Configuration", "=" * 50, "",
-         "Azure Foundry can host models with either OpenAI-style or",
-         "Anthropic-style API endpoints.  Hermes will probe your",
-         "endpoint to auto-detect the transport and the deployed",
-         "models when possible.", "")
+    _say("", "Azure Foundry 配置", "=" * 50, "",
+         "Azure Foundry 上的模型可以走 OpenAI 风格、也可以走",
+         "Anthropic 风格的接口。Coco 会尽可能去探测你的端点，",
+         "自动识别用哪种格式、以及上面部署了哪些模型。", "")
     if cur.base_url:
-        print(f"  Current endpoint:  {cur.base_url}")
+        print(f"  当前端点：  {cur.base_url}")
     if cur.api_mode:
-        print(f"  Current API mode:  {_azure_mode_label(cur.api_mode)}")
+        print(f"  当前接口格式：  {_azure_mode_label(cur.api_mode)}")
     if cur.auth_mode == "entra_id":
-        print("  Current auth mode: Microsoft Entra ID (keyless)")
+        print("  当前鉴权方式：Microsoft Entra ID（免密钥）")
     elif cur.api_key:
-        print(f"  Current auth mode: API key ({cur.api_key[:8]}...)")
+        print(f"  当前鉴权方式：API key（{cur.api_key[:8]}…）")
     print()
 
     # Step 1: endpoint URL
     _placeholder = cur.base_url or (
-        "e.g. https://<resource>.openai.azure.com/openai/v1 or https://<resource>.services.ai.azure.com/anthropic")
-    base_url = _ask(f"API endpoint URL [{_placeholder}]: ")
+        "如 https://<资源名>.openai.azure.com/openai/v1 或 https://<资源名>.services.ai.azure.com/anthropic")
+    base_url = _ask(f"接口端点地址 [{_placeholder}]： ")
     if base_url is None:
         return
     effective_url = (base_url or cur.base_url).rstrip("/")
     if not effective_url:
-        print("No endpoint URL provided. Cancelled.")
+        print("没填端点地址，已取消。")
         return
     if not effective_url.startswith(_HTTP):
-        print(f"Invalid URL: {effective_url} (must start with http:// or https://)")
+        print(f"地址不对：{effective_url}（必须以 http:// 或 https:// 开头）")
         return
 
     # Step 2: authentication mode
-    _say("", "Authentication:", "  1. API key                  (AZURE_FOUNDRY_API_KEY in .env)",
-         "  2. Microsoft Entra ID       (managed identity / workload identity / az login)",
+    _say("", "鉴权方式：", "  1. API key                  （.env 里的 AZURE_FOUNDRY_API_KEY）",
+         "  2. Microsoft Entra ID       （托管身份 / 工作负载身份 / az login）",
          "     微软推荐的方式，兼容 OpenAI 风格与 Anthropic 风格的端点。",
          "     Requires the 'Azure AI User' role on the Foundry resource.")
     _auth_default = "2" if cur.auth_mode == "entra_id" else "1"
@@ -209,12 +208,12 @@ def _model_flow_azure_foundry(config, current_model=""):
             token_provider, entra_overrides = preflight
     if not use_entra:
         print()
-        api_key = _ask(f"API key [{cur.api_key[:8] + '...' if cur.api_key else 'required'}]: ", secret=True)
+        api_key = _ask(f"API key [{cur.api_key[:8] + '…' if cur.api_key else '必填'}]: ", secret=True)
         if api_key is None:
             return
         effective_key = api_key or cur.api_key
         if not effective_key:
-            print("No API key provided. Cancelled.")
+            print("没填 API key，已取消。")
             return
 
     # Step 4: auto-detect transport + models
@@ -229,7 +228,7 @@ def _model_flow_azure_foundry(config, current_model=""):
     if effective_model is None:
         return
     if not effective_model:
-        print("No model name provided. Cancelled.")
+        print("没填模型名，已取消。")
         return
 
     # Step 6: context-length lookup
@@ -261,9 +260,9 @@ def _model_flow_azure_foundry(config, current_model=""):
         if get_env_value(var):
             save_env_value(var, "")
 
-    _say("", "✓ Azure Foundry configured:", f"    Endpoint:       {effective_url}",
-         f"    API mode:       {_azure_mode_label(api_mode)}",
-         f"    Auth:           {'Microsoft Entra ID (keyless)' if use_entra else 'API key'}",
-         f"    Model:          {effective_model}",
-         f"    Context length: {ctx_len:,} tokens" if ctx_len else "    Context length: not auto-detected (will fall back at runtime)",
+    _say("", "✓ Azure Foundry 配置完成：", f"    端点：          {effective_url}",
+         f"    接口格式：      {_azure_mode_label(api_mode)}",
+         f"    鉴权：          {'Microsoft Entra ID（免密钥）' if use_entra else 'API key'}",
+         f"    模型：          {effective_model}",
+         f"    上下文长度：    {ctx_len:,} tokens" if ctx_len else "    上下文长度：    没自动探测到（运行时会退回默认）",
          "")

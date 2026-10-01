@@ -58,23 +58,23 @@ def _model_flow_bedrock_api_key(config, region, current_model=""):
     if existing_key:
         from hermes_cli.env_loader import format_secret_source_suffix
         source_suffix = format_secret_source_suffix(existing_source or "AWS_BEARER_TOKEN_BEDROCK")
-        print(f"  Bedrock API Key: {existing_key[:12]}... ✓{source_suffix}")
+        print(f"  Bedrock API Key：{existing_key[:12]}… ✓{source_suffix}")
     else:
-        _say(f"  Endpoint: {mantle_base_url}", "")
-        api_key = _ask("  Bedrock API Key: ", secret=True, cancel_msg="")
+        _say(f"  端点：{mantle_base_url}", "")
+        api_key = _ask("  Bedrock API Key： ", secret=True, cancel_msg="")
         if api_key is None:
             return
         if not api_key:
-            print("  Cancelled.")
+            print("  已取消。")
             return
         save_env_value("AWS_BEARER_TOKEN_BEDROCK", api_key)
         existing_key = api_key
-        print("  ✓ API key saved.")
+        print("  ✓ API key 已保存。")
     print()
 
     # Static list — mantle doesn't need boto3 for discovery
     model_list = _PROVIDER_MODELS.get("bedrock", [])
-    print(f"  Showing {len(model_list)} curated models")
+    print(f"  列出 {len(model_list)} 个精选模型")
     selected = _pick_model_or_prompt(
         model_list, "  Model ID: ", current_model=current_model, confirm_provider="custom",
         confirm_base_url=mantle_base_url, confirm_api_key=existing_key)
@@ -94,9 +94,9 @@ def _model_flow_bedrock_api_key(config, region, current_model=""):
         _ensure_dict_section(cfg, "bedrock")["region"] = region
 
     # Saved as a custom provider pointing to bedrock-mantle (no inline endpoint fields).
-    if _finish_model(selected, "custom:bedrock-mantle", f"  Default model set to: {selected} (via Bedrock API Key, {region})",
-                     no_change="  No change.", drop_base_url=True, drop_api_mode=True, finish=_finish) is not None:
-        print(f"  Endpoint: {mantle_base_url}")
+    if _finish_model(selected, "custom:bedrock-mantle", f"  默认模型已设为：{selected}（来自 Bedrock API Key，{region}）",
+                     no_change="  不改。", drop_base_url=True, drop_api_mode=True, finish=_finish) is not None:
+        print(f"  端点：{mantle_base_url}")
 
 
 _BEDROCK_EXCLUDE_PREFIXES = ("stability.", "cohere.embed", "twelvelabs.", "us.stability.", "us.cohere.embed",
@@ -154,29 +154,29 @@ def _model_flow_bedrock(config, current_model=""):
     try:
         from agent.bedrock_adapter import has_aws_credentials, resolve_aws_auth_env_var, resolve_bedrock_region, discover_bedrock_models
     except ImportError:
-        _say("  ✗ boto3 is not installed. Install it with:", "    pip install boto3", "")
+        _say("  ✗ 没装 boto3。安装命令：", "    pip install boto3", "")
         return
 
     if not has_aws_credentials():
-        _say("  ⚠ No AWS credentials detected via environment variables.",
-             "  Bedrock will use boto3's default credential chain (IMDS, SSO, etc.)", "")
+        _say("  ⚠ 环境变量里没检测到 AWS 凭据。",
+             "  Bedrock 会走 boto3 的默认凭据链（IMDS、SSO 等）", "")
     auth_var = resolve_aws_auth_env_var()
-    _say(f"  AWS credentials: {auth_var} ✓" if auth_var else "  AWS credentials: boto3 default chain (instance role / SSO)",
+    _say(f"  AWS 凭据：{auth_var} ✓" if auth_var else "  AWS 凭据：boto3 默认凭据链（实例角色 / SSO）",
          "")
 
     # 2. Region selection
     current_region = resolve_bedrock_region()
-    region_input = _ask(f"  AWS Region [{current_region}]: ", cancel_msg="")
+    region_input = _ask(f"  AWS 区域 [{current_region}]： ", cancel_msg="")
     if region_input is None:
         return
     region = region_input or current_region
 
     # 2b. Authentication mode
-    _say("  Choose authentication method:", "", "    1. IAM 凭据链（推荐）",
-         "       Works with EC2 instance roles, SSO, env vars, aws configure", "    2. Bedrock API Key",
-         "       Enter your Bedrock API Key directly — also supports",
-         "       team scenarios where an admin distributes keys", "")
-    auth_choice = _ask("  Choice [1]: ", raw=True, cancel_msg="")
+    _say("  选择鉴权方式：", "", "    1. IAM 凭据链（推荐）",
+         "       适用于 EC2 实例角色、SSO、环境变量、aws configure", "    2. Bedrock API Key",
+         "       直接填你的 Bedrock API Key —— 也支持",
+         "       管理员给团队发 key 的场景", "")
+    auth_choice = _ask("  请选择 [1]： ", raw=True, cancel_msg="")
     if auth_choice is None:
         return
     if auth_choice == "2":
@@ -184,22 +184,22 @@ def _model_flow_bedrock(config, current_model=""):
         return
 
     # 3. Model discovery — try live API first, fall back to static list
-    print(f"  Discovering models in {region}...")
+    print(f"  正在 {region} 里探测模型…")
     live_models = discover_bedrock_models(region)
     if live_models:
         model_list = _bedrock_text_model_ids(live_models, region)
-        print(f"  Found {len(model_list)} text model(s) (filtered from {len(live_models)} total)")
+        print(f"  找到 {len(model_list)} 个文本模型（从 {len(live_models)} 个里筛出）")
     else:
         model_list = _PROVIDER_MODELS.get("bedrock", [])
         if not model_list:
-            print("  No models found. Check IAM permissions for bedrock:ListFoundationModels.")
+            print("  没找到模型。检查一下 IAM 有没有 bedrock:ListFoundationModels 权限。")
             return
-        print(f"  Using {len(model_list)} curated models (live discovery unavailable)")
+        print(f"  用 {len(model_list)} 个精选模型（没法在线探测）")
 
     # 4. Model selection
     runtime_url = f"https://bedrock-runtime.{region}.amazonaws.com"
     selected = _pick_model_or_prompt(model_list, "  Model ID: ", current_model=current_model, confirm_provider="bedrock", confirm_base_url=runtime_url)
     # api_mode is dropped: bedrock_converse is auto-detected.
-    _finish_model(selected, "bedrock", f"  Default model set to: {selected} (via AWS Bedrock, {region})", no_change="  No change.",
+    _finish_model(selected, "bedrock", f"  默认模型已设为：{selected}（来自 AWS Bedrock，{region}）", no_change="  不改。",
                   base_url=runtime_url, drop_api_mode=True,
                   finish=lambda cfg, _m: _ensure_dict_section(cfg, "bedrock").__setitem__("region", region))

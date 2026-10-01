@@ -25,7 +25,7 @@ def _parse_context_length(text: str):
     try:
         value = int(text.replace(",", "").replace("k", "000").replace("K", "000"))
     except ValueError:
-        print(f"Invalid context length: {text} — will auto-detect.")
+        print(f"上下文长度填得不对：{text} —— 改为自动探测。")
         return None
     return value if value > 0 else None
 
@@ -46,10 +46,10 @@ def _report_context_length_detection(model_name: str, base_url: str, api_key: st
     except Exception:  # a failing probe must never block the save
         return
     if detected and detected != DEFAULT_FALLBACK_CONTEXT:
-        print(f"  Context length auto-detected: {_format_context_length(detected)} tokens")
+        print(f"  自动探测到上下文长度：{_format_context_length(detected)} tokens")
     else:
-        print(f"  Context length: not detected — using the default {_format_context_length(DEFAULT_FALLBACK_CONTEXT)} tokens "
-              f"(set model.context_length in config.yaml to override)")
+        print(f"  没探测到上下文长度 —— 先用默认 {_format_context_length(DEFAULT_FALLBACK_CONTEXT)} tokens "
+              f"（可在 config.yaml 里设 model.context_length 覆盖）")
 
 
 def _probe_custom_endpoint(effective_key: str, effective_url: str) -> tuple[dict, str]:
@@ -58,35 +58,35 @@ def _probe_custom_endpoint(effective_key: str, effective_url: str) -> tuple[dict
     from hermes_cli.models import probe_api_models
     probe = probe_api_models(effective_key, effective_url)
     if probe.get("used_fallback") and probe.get("resolved_base_url"):
-        print(f"Warning: endpoint verification worked at {probe['resolved_base_url']}/models, "
-              f"not the exact URL you entered. Saving the working base URL instead.")
+        print(f"提醒：接口地址校验在 {probe['resolved_base_url']}/models 通了，"
+              f"不是你填的那个地址，这里改成保存能用的那个。")
         effective_url = probe["resolved_base_url"]
     elif probe.get("models") is not None:
-        print(f"Verified endpoint via {probe.get('probed_url')} ({len(probe.get('models') or [])} model(s) visible)")
+        print(f"接口地址已校验（走 {probe.get('probed_url')}，能看到 {len(probe.get('models') or [])} 个模型）")
     else:
-        print(f"Warning: could not verify this endpoint via {probe.get('probed_url')}. Hermes will still save it.")
+        print(f"提醒：没能通过 {probe.get('probed_url')} 校验这个接口，Coco 还是会先保存。")
         suggested = probe.get("suggested_base_url")
         if suggested and suggested.endswith("/v1"):
-            print(f"  If this server expects /v1 in the path, try base URL: {suggested}")
+            print(f"  如果这个服务要求路径里带 /v1，试试这个地址：{suggested}")
         elif suggested:
-            print(f"  If /v1 should not be in the base URL, try: {suggested}")
+            print(f"  如果路径里不该有 /v1，试试：{suggested}")
     return probe, effective_url
 
 
 def _pick_detected_model(detected_models: list) -> str:
     """Model-name step of the custom flow: confirm a single detection, number-pick from
     several, or type one. Raises KeyboardInterrupt/EOFError like the prompts it wraps."""
-    manual = "Model name (e.g. gpt-4, llama-3-70b): "
+    manual = "模型名（如 gpt-4、llama-3-70b）： "
     if len(detected_models) == 1:
-        print(f"  Detected model: {detected_models[0]}")
-        if input("  Use this model? [Y/n]: ").strip().lower() in {"", "y", "yes"}:
+        print(f"  探测到模型：{detected_models[0]}")
+        if input("  用这个模型吗？[Y/n]： ").strip().lower() in {"", "y", "yes"}:
             return detected_models[0]
         return line_input(manual).strip()
     if len(detected_models) > 1:
-        print("  Available models:")
+        print("  可用模型：")
         for i, m in enumerate(detected_models, 1):
             print(f"    {i}. {m}")
-        pick = input(f"  Select model [1-{len(detected_models)}] or type name: ").strip()
+        pick = input(f"  选择模型 [1-{len(detected_models)}]，或直接填名字： ").strip()
         if pick.isdigit() and 1 <= int(pick) <= len(detected_models):
             return detected_models[int(pick) - 1]
         return pick
@@ -103,26 +103,26 @@ def _model_flow_custom(config):
     current_url = get_env_value("OPENAI_BASE_URL") or ""
     current_key = get_env_value("OPENAI_API_KEY") or ""
 
-    print("Custom OpenAI-compatible endpoint configuration:")
+    print("自定义 OpenAI 兼容端点配置：")
     if current_url:
-        print(f"  Current URL: {current_url}")
+        print(f"  当前地址：{current_url}")
     if current_key:
-        print(f"  Current key: {current_key[:8]}...")
+        print(f"  当前密钥：{current_key[:8]}…")
     print()
 
     try:
-        base_url = line_input(f"API base URL [{current_url or 'e.g. https://api.example.com/v1'}]: ").strip()
-        api_key = masked_secret_prompt(f"API key [{current_key[:8] + '...' if current_key else 'optional'}]: ").strip()
+        base_url = line_input(f"接口地址 [{current_url or '如 https://api.example.com/v1'}]: ").strip()
+        api_key = masked_secret_prompt(f"API key [{current_key[:8] + '…' if current_key else '可选'}]: ").strip()
     except (KeyboardInterrupt, EOFError):
-        print("\nCancelled.")
+        print("\n已取消。")
         return
 
     if not base_url and not current_url:
-        print("No URL provided. Cancelled.")
+        print("没填地址，已取消。")
         return
     effective_url = base_url or current_url
     if not effective_url.startswith(_HTTP):
-        print(f"Invalid URL: {effective_url} (must start with http:// or https://)")
+        print(f"地址不对：{effective_url}（必须以 http:// 或 https:// 开头）")
         return
     effective_key = api_key or current_key
 
@@ -131,11 +131,11 @@ def _model_flow_custom(config):
     _url_lower = effective_url.rstrip("/").lower()
     _looks_local = any(h in _url_lower for h in ("localhost", "127.0.0.1", "0.0.0.0", ":11434", ":8080", ":5000"))
     if _looks_local and not _url_lower.endswith("/v1"):
-        _say("", "  Hint: Did you mean to add /v1 at the end?",
-             "  Most local model servers (Ollama, vLLM, llama.cpp) require it.", f"  e.g. {effective_url.rstrip('/')}/v1")
-        if _ask("  Add /v1? [Y/n]: ", raw=True, cancel_msg=None, on_cancel="n").lower() in {"", "y", "yes"}:
+        _say("", "  提示：是不是想在结尾加 /v1？",
+             "  Most local model servers (Ollama, vLLM, llama.cpp) require it.", f"  如 {effective_url.rstrip('/')}/v1")
+        if _ask("  要加 /v1 吗？[Y/n]： ", raw=True, cancel_msg=None, on_cancel="n").lower() in {"", "y", "yes"}:
             effective_url = effective_url.rstrip("/") + "/v1"
-            print(f"  Updated URL: {effective_url}")
+            print(f"  已改为：{effective_url}")
         print()
 
     probe, effective_url = _probe_custom_endpoint(effective_key, effective_url)
@@ -145,17 +145,17 @@ def _model_flow_custom(config):
     current_model_cfg = config.get("model")
     current_api_mode = str(current_model_cfg.get("api_mode") or "").strip() if isinstance(current_model_cfg, dict) else ""
     api_mode = _prompt_custom_api_mode_selection(effective_url, current_api_mode=current_api_mode)
-    print(f"  API mode: {api_mode}" if api_mode else "  API mode: auto-detect")
+    print(f"  接口格式：{api_mode}" if api_mode else "  接口格式：自动识别")
 
     # Select model — use probe results when available, fall back to manual input
     try:
         model_name = _pick_detected_model(probe.get("models") or [])
-        context_length_str = line_input("Context length in tokens [leave blank for auto-detect]: ").strip()
+        context_length_str = line_input("上下文长度（tokens）[留空 = 自动探测]： ").strip()
         # Display name — shown in the provider menu on future runs
         default_name = _auto_provider_name(effective_url)
-        display_name = line_input(f"Display name [{default_name}]: ").strip() or default_name
+        display_name = line_input(f"显示名 [{default_name}]： ").strip() or default_name
     except (KeyboardInterrupt, EOFError):
-        print("\nCancelled.")
+        print("\n已取消。")
         return
     context_length = _parse_context_length(context_length_str)
     if context_length is None and model_name:
@@ -172,7 +172,7 @@ def _model_flow_custom(config):
             _identity = f"{_identity}_{_parsed.port}"
         custom_key_env = custom_endpoint_key_env(_identity)
         save_env_value(custom_key_env, effective_key)
-        print(f"  API key saved to .env as {custom_key_env}")
+        print(f"  API key 已存进 .env（变量名 {custom_key_env}）")
 
     def _apply_endpoint(model: dict) -> None:
         model["provider"] = "custom"
@@ -195,7 +195,7 @@ def _model_flow_custom(config):
         # Sync the caller's config dict so the setup wizard's final save_config(config)
         # doesn't overwrite model.provider/base_url with its stale values.
         config["model"] = dict(model)
-        print(f"Default model set to: {model_name} (via {effective_url})")
+        print(f"默认模型已设为：{model_name}（来自 {effective_url}）")
     else:
         if base_url or api_key:
             deactivate_provider()
@@ -205,7 +205,7 @@ def _model_flow_custom(config):
             _caller_model = {"default": _caller_model} if _caller_model else {}
         _apply_endpoint(_caller_model)
         config["model"] = _caller_model
-        print("Endpoint saved. Use `/model` in chat or `hermes model` to set a model.")
+        print("端点已保存。要设模型，聊天里用 `/model`，或跑「coco model」。")
 
     # Auto-save to custom_providers so it appears in the menu next time
     _save_custom_provider(effective_url, effective_key, model_name or "", context_length=context_length,
@@ -247,7 +247,7 @@ def _discover_named_custom_models(provider_info: dict, api_key: str, configured_
     name, base_url = provider_info["name"], provider_info["base_url"]
     api_mode = provider_info.get("api_mode", "")
     provider_key = (provider_info.get("provider_key") or "").strip()
-    print("Fetching available models...")
+    print("正在拉取可用模型…")
     fetch_kwargs = {"timeout": 8.0}
     if api_mode:
         fetch_kwargs["api_mode"] = api_mode
@@ -294,26 +294,26 @@ def _discover_named_custom_models(provider_info: dict, api_key: str, configured_
 def _pick_named_custom_model(name: str, models: list, saved_model: str):
     """Searchable radiolist over *models* (numbered prompt without curses); None = cancelled."""
     default_idx = models.index(saved_model) if saved_model and saved_model in models else 0
-    print(f"Found {len(models)} model(s):\n")
+    print(f"找到 {len(models)} 个模型：\n")
     menu_items = [f"{m} (current)" if m == saved_model else m for m in models] + ["Cancel"]
-    idx = _radiolist(f"Select model from {name}:", menu_items, default_idx, searchable=True)
+    idx = _radiolist(f"从 {name} 里选模型：", menu_items, default_idx, searchable=True)
     if idx is not None:
         print()
     else:
         for i, m in enumerate(models, 1):
-            print(f"  {i}. {m}{' (current)' if m == saved_model else ''}")
+            print(f"  {i}. {m}{'（当前）' if m == saved_model else ''}")
         _say(f"  {len(models) + 1}. Cancel", "")
         try:
-            val = input(f"Choice [1-{len(models) + 1}]: ").strip()
+            val = input(f"请选择 [1-{len(models) + 1}]： ").strip()
             if not val:
-                print("Cancelled.")
+                print("已取消。")
                 return None
             idx = int(val) - 1
         except (ValueError, KeyboardInterrupt, EOFError):
-            print("\nCancelled.")
+            print("\n已取消。")
             return None
     if idx < 0 or idx >= len(models):
-        print("Cancelled.")
+        print("已取消。")
         return None
     return models[idx]
 
@@ -356,14 +356,14 @@ def _model_flow_named_custom(config, provider_info):
 
     _say(f"  Provider: {name}", f"  URL:      {base_url}")
     if saved_model:
-        print(f"  Current:  {saved_model}")
+        print(f"  当前：  {saved_model}")
     print()
 
     native_catalog_empty = False
     if not discover:
         # Never probe. The active model is a usable sole choice, not a catalog.
         models = configured_models or ([saved_model] if saved_model else [])
-        print(f"Using configured models (discover_models: false): {len(models)}")
+        print(f"用配置里写死的模型（discover_models: false）：{len(models)} 个")
     else:
         models, native_catalog_empty = _discover_named_custom_models(provider_info, api_key, configured_models, explicit_catalog)
 
@@ -372,18 +372,18 @@ def _model_flow_named_custom(config, provider_info):
         if model_name is None:
             return
     elif saved_model and not native_catalog_empty:
-        print("Could not fetch models from endpoint.")
-        model_name = _ask(f"Model name [{saved_model}]: ")
+        print("没法从这个端点拉到模型列表。")
+        model_name = _ask(f"模型名 [{saved_model}]： ")
         if model_name is None:
             return
         model_name = model_name or saved_model
     else:
-        print("Could not fetch models from endpoint. Enter model name manually.")
-        model_name = _ask("Model name: ")
+        print("没法从这个端点拉到模型列表，请手动填模型名。")
+        model_name = _ask("模型名： ")
         if model_name is None:
             return
         if not model_name:
-            print("No model specified. Cancelled.")
+            print("没填模型名，已取消。")
             return
 
     # Activate and save the model to the custom_providers entry
@@ -433,4 +433,4 @@ def _model_flow_named_custom(config, provider_info):
         # Save model name to the custom_providers entry for next time
         _save_custom_provider(base_url, config_api_key, model_name, api_mode=api_mode)
 
-    _say(f"\n✅ Model set to: {model_name}", f"   Provider: {name} ({base_url})")
+    _say(f"\n✅ 模型已设为：{model_name}", f"   Provider: {name} ({base_url})")
