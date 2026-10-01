@@ -151,7 +151,7 @@ def _check_docker_backend(terminal_env: str, running_in_container: bool, issues:
     if terminal_env == "docker":
         if not docker_exe:
             _fail_and_issue("Docker or Podman not installed", "(needed for the 'docker' terminal backend)",
-                            "Install Docker or Podman, or run `hermes setup terminal` to switch backend.", issues)
+                            "装 Docker 或 Podman，或者跑 `coco setup terminal` 换个后端。", issues)
         else:
             runtime = docker_runtime_name(docker_exe)
             hint = docker_runtime_start_hint(docker_exe)
@@ -163,20 +163,20 @@ def _check_docker_backend(terminal_env: str, running_in_container: bool, issues:
             _require(_run_ok([docker_exe, "version"], timeout=10),
                      (runtime, "(daemon running)" if runtime == "Docker" else "(reachable)"),
                      (unreachable, "(needed for the 'docker' terminal backend)"),
-                     f"{hint[0].upper()}{hint[1:]}, or run `hermes setup terminal` to switch backend.", issues)
+                     f"{hint[0].upper()}{hint[1:]}，或者跑 `coco setup terminal` 换个后端。", issues)
     elif docker_exe:
-        check_ok(docker_runtime_name(docker_exe), "(optional)")
+        check_ok(docker_runtime_name(docker_exe), "（可选）")
     elif _is_termux():
         check_info("Termux 里用不了 Docker（Android 上属正常）")
     elif not running_in_container:  # in-container case already explained by the caller
-        check_warn("没装 Docker/Podman", "(optional)")
+        check_warn("没装 Docker/Podman", "（可选）")
 
 
 def _check_ssh_backend(issues: list[str]) -> None:
     ssh_host = os.getenv("TERMINAL_SSH_HOST")
     if not ssh_host:
-        return _fail_and_issue("SSH host not configured", "(needed for the 'ssh' terminal backend)",
-                               "run `hermes setup terminal` and enter the SSH host and user.", issues)
+        return _fail_and_issue("SSH 主机没配", "（‘ssh’ 终端后端要用）",
+                               "跑 `coco setup terminal` 把 SSH 主机和用户填上。", issues)
     ssh_user, ssh_port, ssh_key = (os.getenv(f"TERMINAL_SSH_{k}") for k in ("USER", "PORT", "KEY"))
     cmd = ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]
     if ssh_port:
@@ -185,7 +185,7 @@ def _check_ssh_backend(issues: list[str]) -> None:
         cmd += ["-i", os.path.expanduser(ssh_key)]
     cmd += [f"{ssh_user}@{ssh_host}" if ssh_user else ssh_host, "echo ok"]
     _require(_run_ok(cmd, timeout=15, text=True, encoding='utf-8', errors='replace'),
-             f"SSH connection to {ssh_host}", (f"SSH connection to {ssh_host}", ""), f"Check SSH configuration for {ssh_host}", issues)
+             f"到 {ssh_host} 的 SSH 连接", (f"到 {ssh_host} 的 SSH 连接", ""), f"检查 {ssh_host} 的 SSH 配置", issues)
 
 
 def _require(cond, ok, bad, issue: str, issues: list[str]) -> None:
@@ -195,9 +195,9 @@ def _require(cond, ok, bad, issue: str, issues: list[str]) -> None:
 
 
 def _check_daytona_backend(issues: list[str]) -> None:
-    _require(os.getenv("DAYTONA_API_KEY"), ("Daytona API key", "(configured)"),
-             ("Daytona API key missing", "(needed for the 'daytona' terminal backend)"),
-             "run `hermes setup terminal` (Daytona) to enter it.", issues)
+    _require(os.getenv("DAYTONA_API_KEY"), ("Daytona 密钥", "（已配置）"),
+             ("缺 Daytona 密钥", "（‘daytona’ 终端后端要用）"),
+             "跑 `coco setup terminal`（Daytona 那一项）把它填上。", issues)
     try:
         from daytona import Daytona  # noqa: F401 — SDK presence check
         check_ok("daytona SDK", "(installed)")
@@ -209,26 +209,26 @@ def _check_vercel_backend(issues: list[str]) -> None:
     from tools.terminal_tool_backends import _SUPPORTED_VERCEL_RUNTIMES
     runtime = os.getenv("TERMINAL_VERCEL_RUNTIME", "node24").strip() or "node24"
     supported = ", ".join(_SUPPORTED_VERCEL_RUNTIMES)
-    _require(runtime in _SUPPORTED_VERCEL_RUNTIMES, ("Vercel runtime", f"({runtime})"),
-             ("Vercel runtime unsupported", f"({runtime}; use {supported})"), f"Set TERMINAL_VERCEL_RUNTIME to one of: {supported}", issues)
+    _require(runtime in _SUPPORTED_VERCEL_RUNTIMES, ("Vercel 运行时", f"（{runtime}）"),
+             ("Vercel 运行时不支持", f"（{runtime}；要用 {supported}）"), f"把 TERMINAL_VERCEL_RUNTIME 设成其中之一：{supported}", issues)
     _require(os.getenv("TERMINAL_CONTAINER_DISK", "51200").strip() in {"", "0", "51200"},
-             ("Vercel disk setting", "(uses platform default)"), ("Vercel custom disk unsupported", "(reset terminal.container_disk to 51200)"),
-             "Vercel Sandbox does not support custom container_disk; use the shared default 51200", issues)
-    _require(importlib.util.find_spec("vercel") is not None, ("vercel SDK", "(installed)"),
-             ("vercel SDK not installed", "(pip install 'hermes-agent[vercel]')"),
-             "Install the Vercel optional dependency: pip install 'hermes-agent[vercel]'", issues)
+             ("Vercel 磁盘设置", "（用平台默认）"), ("Vercel 不支持自定义磁盘", "（把 terminal.container_disk 改回 51200）"),
+             "Vercel 沙箱不支持自定义 container_disk，用共享默认值 51200", issues)
+    _require(importlib.util.find_spec("vercel") is not None, ("vercel SDK", "（已安装）"),
+             ("vercel SDK 没装", "（pip install 'hermes-agent[vercel]'）"),
+             "Vercel 的可选依赖要装：pip install 'hermes-agent[vercel]'", issues)
     auth_status = describe_vercel_auth()
     if auth_status.ok:
-        check_ok("Vercel auth", f"({auth_status.label})")
+        check_ok("Vercel 认证", f"（{auth_status.label}）")
     elif auth_status.label.startswith("partial"):
-        _fail_and_issue("Vercel auth incomplete", f"({auth_status.label})", "Set VERCEL_TOKEN, VERCEL_PROJECT_ID, and VERCEL_TEAM_ID together", issues)
+        _fail_and_issue("Vercel 认证不全", f"（{auth_status.label}）", "VERCEL_TOKEN、VERCEL_PROJECT_ID、VERCEL_TEAM_ID 要一起设", issues)
     else:
-        _fail_and_issue("Vercel auth not configured", f"({auth_status.label})", "Configure Vercel Sandbox auth with VERCEL_TOKEN, VERCEL_PROJECT_ID, and VERCEL_TEAM_ID", issues)
+        _fail_and_issue("Vercel 认证没配", f"（{auth_status.label}）", "配 Vercel 沙箱认证要设 VERCEL_TOKEN、VERCEL_PROJECT_ID、VERCEL_TEAM_ID", issues)
     for line in auth_status.detail_lines:
         check_info(f"Vercel 登录 {line}")
     persistent = os.getenv("TERMINAL_CONTAINER_PERSISTENT", "true").lower() in {"1", "true", "yes", "on"}
     check_info("Vercel 持久化：只快照文件系统；沙箱重建后运行中的进程不会保留"
-               if persistent else "Vercel persistence: ephemeral filesystem")
+               if persistent else "Vercel 持久化：文件系统是临时的")
 
 
 def _check_plugin_backend(terminal_env: str, issues: list[str]) -> None:
@@ -240,8 +240,8 @@ def _check_plugin_backend(terminal_env: str, issues: list[str]) -> None:
     except Exception:
         provider = None
     if provider is None:
-        return _fail_and_issue(f"Unknown terminal backend '{terminal_env}'", "(no built-in or plugin backend by that name)",
-                               "Fix terminal.backend in config.yaml, or install/enable the plugin that provides it", issues)
+        return _fail_and_issue(f"认不出这个终端后端「{terminal_env}」", "（内置和插件里都没有这个名字的后端）",
+                               "改 config.yaml 里的 terminal.backend，或者把提供它的插件装上/启用", issues)
     for ok, label, detail in provider.doctor_checks():
         _require(ok, (label, detail), (label, detail), detail.strip("()"), issues)
 
@@ -401,13 +401,13 @@ def _audit_one(npm_bin: str, npm_dir, label: str, audit_extra: list[str], issues
         if total == 0:
             check_ok(f"{label} 依赖", "（没有已知漏洞）")
         elif critical > 0 or high > 0:
-            detail = "build-time tooling" if workspace_scoped else "runtime dependency tree"
-            remedy = ("fix is an upstream lockfile bump — a local manual fix does not persist"
-                      " (the next `hermes update` reinstalls from the committed lockfile)")
+            detail = "构建期工具" if workspace_scoped else "运行时依赖树"
+            remedy = ("得等上游更新 lockfile —— 本地手改不保留"
+                      "（下次 `coco update` 会按仓库里的 lockfile 重装）")
             check_warn(f"{label} 依赖", f"（严重 {critical}、高 {high}、中 {moderate} —— {remedy}）")
             if workspace_scoped:
-                check_info("构建期工具（不影响运行）；如果要手工修 npm "
-                           "errors with an arborist crash it's a known npm bug — clears via a lockfile bump")
+                check_info("构建期工具（不影响运行）；如果手工修 npm 时报 arborist 崩溃，"
+                           "那是 npm 已知 bug —— 更新 lockfile 就好")
             else:
                 check_info(f"{detail}；把修复写进 package-lock.json（见 #116774）")
             issues.append(f"{label} 有 {total} 个 npm 漏洞")
@@ -454,7 +454,7 @@ def _check_npm_audit(should_fix: bool, f: Finding) -> None:
             check_info(note)
 
 
-@doctor_check("Could not check tool availability", "({e})")
+@doctor_check("查工具可用性时出错", "（{e}）")
 def _check_tool_availability(should_fix: bool, f: Finding) -> None:
     from hermes_cli.doctor import PROJECT_ROOT
     sys.path.insert(0, str(PROJECT_ROOT))

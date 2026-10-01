@@ -553,7 +553,7 @@ def test_run_doctor_flags_missing_credentials_for_active_openrouter_provider(mon
         doctor_mod.run_doctor(Namespace(fix=False))
 
     out = buf.getvalue()
-    assert "model.provider 'openrouter' is set but no API key is configured" in out
+    assert "model.provider 'openrouter' 设了，但没配 API Key" in out
 
 
 @pytest.mark.parametrize(
@@ -657,7 +657,7 @@ def test_run_doctor_accepts_vendor_slugs_for_named_custom_provider(monkeypatch, 
         "'custom:hpc-ai'"
         not in out
     )
-    assert "Either set model.provider to 'openrouter', or drop the vendor prefix." not in out
+    assert "要么把 model.provider 设成 'openrouter'，要么去掉厂商前缀。" not in out
 
 
 @pytest.mark.parametrize(

@@ -80,7 +80,7 @@ def test_large_wal_warning_under_a_live_writer_never_suggests_a_bare_fix(tmp_pat
     finding = Finding()
     _state_db_wal(finding, False, _large_wal_db(tmp_path))
     assert len(finding.issues) == 1 and not finding.fixed
-    assert finding.issues[0].index("stop the profile's gateway") < finding.issues[0].index("hermes doctor --fix")
+    assert finding.issues[0].index("先停掉这个配置档的网关") < finding.issues[0].index("coco doctor --fix")
 
 
 def test_large_wal_warning_without_a_holder_still_orders_stop_before_fix(tmp_path, monkeypatch):
@@ -90,4 +90,4 @@ def test_large_wal_warning_without_a_holder_still_orders_stop_before_fix(tmp_pat
     finding = Finding()
     _state_db_wal(finding, False, _large_wal_db(tmp_path))
     assert len(finding.issues) == 1 and not finding.fixed
-    assert finding.issues[0].index("stop the profile's gateway") < finding.issues[0].index("hermes doctor --fix")
+    assert finding.issues[0].index("先停掉这个配置档的网关") < finding.issues[0].index("coco doctor --fix")

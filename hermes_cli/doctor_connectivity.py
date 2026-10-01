@@ -123,13 +123,11 @@ def _build_apikey_providers_list() -> list:
 
 # HTTP status -> (detail, issue) for the OpenRouter probe; anything else is a generic HTTP failure.
 _OPENROUTER_STATUS = {
-    401: ("(invalid API key)", "Check OPENROUTER_API_KEY in .env"),
-    402: ("(out of credits — payment required)",
-          "OpenRouter account has insufficient credits. "
-          "Fix: run 'hermes config set model.provider <provider>' "
-          "to switch providers, or fund your OpenRouter account "
-          "at https://openrouter.ai/settings/credits"),
-    429: ("(rate limited)", "OpenRouter rate limit hit — consider switching to a different provider or waiting"),
+    401: ("（API Key 无效）", "检查 .env 里的 OPENROUTER_API_KEY"),
+    402: ("（余额不足 —— 需要充值）",
+          "OpenRouter 账户余额不足。要么换服务商（跑 `coco config set model.provider <服务商>`），"
+          "要么去 https://openrouter.ai/settings/credits 充值"),
+    429: ("（被限流）", "OpenRouter 触发限流 —— 可以换个服务商，或者等一会儿"),
 }
 
 
@@ -142,10 +140,10 @@ def _probe_openrouter() -> ProbeResult:
         import httpx
         r = httpx.get(OPENROUTER_MODELS_URL, headers={"Authorization": f"Bearer {key}"}, timeout=10)
     except Exception as e:
-        return _row(name, "fail", f"({e})", ["Check network connectivity"])
+        return _row(name, "fail", f"({e})", ["检查网络连通性"])
     if r.status_code == 200:
         return _row(name, "ok")
-    detail, issue = _OPENROUTER_STATUS.get(r.status_code, (f"(HTTP {r.status_code})", None))
+    detail, issue = _OPENROUTER_STATUS.get(r.status_code, (f"（HTTP {r.status_code}）", None))
     return _row(name, "fail", detail, [issue] if issue else None)
 
 
@@ -199,7 +197,7 @@ def _probe_apikey_provider(pname, env_vars, default_url, base_env, supports_heal
         return _row(pname, "warn", f"({e})", label=label)
     if r.status_code == 401:
         return _row(pname, "fail", "(invalid API key)", [f"Check {env_vars[0]} in .env"], label=label)
-    return _row(pname, "ok", label=label) if r.status_code == 200 else _row(pname, "warn", f"(HTTP {r.status_code})", label=label)
+    return _row(pname, "ok", label=label) if r.status_code == 200 else _row(pname, "warn", f"（HTTP {r.status_code}）", label=label)
 
 
 def _anthropic_messages_probe(base: str, key: str):
@@ -277,13 +275,13 @@ def _probe_bedrock() -> ProbeResult:
         # Trim retries so a transient failure doesn't pad the doctor run by 30+ seconds.
         client = boto3.client("bedrock", region_name=region, config=_BotoConfig(connect_timeout=5, read_timeout=10, retries={"max_attempts": 1}))
         n = len(client.list_foundation_models().get("modelSummaries", []))
-        return _row(name, "ok", f"({auth_var}, {region}, {n} models)", label=label)
+        return _row(name, "ok", f"（{auth_var}，{region}，{n} 个模型）", label=label)
     except ImportError:
         pip = f"{sys.executable} -m pip install boto3"
-        return _row(name, "warn", f"(boto3 not installed — {pip})", [f"Install boto3 for Bedrock: {pip}"], label=label)
+        return _row(name, "warn", f"（没装 boto3 —— {pip}）", [f"用 Bedrock 要装 boto3：{pip}"], label=label)
     except Exception as e:
         err_name = type(e).__name__
-        return _row(name, "warn", f"({err_name}: {e})", [f"AWS Bedrock: {err_name} — check IAM permissions for bedrock:ListFoundationModels"], label=label)
+        return _row(name, "warn", f"（{err_name}：{e}）", [f"AWS Bedrock：{err_name} —— 检查 bedrock:ListFoundationModels 的 IAM 权限"], label=label)
 
 
 def _probe_azure_entra() -> ProbeResult:
@@ -309,17 +307,17 @@ def _probe_azure_entra() -> ProbeResult:
             EntraIdentityConfig, SCOPE_AI_AZURE_DEFAULT, describe_active_credential, has_azure_identity_installed,
         )
     except Exception as exc:
-        return _row(name, "warn", f"(adapter import failed: {exc})", [f"Azure Foundry adapter import failed: {exc}"], label=label)
+        return _row(name, "warn", f"（适配器导入失败：{exc}）", [f"Azure Foundry 适配器导入失败：{exc}"], label=label)
     if not has_azure_identity_installed():
-        return _row(name, "warn", "(azure-identity not installed)", [f"Install azure-identity: {sys.executable} -m pip install azure-identity"], label=label)
+        return _row(name, "warn", "（没装 azure-identity）", [f"装 azure-identity：{sys.executable} -m pip install azure-identity"], label=label)
     entra_cfg = model_cfg.get("entra") or {}
     scope = (str(entra_cfg.get("scope") or "").strip() if isinstance(entra_cfg, dict) else "") or SCOPE_AI_AZURE_DEFAULT
     info = describe_active_credential(config=EntraIdentityConfig(scope=scope), timeout_seconds=10.0)
     if info.get("ok"):
-        tag = ", ".join(info.get("env_sources") or []) or "default credential chain"
-        return _row(name, "ok", f"({tag}, scope={scope})", label=label)
-    err = info.get("error") or "credential chain exhausted"
-    hint = info.get("hint") or "Run `az login`, set AZURE_TENANT_ID/AZURE_CLIENT_ID/AZURE_CLIENT_SECRET, or attach a managed identity to this VM."
+        tag = ", ".join(info.get("env_sources") or []) or "默认凭据链"
+        return _row(name, "ok", f"（{tag}，scope={scope}）", label=label)
+    err = info.get("error") or "凭据链全都不通"
+    hint = info.get("hint") or "跑 `az login`、设 AZURE_TENANT_ID/AZURE_CLIENT_ID/AZURE_CLIENT_SECRET，或者给这台机器挂一个托管身份。"
     return _row(name, "warn", f"({err})", [f"Azure Foundry Entra: {err}. {hint}"], label=label)
 
 
@@ -345,7 +343,7 @@ _IPV6_PROBE_TIMEOUT = 2.0
 def _probe_ipv6_path() -> ProbeResult:
     """Dead-IPv6-route detector (#114265): an advertised AAAA path that only times out makes every
     serial connect burn its full timeout before IPv4 answers. Name the remedy instead of stalling."""
-    name = "IPv6 route"
+    name = "IPv6 路由"
     if _load_network_config().get("force_ipv4"):
         return _skip(name)  # IPv6 is never dialled
     host = urlsplit(OPENROUTER_MODELS_URL).hostname
@@ -358,14 +356,13 @@ def _probe_ipv6_path() -> ProbeResult:
     try:
         _tcp_connect(infos[0][4], _IPV6_PROBE_TIMEOUT)
     except TimeoutError:
-        remedy = "set `network.force_ipv4: true` in config.yaml (or fix the IPv6 route)"
-        return _row(name, "warn", f"(IPv6 route to {host} advertised but dead: connect timed out after "
-                    f"{_IPV6_PROBE_TIMEOUT:g}s — {remedy})",
-                    [f"Dead IPv6 route: every IPv6-first connect stalls before IPv4 answers. Fix: {remedy}"])
+        remedy = "在 config.yaml 里设 `network.force_ipv4: true`（或者把 IPv6 路由修好）"
+        return _row(name, "warn", f"（到 {host} 的 IPv6 路由宣告了但不通：连接 {_IPV6_PROBE_TIMEOUT:g} 秒后超时 —— {remedy}）",
+                    [f"IPv6 路由不通：每次优先走 IPv6 的连接都会先卡到超时才回落 IPv4。改法：{remedy}"])
     except OSError as e:
         if e.errno in (errno.ENETUNREACH, errno.EHOSTUNREACH, errno.EADDRNOTAVAIL):
-            return _row(name, "ok", "(no IPv6 route — IPv4 only)")  # fails fast, so no stall
-    return _row(name, "ok", f"(IPv6 path to {host} reachable)")  # refused/reset also prove a live path
+            return _row(name, "ok", "（没有 IPv6 路由 —— 只有 IPv4）")  # fails fast, so no stall
+    return _row(name, "ok", f"（到 {host} 的 IPv6 通）")  # refused/reset also prove a live path
 
 
 # /rate_limit is reachable by EVERY token type and does not count against the quota. /user answers
@@ -394,13 +391,13 @@ def _probe_github_token() -> ProbeResult:
             "Authorization": f"Bearer {get_env_value(var)}", "User-Agent": _HERMES_USER_AGENT,
             "Accept": "application/vnd.github+json"})
     except Exception as e:
-        return _row(name, "fail", f"({e})", ["Check network connectivity"])
+        return _row(name, "fail", f"({e})", ["检查网络连通性"])
     if r.status_code == 200:
-        return _row(name, "ok", f"({var} from {where} accepted by api.github.com)")
+        return _row(name, "ok", f"（{where} 里的 {var} 被 api.github.com 接受）")
     if r.status_code == 401:
-        return _row(name, "fail", f"({var} in {where} rejected by api.github.com — expired or revoked)",
-                    [f"{var} in {where} is expired or revoked: remove it (gh CLI login is used instead) or paste a fresh token"])
-    return _row(name, "fail", f"(HTTP {r.status_code} from api.github.com)")
+        return _row(name, "fail", f"（{where} 里的 {var} 被 api.github.com 拒绝 —— 过期或已吊销）",
+                    [f"{where} 里的 {var} 过期或已吊销：删掉它（改用 gh CLI 登录），或者换一个新的 token"])
+    return _row(name, "fail", f"（api.github.com 返回 HTTP {r.status_code}）")
 
 
 def build_probes() -> list:

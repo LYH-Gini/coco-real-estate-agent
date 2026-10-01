@@ -86,7 +86,7 @@ def doctor_check(on_error: str | None = None, detail: str = ""):
 
 
 def ensure_dir(f: Finding, should_fix: bool, path, exists_msg: str, created_msg: str, missing_msg: str) -> None:
-    """ok when *path* exists; with --fix create it (counts as fixed); else warn "(will be created on first use)"."""
+    """ok when *path* exists; with --fix create it (counts as fixed); else warn "（首次使用时创建）"."""
     if path.exists():
         check_ok(exists_msg)
     elif should_fix:
@@ -94,4 +94,4 @@ def ensure_dir(f: Finding, should_fix: bool, path, exists_msg: str, created_msg:
         check_ok(created_msg)
         f.fixed += 1
     else:
-        check_warn(missing_msg, "(will be created on first use)")
+        check_warn(missing_msg, "（首次使用时创建）")

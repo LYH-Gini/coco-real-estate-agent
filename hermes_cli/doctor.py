@@ -96,7 +96,7 @@ def _check_api_connectivity(should_fix: bool, f: Finding) -> None:
     """Parallel HTTP/SDK probes for every configured provider; results printed in submission order."""
     probes = build_probes()
     # Single status line so users see something happening; ``\r`` clears it once results land.
-    print(f"  {color(f'Running {len(probes)} connectivity checks in parallel…', Colors.DIM)}", end="", flush=True)
+    print(f"  {color(f'正在并行跑 {len(probes)} 项连通性检查…', Colors.DIM)}", end="", flush=True)
     results = run_probes(probes)
     print("\r" + " " * 70 + "\r", end="")
     for r in results:

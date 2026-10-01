@@ -101,17 +101,17 @@ def _render_state_db_stats(stats: dict, holders=None, host_note: str = "") -> li
         else:
             lines.append(("warn", f"state.db FTS repair is blocked after {deferral.get('attempts') or '?'} deferral(s) "
                           f"by PID(s) {pids}",
-                          "(stop the listed processes; the host gateway's own retry then rebuilds, or run "
-                          "'hermes sessions optimize-storage' with every holder stopped)"))
+                          "（先停掉上面列的进程；主网关自己的重试会重建，或者停掉所有占用者后跑 "
+                          "`coco cli sessions optimize-storage`）"))
     # Oversized DB: suggest auto_prune, plus the offline optimize-storage pass when the FTS rebuild is
     # pending OR the DB predates the current trigram layout (fts_storage_version < FTS_STORAGE_VERSION).
     if logical is not None and logical > STATE_DB_SIZE_WARN_BYTES:
-        detail = "consider enabling sessions.auto_prune in config.yaml to bound growth"
+        detail = "建议在 config.yaml 里开 sessions.auto_prune 控制增长"
         stale_trigram = (fts is not None and fts.get("messages_fts_trigram")
                          and (stats.get("fts_storage_version") or 0) < FTS_STORAGE_VERSION)
         if stats.get("fts_rebuild_pending") or stale_trigram:
-            detail += "; run 'hermes sessions optimize-storage' offline (with the host gateway stopped) to compact FTS storage"
-        lines.append(("warn", f"state.db is large ({_human_bytes(logical)})", f"({detail})"))
+            detail += "；停掉主网关后离线跑 `coco cli sessions optimize-storage` 压缩 FTS 存储"
+        lines.append(("warn", f"state.db 偏大（{_human_bytes(logical)}）", f"（{detail}）"))
     # WAL runaway is deliberately NOT warned here: _state_db_wal already warns above 50 MB and offers --fix.
     return lines
 
@@ -199,9 +199,9 @@ def _check_scratch_dir(hermes_home: Path, _DHH: str) -> None:
     check_ok(f"{_DHH}/cache/scratch/ 是临时目录（TMPDIR；{size}，闲置 {SCRATCH_MAX_IDLE_HOURS} 小时后自动清理）")
     for name, nbytes in unpruned_cache_hogs(hermes_home):
         check_warn(
-            f"{_DHH}/cache/{name}/ is {_human_bytes(nbytes)} and outside every pruner "
-            f"(only cache/scratch/ and cache/terminal/ are reaped) — move task files under "
-            f"cache/scratch/<task>/ or delete it"
+            f"{_DHH}/cache/{name}/ 占 {_human_bytes(nbytes)}，不在任何自动清理范围内 "
+            f"（只有 cache/scratch/ 和 cache/terminal/ 会被清）—— 把任务文件挪到 "
+            f"cache/scratch/<任务>/ 下，或者直接删掉"
         )
     tmpdir = os.environ.get("TMPDIR", "")
     if tmpdir and tmpdir != os.environ.get(SCRATCH_DIR_MARKER_ENV, ""):
@@ -253,21 +253,21 @@ def _write_health_reason(state_db_path: Path, *, should_fix: bool):
 # ``structural`` has no in-place repair: an FTS rebuild cannot fix a canonical b-tree, and the
 # ``.malformed-backup`` the repair path would leave beside state.db is a copy of the same damage (#88587).
 _STATE_DB_REPAIRS = {
-    "fts": ("Repaired state.db FTS write health",
-            "state.db FTS write-health repair did not recover automatically",
-            "state.db FTS write corruption and auto-repair failed — restore from the backup copy beside state.db",
-            "state.db FTS write corruption — run 'hermes doctor --fix' (or 'hermes sessions repair') to rebuild the FTS index"),
-    "schema": ("Repaired state.db schema ({count} sessions recovered)",
-               "state.db schema repair did not recover automatically",
-               "state.db schema malformed and auto-repair failed — restore from the backup copy beside state.db",
-               "state.db schema malformed — run 'hermes doctor --fix' (or 'hermes sessions repair') to recover hidden sessions"),
+    "fts": ("已修好 state.db 的 FTS 写入健康",
+            "state.db 的 FTS 写入问题没能自动修好",
+            "state.db 的 FTS 写入损坏且自动修复失败 —— 用 state.db 旁边的备份副本恢复",
+            "state.db 的 FTS 写入损坏 —— 跑「coco doctor --fix」（或 `coco cli sessions repair`）重建 FTS 索引"),
+    "schema": ("已修好 state.db 表结构（找回 {count} 个会话）",
+               "state.db 表结构没能自动修好",
+               "state.db 表结构损坏且自动修复失败 —— 用旁边的备份副本恢复",
+               "state.db 表结构损坏 —— 跑「coco doctor --fix」（或 `coco cli sessions repair`）找回被藏起来的会话"),
 }
 _STATE_DB_STRUCTURAL_ISSUE = (
-    "state.db structural corruption (canonical tables/indexes damaged, not the FTS index) — an FTS rebuild "
-    "cannot repair it. Stop the gateway, then run 'hermes {profile_arg}sessions recover --source {db_path} "
-    "--inspect-only' and, if it reports recoverable, 'hermes {profile_arg}sessions recover --source {db_path} "
-    "--output recovered-state.db'. Do NOT restore a .malformed-backup copy beside state.db: it is a snapshot "
-    "of the same corrupt file."
+    "state.db 结构性损坏（主表和索引坏了，不是 FTS 索引）—— 重建 FTS 修不了。先停网关，"
+    "再跑 `coco cli {profile_arg}sessions recover --source {db_path} --inspect-only`；"
+    "如果它说可以恢复，再跑 `coco cli {profile_arg}sessions recover --source {db_path} "
+    "--output recovered-state.db`。别去恢复 state.db 旁边那个 .malformed-backup 副本："
+    "它跟坏掉的文件是同一份快照。"
 )
 
 
@@ -347,7 +347,7 @@ def _state_db_stats(issues: list, state_db_path: Path) -> None:
             check_warn(_text, _detail)
             if "auto_prune" in _detail:
                 issues.append("state.db 偏大 —— 可以在 config.yaml 里打开 sessions.auto_prune"
-                              + (" and run 'hermes sessions optimize-storage' offline (gateway stopped)" if "optimize-storage" in _detail else ""))
+                              + ("；停掉网关后离线跑 `coco cli sessions optimize-storage`" if "optimize-storage" in _detail else ""))
 
 
 def _state_db_wal(f: Finding, should_fix: bool, state_db_path: Path) -> None:
@@ -363,24 +363,24 @@ def _state_db_wal(f: Finding, should_fix: bool, state_db_path: Path) -> None:
             # checkpoint on the exclusive repair guard so an opener arriving in between is refused, not joined.
             from hermes_state_repair import _exclusive_repair_db_guard, _live_writer_holds_db
             title = f"WAL file is large ({size // (1024*1024)} MB)"
-            _SKIP = ("Large WAL file — cannot prove state.db is quiet (stop the profile's gateway first, then "
-                     "run 'hermes doctor --fix' to checkpoint)")
+            _SKIP = ("WAL 文件偏大 —— 没法确认 state.db 没人写（先停掉这个配置档的网关，"
+                     "再跑「coco doctor --fix」做检查点）")
             # Honest disjunction (gate C1): a True here means "held OR unprovable" — never assert a live
             # writer as fact.
             if _live_writer_holds_db(state_db_path):
                 # A large WAL is normal while Desktop or the gateway is running; a bare "run --fix" here sent
                 # users straight into the second-writer trap (#110054).
-                check_warn(title, "（桌面端或网关在跑时属正常，或者 state.db 读不了"
-                                  "inspected — checkpoint only with them stopped)")
+                check_warn(title, "（桌面端或网关在跑时属正常；也可能是 state.db 读不了 —— "
+                                  "只有把它们都停掉才能做检查点）")
                 return f.issues.append(_SKIP)
             check_warn(title, "（可能是漏了检查点）")
             if not should_fix:
                 return f.issues.append(
-                    "Large WAL file — stop the profile's gateway, then run 'hermes doctor --fix' to checkpoint")
+                    "WAL 文件偏大 —— 先停掉这个配置档的网关，再跑「coco doctor --fix」做检查点")
             with _exclusive_repair_db_guard(state_db_path) as (guard, guard_error):
                 if guard is None:
                     check_warn("跳过 WAL 检查点：拿不到 state.db 的独占所有权",
-                               f"({guard_error}; stop the profile's gateway and re-run 'hermes doctor --fix')")
+                               f"（{guard_error}；停掉这个配置档的网关，再跑「coco doctor --fix」）")
                     return f.issues.append(_SKIP)
                 guard.execute("PRAGMA wal_checkpoint(PASSIVE)")
             check_ok(f"已做 WAL 检查点（{size // 1024}K → {wal_size() // 1024}K）")
@@ -467,7 +467,7 @@ def _check_skills_hub(should_fix: bool, f: Finding) -> None:
         check_ok("GitHub 令牌已配置", "（有效性在「模型服务连通性」里检查）")
     else:
         check_bool(_gh_authenticated(), ("已通过 gh CLI 登录 GitHub", "（完整 API 权限 —— 不需要配 GITHUB_TOKEN）"),
-                   ("No GITHUB_TOKEN", f"(60 req/hr rate limit — set in {_DHH}/.env for better rates)"))
+                   ("没配 GITHUB_TOKEN", f"（每小时限 60 次 —— 在 {_DHH}/.env 里配上能提高额度）"))
 
 
 def _memory_provider_honcho(issues: list) -> None:
@@ -484,14 +484,14 @@ def _memory_provider_honcho(issues: list) -> None:
         check_info(f"Honcho 没启用（在 {cfg_path} 里设 enabled: true 可打开）")
     elif not (hcfg.api_key or hcfg.base_url):
         _fail_and_issue("Honcho API key or base URL not set", "跑：coco cli memory setup",
-                        "No Honcho API key — run 'hermes memory setup'", issues)
+                        "没配 Honcho 的密钥 —— 跑 `coco cli memory setup`", issues)
     else:
         client.reset_honcho_client()
         try:
             client.get_honcho_client(hcfg)
             check_ok("Honcho 已连接", f"工作区={hcfg.workspace_id} 模式={hcfg.recall_mode} 频率={hcfg.write_frequency}")
         except Exception as _e:
-            _fail_and_issue("Honcho connection failed", str(_e), f"Honcho unreachable: {_e}", issues)
+            _fail_and_issue("Honcho connection failed", str(_e), f"Honcho 连不上：{_e}", issues)
 
 
 def _memory_provider_mem0(issues: list) -> None:
@@ -501,16 +501,16 @@ def _memory_provider_mem0(issues: list) -> None:
         check_ok("Mem0 的密钥已配置")
         check_info(f"用户={mem0_cfg.get('user_id', '?')}  智能体={mem0_cfg.get('agent_id', '?')}")
     else:
-        _fail_and_issue("Mem0 API key not set", "(set MEM0_API_KEY in .env or run hermes memory setup)",
-                        "Mem0 is set as memory provider but API key is missing", issues)
+        _fail_and_issue("Mem0 的密钥没配", "（在 .env 里设 MEM0_API_KEY，或跑 `coco cli memory setup`）",
+                        "指定用 Mem0 当记忆服务，但没配它的密钥", issues)
 
 
 # provider -> (checker, ImportError row, ImportError issue, label for "check failed")
 _MEMORY_PROVIDER_CHECKS = {
-    "honcho": (_memory_provider_honcho, ("honcho-ai not installed", "pip install honcho-ai"),
-               "Honcho is set as memory provider but honcho-ai is not installed", "Honcho"),
-    "mem0": (_memory_provider_mem0, ("Mem0 plugin not loadable", "pip install mem0ai"),
-             "Mem0 is set as memory provider but mem0ai is not installed", "Mem0"),
+    "honcho": (_memory_provider_honcho, ("没装 honcho-ai", "pip install honcho-ai"),
+               "指定用 Honcho 当记忆服务，但没装 honcho-ai", "Honcho"),
+    "mem0": (_memory_provider_mem0, ("Mem0 插件加载不了", "pip install mem0ai"),
+             "指定用 Mem0 当记忆服务，但没装 mem0ai", "Mem0"),
 }
 
 

@@ -77,14 +77,14 @@ def _launch_browser_probe(timeout: float) -> tuple:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        return (False, "playwright not installed")
+        return (False, "没装 playwright")
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, timeout=timeout * 1000)
         try:
             browser.new_page().goto("about:blank", timeout=timeout * 1000)
         finally:
             browser.close()
-    return (True, "launched + about:blank + closed")
+    return (True, "已启动 + about:blank + 已关闭")
 
 
 def _probe_mcp_server(name: str, config: dict, timeout: float):
@@ -123,13 +123,13 @@ def _probe_audio(kind: str, config: dict, timeout: float) -> ProbeResult:
     name = kind.upper()
     provider = (((config.get(kind) or {}).get("provider")) or "").strip().lower()
     if provider in _LOCAL_AUDIO_PROVIDERS:
-        return ProbeResult(name, "skip", f"(provider '{provider or 'local'}' — no remote backend to probe)")
+        return ProbeResult(name, "skip", f"（服务商「{provider or 'local'}」—— 没有可探测的远端后端）")
     if provider not in _AUDIO_PROBES:
-        return ProbeResult(name, "skip", f"(provider '{provider}' — no live probe implemented)")
+        return ProbeResult(name, "skip", f"（服务商「{provider}」—— 还没做实调探测）")
     url, env_var, scheme = _AUDIO_PROBES[provider]
     key = os.getenv(env_var, "").strip()
     if not key:
-        return ProbeResult(name, "warn", f"(provider '{provider}' configured but {env_var} is not set)")
+        return ProbeResult(name, "warn", f"（配了服务商「{provider}」，但没设 {env_var}）")
     headers = {"xi-api-key": key} if scheme == "xi" else {"Authorization": f"Bearer {key}"}
     result = _classify_http(name, _http_get(url, headers=headers, timeout=timeout), env_var)
     result.detail = f"({provider}) {result.detail}"
@@ -144,11 +144,11 @@ _REPORTERS = {"pass": check_ok, "warn": check_warn, "fail": check_fail}
 def _report(result: ProbeResult, issues: List[str]) -> None:
     reporter = _REPORTERS.get(result.status)
     if reporter is None:  # skip
-        check_info(f"{result.name} {result.detail} — skipped")
+        check_info(f"{result.name} {result.detail} —— 已跳过")
         return
     reporter(result.name, result.detail)
     if result.status == "fail":
-        issues.append(f"Live probe failed: {result.name} {result.detail}")
+        issues.append(f"实调探测失败：{result.name} {result.detail}")
 
 
 def _run_one(name: str, fn: Callable[[], ProbeResult], issues: List[str]) -> ProbeResult:
@@ -174,7 +174,7 @@ def run_live_checks(issues: List[str]) -> List[ProbeResult]:
     except (TypeError, ValueError):
         timeout = DEFAULT_PROBE_TIMEOUT
     timeout = max(1.0, timeout)
-    _section("Live Backend Probes (opt-in, real calls)")
+    _section("后端实调探测（需 --live，会真的发请求）")
     results: List[ProbeResult] = [
         _run_one(name, lambda n=name, spec=spec: _keyed_probe(n, *spec, timeout), issues)
         for name, spec in _KEYED_PROBES.items()
@@ -185,11 +185,11 @@ def run_live_checks(issues: List[str]) -> List[ProbeResult]:
         for name in sorted(servers):
             def _probe(n=name, e=servers[name]) -> ProbeResult:
                 if not isinstance(e, dict):
-                    return ProbeResult(f"MCP: {n}", "skip", "(malformed config entry)")
-                return ProbeResult(f"MCP: {n}", "pass", f"({len(_probe_mcp_server(n, e, timeout))} tool(s))")
+                    return ProbeResult(f"MCP: {n}", "skip", "（配置项格式不对）")
+                return ProbeResult(f"MCP: {n}", "pass", f"（{len(_probe_mcp_server(n, e, timeout))} 个工具）")
             results.append(_run_one(f"MCP: {name}", _probe, issues))
     else:
-        results.append(ProbeResult("MCP", "skip", "(no servers configured)"))
+        results.append(ProbeResult("MCP", "skip", "（没配服务器）"))
         _report(results[-1], issues)
     for kind in ("tts", "stt"):
         results.append(_run_one(kind.upper(), lambda k=kind: _probe_audio(k, config, timeout), issues))
@@ -204,7 +204,7 @@ def maybe_run_live_checks(args, issues: List[str]):
     try:
         return run_live_checks(issues)
     except Exception as exc:  # catch-all: doctor must survive
-        check_warn("Live backend probes crashed", f"({exc})")
+        check_warn("后端实调探测崩了", f"（{exc}）")
         return None
 
 

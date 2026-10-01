@@ -72,8 +72,8 @@ def collect_relay_plugin_cutover_findings(raw_config: dict | None, env_map: dict
             if name not in effective_env and os.environ.get(name) is not None:
                 effective_env[name] = os.environ[name]
     if not str(effective_env.get(RELAY_PLUGINS_CONFIG_ENV, "")).strip():
-        findings += [(name, f"run `hermes migrate relay` to generate relay-plugins.toml and set {RELAY_PLUGINS_CONFIG_ENV}; "
-                            "this variable is now ignored and no traces are exported")
+        findings += [(name, f"跑 `coco cli migrate relay` 生成 relay-plugins.toml 并设置 {RELAY_PLUGINS_CONFIG_ENV}；"
+                            "这个变量现在被忽略，不会再导出任何 trace")
                      for name in configured_legacy_relay_env_vars(effective_env)]
     return findings
 
@@ -241,9 +241,9 @@ def _validate_model_config(config_path, issues: list) -> None:
             accept.update({catalog_provider} - {None})
     if provider and provider != "auto" and (catalog_provider is None or (known_providers and not (accept & valid_provider_ids))):
         known_list = ", ".join(sorted(known_providers)) if known_providers else "(unavailable)"
-        _fail_and_issue(f"model.provider '{provider_raw}' is not a recognised provider", f"(known: {known_list})",
-                        f"model.provider '{provider_raw}' is unknown. Valid providers: {known_list}. "
-                        f"Fix: run 'hermes config set model.provider <valid_provider>'", issues)
+        _fail_and_issue(f"model.provider '{provider_raw}' 不是认识的服务商", f"（已知：{known_list}）",
+                        f"model.provider '{provider_raw}' 不认识。可用的服务商：{known_list}。"
+                        f"改法：跑 `coco config set model.provider <服务商>`", issues)
     policy_id = str(runtime_provider or catalog_provider or "").strip().lower()
     accepts_vendor_slug = policy_id in _VENDOR_SLUG_PROVIDERS or policy_id == "custom" or policy_id.startswith("custom:")
     # openai-api pointed at a non-OpenAI endpoint (local router, proxy) is an aggregator in all but name:
@@ -254,17 +254,17 @@ def _validate_model_config(config_path, issues: list) -> None:
         accepts_vendor_slug = accepts_vendor_slug or not base_url_host_matches(model_base_url, "api.openai.com")
     if default_model and "/" in default_model and policy_id and not accepts_vendor_slug:
         check_warn(f"model.default「{default_model}」写成了「厂商/模型」格式，但 provider 是「{provider_raw}」",
-                   "(vendor-prefixed slugs belong to aggregators like openrouter)")
+                   "（带厂商前缀的模型名只适用于 openrouter 这类聚合平台）")
         issues.append(f"model.default「{default_model}」带了厂商前缀，但 model.provider 是「{provider_raw}」。"
-                      "Either set model.provider to 'openrouter', or drop the vendor prefix.")
+                      "要么把 model.provider 设成 'openrouter'，要么去掉厂商前缀。")
     if runtime_provider and runtime_provider not in ("auto", "custom"):
         from hermes_cli.doctor import _DHH
         with warn_on_error(""):
             if not _provider_has_credentials(runtime_provider):
-                _fail_and_issue(f"model.provider '{runtime_provider}' is set but no API key is configured",
-                                f"(add it to {_DHH}/.env or run 'hermes setup')",
-                                f"No credentials found for provider '{runtime_provider}'. Run 'hermes setup' or set the provider's "
-                                f"API key in {_DHH}/.env, or switch providers with 'hermes config set model.provider <name>'", issues)
+                _fail_and_issue(f"model.provider '{runtime_provider}' 设了，但没配 API Key",
+                                f"（加到 {_DHH}/.env，或者跑 `coco setup`）",
+                                f"没找到服务商 '{runtime_provider}' 的凭据。跑 `coco setup`，或在 {_DHH}/.env 里配这个服务商的 "
+                                f"API Key，或者用 `coco config set model.provider <服务商>` 换一个", issues)
 
 
 def _validate_auxiliary_config(config_path, issues: list) -> None:
@@ -301,9 +301,9 @@ def _check_config_file(should_fix: bool, f: Finding) -> None:
     config_path = HERMES_HOME / 'config.yaml'
     if config_path.exists():
         check_ok(f"{_DHH}/config.yaml 存在")
-        with warn_on_error("Could not validate model/provider config"):
+        with warn_on_error("校验模型/服务商配置时出错"):
             _validate_model_config(config_path, f.issues)
-        with warn_on_error("Could not validate auxiliary task routing"):
+        with warn_on_error("校验辅助任务路由时出错"):
             _validate_auxiliary_config(config_path, f.issues)
     elif (PROJECT_ROOT / 'cli-config.yaml').exists():
         check_ok("cli-config.yaml 存在（在项目目录里）")
@@ -324,7 +324,7 @@ def _check_config_file(should_fix: bool, f: Finding) -> None:
 def _drift_config_version(f: Finding, should_fix: bool, config_path) -> None:
     from hermes_cli.config import check_config_version, migrate_config
     current_ver, latest_ver = check_config_version()
-    outdated = (f"Config version outdated (v{current_ver} → v{latest_ver})", "(new settings available)")
+    outdated = (f"配置版本偏旧（v{current_ver} → v{latest_ver}）", "（有新设置可用）")
     if check_bool(current_ver >= latest_ver, f"配置版本已是最新（v{current_ver}）", outdated):
         return
     if not should_fix:
@@ -387,7 +387,7 @@ def _drift_max_iterations_ghost(f: Finding, should_fix: bool, config_path) -> No
     if cfg_max_turns is None or env_ghost is None or str(cfg_max_turns).strip() == str(env_ghost).strip():
         return
     check_warn(f".env 里的 HERMES_MAX_ITERATIONS={env_ghost} 会盖掉 config.yaml 的 agent.max_turns={cfg_max_turns}",
-               "(stale ghost from an earlier `hermes setup` run)")
+               "（早先跑 `coco setup` 留下的残留）")
     if not should_fix:
         f.issues.append(".env 里残留的 HERMES_MAX_ITERATIONS 会盖住 config.yaml —— 跑「coco doctor --fix」")
     elif remove_env_value("HERMES_MAX_ITERATIONS"):
@@ -447,10 +447,10 @@ def _drift_legacy_custom_providers(f: Finding, should_fix: bool, config_path) ->
             continue
         label = str(entry.get("name") or "").strip() or _endpoint_url(entry)
         check_warn(f"旧的 custom_providers 条目「{label}」在新写法里找不到对应项",
-                   "(still read from the retired list store; every other surface edits providers:)")
+                   "（还在读那个已停用的列表存储；其它地方改的都是 providers:）")
         f.manual_issues.append(
-            f"Move custom_providers entry '{label}' into config.yaml providers: as `providers.<key>.api: "
-            f"{_endpoint_url(entry)}` and delete it from the list — the v12 list migration ran once and does not re-fire")
+            f"把 custom_providers 里的「{label}」挪到 config.yaml 的 providers: 下，写成 `providers.<key>.api: "
+            f"{_endpoint_url(entry)}`，再从列表里删掉 —— v12 那次列表迁移只跑过一次，不会再跑")
 
 
 _CONFIG_DRIFT_STEPS = (
@@ -474,7 +474,7 @@ def _check_config_drift(should_fix: bool, f: Finding) -> None:
             step(f, should_fix, config_path)
 
 
-@doctor_check("xAI retirement check skipped", "({e})")
+@doctor_check("跳过了 xAI 下线检查", "（{e}）")
 def _check_xai_retirement(should_fix: bool, f: Finding) -> None:
     from hermes_cli.config import load_config
     from hermes_cli.xai_retirement import MIGRATION_GUIDE_URL, find_retired_xai_refs, format_issue
@@ -488,7 +488,7 @@ def _check_xai_retirement(should_fix: bool, f: Finding) -> None:
     f.manual_issues.append(f"config.yaml 里有 {len(retired_refs)} 处已下线的 xAI 模型引用，请更新 —— 见 {MIGRATION_GUIDE_URL}")
 
 
-@doctor_check("Plugin compat check skipped", "({e})")
+@doctor_check("跳过了插件兼容检查", "（{e}）")
 def _check_plugin_compat(should_fix: bool, f: Finding) -> None:
     from hermes_cli.plugin_compat import ALLOW_KEY, COMPAT_REMOVAL, compat_report, removal_in_effect
     report = compat_report()
@@ -497,9 +497,9 @@ def _check_plugin_compat(should_fix: bool, f: Finding) -> None:
         return
     for name, hits in sorted(report.items()):
         (check_fail if removal_in_effect() else check_warn)(
-            f"{name}: {len(hits)} import(s) of paths removed on {COMPAT_REMOVAL}", f"{hits[0].old} -> {hits[0].new}")
+            f"{name}：有 {len(hits)} 处 import 的是 {COMPAT_REMOVAL} 删掉的旧路径", f"{hits[0].old} -> {hits[0].new}")
     check_info("详情：coco plugins compat")
     f.manual_issues.append(
-        f"Update {len(report)} plugin(s) still importing pre-decomposition paths (hermes plugins compat) — "
-        + ("they are NOT being loaded" if removal_in_effect() else f"they stop loading on {COMPAT_REMOVAL}")
-        + f"; escape hatch: plugins.{ALLOW_KEY}: true")
+        f"有 {len(report)} 个插件还在 import 拆分前的旧路径（hermes plugins compat）—— "
+        + ("它们现在不会被加载" if removal_in_effect() else f"{COMPAT_REMOVAL} 起就会停止加载")
+        + f"；临时放行：plugins.{ALLOW_KEY}: true")

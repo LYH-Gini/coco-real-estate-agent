@@ -43,7 +43,7 @@ def test_root_remedy_never_prescribes_local_audit_fix(capsys):
     out, issues = _run_audit_one(capsys, ["--workspaces=false"], _audit_json(high=1, moderate=1))
     assert "run: cd" not in out
     assert "npm audit fix" not in out
-    assert "lockfile bump" in out
+    assert "上游更新 lockfile" in out
     assert issues == ["Browser tools (agent-browser) 有 2 个 npm 漏洞"]
 
 

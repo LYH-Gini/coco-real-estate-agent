@@ -566,3 +566,26 @@ python3 scripts/smoke_test_real_estate.py
   `test_setup_feishu.py::TestSetupFeishuAdapterIntegration::test_qr_env_produces_valid_adapter_settings`
   会因跨文件状态污染失败（单文件跑通过，官方英文版本同样失败）。
 - **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
+
+### 37 doctor 体检屏文案中文化（`hermes_cli/doctor*.py` 八个文件）
+
+- **改了什么**：95 个改动块（共 287 条文案条目）—— `doctor.py`（并行检查进度行）、`doctor_report.py`
+  （`(will be created on first use)`）、`doctor_platform.py`（SQLite 修复版本提示、跨虚拟机 WAL 警告、版本文件不一致、
+  证书重装、Python 版本、包名说明、安全公告处置、linger）、`doctor_connectivity.py`（OpenRouter 各状态码、Bedrock/Azure
+  探测、IPv6 路由、GitHub 令牌校验、HTTP 失败）、`doctor_state.py`（state.db 偏大、FTS 与表结构修复、WAL 检查点、
+  `GITHUB_TOKEN` 行、Honcho/Mem0 未装或未配、缓存目录、宿主网关备注）、`doctor_tools.py`（Docker/Podman 可选、
+  Vercel/SSH/Daytona 后端、npm 审计处置、工具可用性）、`doctor_config.py`（服务商校验、auxiliary 路由、配置版本、
+  `.env` 残留、旧 custom_providers 迁移、xAI/插件兼容检查）、`doctor_live.py`（实调探测整段）。
+- **口径**：`hermes doctor|setup|config|update` → `coco …`；官方子命令走逃生口 `coco cli sessions …` /
+  `coco cli migrate relay` / `coco cli memory setup`；带配置档的用 `coco -p <名称> gateway …`。
+  `systemctl` / `journalctl` / `audit` / `sqlite` 这类系统与工具命令、环境变量名、包名（`hermes-agent[vercel]`）、
+  配置键名（`sessions.auto_prune`、`providers.<key>.api`）**保留原样**。
+- **同批修的 3 处旧半中半英**：WAL 大文件（前批只译了前半句）、npm 审计的 `build-time tooling` 那句、
+  `vendor-prefixed slugs` 那句（`model.default` 报错里）。
+- **连带改的用例**：`test_doctor_audit_remedy.py`、`test_doctor_github_token_probe.py`、`test_doctor_journal_modes.py`（2 处）、
+  `test_doctor.py`（2 处）、`test_doctor_wal_holder_guard.py`、`test_doctor_wal_checkpoint_guard.py`（2 处）—— 把英文针换成中文针。
+  全套 doctor 用例 **139 通过 / 11 跳过**；含重打表自检与品牌用例共 **174 通过**。
+- **本轮不动（按约定，最低优先级）**：macOS 专属（TCC 两行 + `hermes desktop --setup-tcc-identity`）、Windows、
+  Termux 专属分支，以及其它平台插件向导（wecom / dingtalk / matrix / Slack 等）。nix 安装方式下那句
+  `Hermes-managed installs can repair the embedded runtime` 出自 `hermes_cli/config.py`（nix 专属路径），也不在本批。
+- **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。

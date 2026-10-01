@@ -296,7 +296,7 @@ class TestReportDatabaseJournalModes:
 
         out = capsys.readouterr().out
         assert "state.db 在跨虚拟机文件系统（virtiofs/9p）上是 WAL 模式" in out
-        assert "hermes sessions set-journal-mode delete" in out
+        assert "coco cli sessions set-journal-mode delete" in out
 
     def test_vulnerable_runtime_wal_db_is_exposed(self, tmp_path, capsys):
         _make_db(tmp_path / "state.db", journal_mode="WAL")
@@ -422,7 +422,7 @@ class TestConfiguredDeleteNeverApplied:
 
         out = capsys.readouterr().out
         assert "state.db 仍是 WAL 模式" in out and "database.journal_mode=delete" in out
-        assert "never live-downgraded" in out and "hermes sessions set-journal-mode delete" in out
+        assert "配置没生效" in out and "coco cli sessions set-journal-mode delete" in out
         assert "state.db：WAL 日志模式" not in out
         assert ("消除风险的办法：" in out) is exposed
 

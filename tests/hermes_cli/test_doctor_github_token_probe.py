@@ -77,7 +77,7 @@ def test_expired_dotenv_token_is_rejected_and_the_env_file_is_named(monkeypatch,
     result = _github_probe_row(monkeypatch, tmp_path, "GITHUB_TOKEN=ghp_expired000000000000000000000000000000\n")
     ((glyph, _label, detail),) = result.lines
     assert "✗" in glyph
-    assert "GITHUB_TOKEN" in detail and "/.env" in detail and "rejected" in detail
+    assert "GITHUB_TOKEN" in detail and "/.env" in detail and "拒绝" in detail
     assert result.issues and "GITHUB_TOKEN" in result.issues[0] and "/.env" in result.issues[0]
     # The real token went to the API (not a synthetic pass) and never leaks into the row text.
     assert seen and seen[0]["authorization"] == "Bearer ghp_expired000000000000000000000000000000"

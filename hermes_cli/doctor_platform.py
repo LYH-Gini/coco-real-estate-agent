@@ -33,7 +33,7 @@ def _sqlite_upgrade_hint(install_method: str | None = None) -> str:
     cmd = recommended_update_command_for_method(method)
     action = cmd if is_nix_install_method(method) else {  # nix: prose guidance, not a shell command
         "docker": f"跑 `{cmd}`，然后重建全部容器", "apt": f"跑 `{cmd}`"}.get(method, "跑 `coco update`")
-    return f"({action}; fixed versions: 3.51.3+ / 3.50.7 / 3.44.6 — see https://sqlite.org/wal.html#walresetbug)"
+    return f"（{action}；修复版本：3.51.3+ / 3.50.7 / 3.44.6 —— 见 https://sqlite.org/wal.html#walresetbug）"
 
 
 def _hermes_database_paths(hermes_home: Path) -> list[tuple[str, Path]]:
@@ -142,10 +142,10 @@ def _report_database_journal_modes(hermes_home: Path | None = None, version_info
             if vulnerable:
                 exposed.append(name)
             check_warn(f"{name} 仍是 WAL 模式（{size}），但配置写的是 database.journal_mode=delete",
-                       "(the setting never applied: an existing WAL database is never live-downgraded"
-                       + ("; also exposed to the WAL-reset bug" if vulnerable else "")
-                       + ". Stop every Hermes process for this profile, then run "
-                       f"`hermes sessions set-journal-mode delete{'' if name == 'state.db' else f' --db {path}'}`)")
+                       "（配置没生效：已有的 WAL 数据库不会在运行时降级"
+                       + ("；而且还有 WAL 重置那个坑" if vulnerable else "")
+                       + "。先停掉这个配置档的所有 Coco 进程，再跑 "
+                       f"`coco cli sessions set-journal-mode delete{'' if name == 'state.db' else f' --db {path}'}`)")
             _report_database_holders(name, path)
         elif error is not None:
             if vulnerable:
@@ -159,9 +159,9 @@ def _report_database_journal_modes(hermes_home: Path | None = None, version_info
             if vulnerable:
                 exposed.append(name)
             check_warn(f"{name} 在跨虚拟机文件系统（virtiofs/9p）上是 WAL 模式（{size}）",
-                       "(WAL can silently corrupt across the VM boundary; stop every Hermes process and run "
-                       f"`hermes sessions set-journal-mode delete{'' if name == 'state.db' else f' --db {path}'}`, then "
-                       "set `database.journal_mode: delete` — or move the database onto a native/named volume)")
+                       "（跨虚拟机边界时 WAL 可能静默损坏：先停掉所有 Coco 进程，跑 "
+                       f"`coco cli sessions set-journal-mode delete{'' if name == 'state.db' else f' --db {path}'}`，然后 "
+                       "把 `database.journal_mode` 设成 delete —— 或者把数据库挪到本机卷/命名卷上）")
         elif mode == "wal" and vulnerable:
             exposed.append(name)
             check_warn(f"{name} 是 WAL 模式（{size}）", "（SQLite 升级前有 WAL 重置风险）")
@@ -200,8 +200,8 @@ def _check_version_consistency(issues: list[str]) -> None:
     if pyproject_version is None:
         return
     if pyproject_version == init_version:
-        return check_ok("版本文件一致", f"({init_version})")
-    _fail_and_issue("Version mismatch between source files", f"(pyproject.toml {pyproject_version} != hermes_cli/__init__.py {init_version})",
+        return check_ok("版本文件一致", f"（{init_version}）")
+    _fail_and_issue("源码里的版本号不一致", f"（pyproject.toml {pyproject_version} != hermes_cli/__init__.py {init_version}）",
                     "版本文件不一致：重新同步（跑 'coco update'，或把 hermes_cli/__init__.py 的 __version__ 改成与 pyproject.toml 一致）", issues)
 
 
@@ -234,16 +234,16 @@ def _report_host_gateway_slot(mgr, issues: list[str]) -> None:
             return check_info("还没有注册网关服务 —— 跑 `coco gateway install`")
         up = [p for p in slots if mgr.is_running(f"gateway-{p}")]
         issues.append("没有网关在承担网关角色 —— 启动那个唯一的主网关："
-                      "hermes --profile default gateway start")
+                      "coco -p default gateway start")
         return check_warn(f"没有网关承担网关角色（{len(up)}/{len(slots)} 个监管槽位在位）："
-                          f"slots up: {', '.join(slots)})", "(nothing is serving these profiles)")
+                          f"{', '.join(slots)}）", "（这些配置档没有网关在服务）")
     check_ok(f"主网关：{topology.describe()}")
     legacy_up = sorted(p for p in slots if p != "default" and mgr.is_running(f"gateway-{p}"))
     if legacy_up:
         check_warn(f"仍在监管的旧版按配置网关：{', '.join(legacy_up)}",
-                   "(multiplex-only: the host gateway already serves every profile from one process)")
+                   "（主网关进程已经同时服务所有配置档）")
         issues.append("把旧版按配置的网关并进主网关："
-                      "hermes --profile default gateway migrate --multiplex")
+                      "coco -p default gateway migrate --multiplex")
 
 
 def check_certificates(should_fix: bool = False, issues: "list | None" = None) -> None:
@@ -271,7 +271,7 @@ def check_certificates(should_fix: bool = False, issues: "list | None" = None) -
     if not should_fix:
         issues.append(f"修复 CA 证书包：跑 `coco doctor --fix`，或 `{pip_cmd}`")
         return
-    print("    → Repairing: force-reinstalling certifi...")
+    print("    → 正在修复：强制重装 certifi...")
     try:
         result = subprocess.run([sys.executable, "-m", "pip", "install", "--force-reinstall", "certifi"],
                                 capture_output=True, text=True, timeout=300)
@@ -279,7 +279,7 @@ def check_certificates(should_fix: bool = False, issues: "list | None" = None) -
     except Exception as exc:
         failure = ("certifi repair could not run pip", str(exc))
     if failure:
-        return _fail_and_issue(*failure, f"Reinstall certifi manually: {pip_cmd}", issues)
+        return _fail_and_issue(*failure, f"手动重装 certifi：{pip_cmd}", issues)
     # Drop cached certifi modules so where() resolves the fresh install without a restart.
     import importlib
     for mod_name in [m for m in sys.modules if m == "certifi" or m.startswith("certifi.")]:
@@ -290,8 +290,8 @@ def check_certificates(should_fix: bool = False, issues: "list | None" = None) -
         check_ok("SSL 根证书包已修好（重装了 certifi）")
     except SSLConfigurationError as e:
         _fail_and_issue("SSL CA certificate bundle still broken after reinstall", str(e),
-                        "certifi reinstall did not restore the CA bundle — check for a custom CA env var "
-                        "(SSL_CERT_FILE/REQUESTS_CA_BUNDLE) pointing at a missing file, or recreate the venv.", issues)
+                        "重装 certifi 也没修好 CA 证书包 —— 看看是不是设了自定义 CA 环境变量 "
+                        "（SSL_CERT_FILE/REQUESTS_CA_BUNDLE）指向一个不存在的文件，或者重建一下 venv。", issues)
 
 
 def _check_gateway_service_linger(issues: list[str]) -> None:
@@ -316,7 +316,7 @@ def _check_gateway_service_linger(issues: list[str]) -> None:
     _section("网关服务")
     linger_enabled, linger_detail = get_systemd_linger_status()
     if linger_enabled is None:
-        return check_warn("没能确认 systemd linger 状态", f"({linger_detail})")
+        return check_warn("没能确认 systemd linger 状态", f"（{linger_detail}）")
     if not check_bool(linger_enabled, ("systemd linger 已开启", "（退出登录后网关服务仍在跑）"),
                       ("systemd linger 未开启", "（退出登录后网关可能会停）")):
         check_info("执行：sudo loginctl enable-linger $USER")
@@ -438,8 +438,8 @@ def _check_security_advisories(should_fix: bool, f: Finding) -> None:
     for hit in fresh_hits:
         # Fail row + remediation text indented under it as one section; also into the summary action list.
         _fail_and_issue(f"{hit.advisory.title}", f"({hit.package}=={hit.installed_version})",
-                        f"Resolve security advisory {hit.advisory.id}: uninstall {hit.package}=={hit.installed_version} "
-                        f"and rotate credentials, then run `coco doctor --ack {hit.advisory.id}`.", f.manual_issues)
+                        f"处理安全公告 {hit.advisory.id}：卸掉 {hit.package}=={hit.installed_version} "
+                        f"并轮换凭据，然后跑 `coco doctor --ack {hit.advisory.id}`。", f.manual_issues)
         for line in full_remediation_text(hit):
             print(f"    {color(line, Colors.YELLOW)}" if line else "")
     acked_ids = get_acked_ids()  # acked-but-still-installed stays visible
@@ -453,7 +453,7 @@ def _check_python_environment(should_fix: bool, f: Finding) -> None:
     """Interpreter, linked SQLite, venv, macOS TCC anchors/FDA/grants, version-file drift."""
     v, label = sys.version_info, f"Python {'.'.join(map(str, sys.version_info[:3]))}"
     if v < (3, 8):
-        _fail_and_issue(label, "(3.10+ required)", "Upgrade Python to 3.10+", f.issues)
+        _fail_and_issue(label, "（需要 3.10 以上）", "把 Python 升到 3.10 以上", f.issues)
     elif check_bool(v >= (3, 10), label, (label, "(建议 3.10+)")) and v < (3, 11):
         check_warn("RL 训练类工具建议 Python 3.11+（tinker 要求 >= 3.11）")
     # Linked SQLite: version + source id matter independently of the Python minor (uv's
@@ -489,9 +489,9 @@ def _check_certificates(should_fix: bool, f: Finding) -> None:
 
 # (import name, display name, optional)
 _PACKAGES = (
-    ("openai", "OpenAI SDK", False), ("rich", "Rich (terminal UI)", False), ("dotenv", "python-dotenv", False),
+    ("openai", "OpenAI SDK", False), ("rich", "Rich（终端界面）", False), ("dotenv", "python-dotenv", False),
     ("yaml", "PyYAML", False), ("httpx", "HTTPX", False),
-    ("croniter", "Croniter (cron expressions)", True), ("telegram", "python-telegram-bot", True), ("discord", "discord.py", True),
+    ("croniter", "Croniter（cron 表达式）", True), ("telegram", "python-telegram-bot", True), ("discord", "discord.py", True),
 )
 
 
@@ -505,7 +505,7 @@ def _check_required_packages(should_fix: bool, f: Finding) -> None:
             if optional:
                 check_warn(name, "（可选，未安装）")
             else:
-                _fail_and_issue(name, "(missing)", f"Install {name}: {_python_install_cmd()} {module}", f.issues)
+                _fail_and_issue(name, "(missing)", f"装 {name}：{_python_install_cmd()} {module}", f.issues)
 
 
 @doctor_check()
