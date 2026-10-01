@@ -110,7 +110,7 @@ SSH 重新连接后，按顺序执行：
 
 **执行一键安装**（按服务器所在位置选一条）：
 
-**国内服务器（Gitee 源）：**
+**中国大陆服务器（Gitee 源）：**
 ```bash
 curl -fsSL https://gitee.com/LYH-Gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh
 ```
