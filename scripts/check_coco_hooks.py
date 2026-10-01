@@ -408,7 +408,7 @@ CONTENT_CHECKS = [
         "设置向导的 Mattermost 说明",
         # 官方 v0.21.5 把 Mattermost 向导搬到 hermes_cli/gateway_setup_wizard.py。
         "hermes_cli/gateway_setup_wizard.py",
-        [r"where Coco delivers"],
+        [r"Coco 送定时任务结果与通知的频道 ID"],
         "Mattermost 向导里 HOME_CHANNEL 的帮助文本写着 Hermes。\n处理：改成 Coco。",
     ),
     (

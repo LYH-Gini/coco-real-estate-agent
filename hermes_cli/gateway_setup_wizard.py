@@ -24,29 +24,29 @@ _PLATFORMS = [
     {
         "key": "mattermost", "label": "Mattermost", "emoji": "💬", "token_var": "MATTERMOST_TOKEN",
         "setup_instructions": [
-            "1. In Mattermost: Integrations → Bot Accounts → Add Bot Account",
-            "   (System Console → Integrations → Bot Accounts must be enabled)",
-            "2. Give it a username (e.g. hermes) and copy the bot token",
-            "3. Works with any self-hosted Mattermost instance — enter your server URL",
-            "4. To find your user ID: click your avatar (top-left) → Profile",
-            "   Your user ID is displayed there — click it to copy.",
-            "   ⚠ This is NOT your username — it's a 26-character alphanumeric ID.",
-            "5. To get a channel ID: click the channel name → View Info → copy the ID",
+            "1. 在 Mattermost 里：Integrations → Bot Accounts → Add Bot Account",
+            "   （需要先在 System Console → Integrations → Bot Accounts 里开启）",
+            "2. 起个用户名（例如 coco），复制它的机器人 token",
+            "3. 自建的 Mattermost 都能用 —— 填你的服务地址",
+            "4. 查你的用户 ID：点左上角头像 → Profile",
+            "   那里显示的就是用户 ID，点一下即可复制。",
+            "   ⚠ 这不是用户名 —— 是一串 26 位字母数字 ID。",
+            "5. 拿频道 ID：点频道名 → View Info → 复制 ID",
         ],
         "vars": [
-            {"name": "MATTERMOST_URL", "prompt": "Server URL (e.g. https://mm.example.com)",
-             "password": False, "help": "Your Mattermost server URL. Works with any self-hosted instance."},
-            {"name": "MATTERMOST_TOKEN", "prompt": "Bot token", "password": True,
-             "help": "Paste the bot token from step 2 above."},
-            {"name": "MATTERMOST_ALLOWED_USERS", "prompt": "Allowed user IDs (comma-separated)",
-             "password": False, "is_allowlist": True, "help": "Your Mattermost user ID from step 4 above."},
+            {"name": "MATTERMOST_URL", "prompt": "服务地址（如 https://mm.example.com）",
+             "password": False, "help": "你的 Mattermost 服务地址，自建实例都行。"},
+            {"name": "MATTERMOST_TOKEN", "prompt": "机器人 token", "password": True,
+             "help": "粘贴上面第 2 步拿到的机器人 token。"},
+            {"name": "MATTERMOST_ALLOWED_USERS", "prompt": "白名单用户 ID（逗号分隔）",
+             "password": False, "is_allowlist": True, "help": "上面第 4 步拿到的用户 ID。"},
             {"name": "MATTERMOST_HOME_CHANNEL",
-             "prompt": "Home channel ID (for cron/notification delivery, or empty to set later with /set-home)",
-             "password": False, "help": "Channel ID where Coco delivers cron results and notifications."},
+             "prompt": "主页频道 ID（接收定时任务与通知；留空则以后用 /set-home 设置）",
+             "password": False, "help": "Coco 送定时任务结果与通知的频道 ID。"},
             {"name": "MATTERMOST_REPLY_MODE",
-             "prompt": "Reply mode — 'off' for flat messages, 'thread' for threaded replies (default: off)",
+             "prompt": "回复方式 —— off 平铺、thread 收在话题里（默认 off）",
              "password": False,
-             "help": "off = flat channel messages, thread = replies nest under your message."},
+             "help": "off = 平铺在频道里，thread = 回复收在你的消息下。"},
         ],
     },
     {"key": "signal", "label": "Signal", "emoji": "📡", "token_var": "SIGNAL_HTTP_URL"},
@@ -55,67 +55,67 @@ _PLATFORMS = [
         "key": "bluebubbles", "label": "BlueBubbles (iMessage)",
         "emoji": "💬", "token_var": "BLUEBUBBLES_SERVER_URL",
         "setup_instructions": [
-            "1. Install BlueBubbles on a Mac that will act as your iMessage server:",
+            "1. 在一台充当 iMessage 服务端的 Mac 上装 BlueBubbles：",
             "   https://bluebubbles.app/",
-            "2. Complete the BlueBubbles setup wizard — sign in with your Apple ID",
-            "3. In BlueBubbles Settings → API, note the Server URL and password",
-            "4. The server URL is typically http://<your-mac-ip>:1234",
-            "5. Hermes connects via the BlueBubbles REST API and receives",
-            "   incoming messages via a local webhook",
-            "6. To authorize users, use DM pairing: hermes pairing generate bluebubbles",
-            "   Share the code — the user sends it via iMessage to get approved",
+            "2. 走完 BlueBubbles 的配置向导 —— 用你的 Apple ID 登录",
+            "3. 在 BlueBubbles Settings → API 里记下服务地址与密码",
+            "4. 服务地址通常是 http://<你的MacIP>:1234",
+            "5. Coco 通过 BlueBubbles 的 REST 接口连上，",
+            "   用本机 webhook 收消息。",
+            "6. 授权用户用配对码：coco pairing generate bluebubbles",
+            "   把配对码发给对方，他在 iMessage 里发回来即可通过。",
         ],
         "vars": [
             {"name": "BLUEBUBBLES_SERVER_URL",
-             "prompt": "BlueBubbles server URL (e.g. http://192.168.1.10:1234)", "password": False,
-             "help": "The URL shown in BlueBubbles Settings → API."},
-            {"name": "BLUEBUBBLES_PASSWORD", "prompt": "BlueBubbles server password", "password": True,
-             "help": "The password shown in BlueBubbles Settings → API."},
+             "prompt": "BlueBubbles 服务端地址（如 http://192.168.1.10:1234）", "password": False,
+             "help": "BlueBubbles Settings → API 里显示的那个地址。"},
+            {"name": "BLUEBUBBLES_PASSWORD", "prompt": "BlueBubbles 服务端密码", "password": True,
+             "help": "BlueBubbles Settings → API 里显示的那个密码。"},
             {"name": "BLUEBUBBLES_ALLOWED_USERS",
-             "prompt": "Pre-authorized phone numbers or iMessage IDs (comma-separated, or leave empty for DM pairing)",
+             "prompt": "预授权的手机号或 iMessage ID（逗号分隔；留空则走配对授权）",
              "password": False, "is_allowlist": True,
-             "help": "Optional — pre-authorize specific users. Leave empty to use DM pairing instead (recommended)."},
+             "help": "可选 —— 预授权指定用户；留空就用配对授权（推荐）。"},
             {"name": "BLUEBUBBLES_HOME_CHANNEL",
-             "prompt": "Home channel (phone number or iMessage ID for cron/notifications, or empty)",
+             "prompt": "主页频道（接收定时任务与通知的手机号或 iMessage ID，可留空）",
              "password": False,
-             "help": "Phone number or Apple ID to deliver cron results and notifications to."},
+             "help": "接收定时任务结果与通知的手机号或 Apple ID。"},
         ],
     },
     {
         "key": "qqbot", "label": "QQ Bot", "emoji": "🐧", "token_var": "QQ_APP_ID",
         "setup_instructions": [
-            "1. Register a QQ Bot application at q.qq.com",
-            "2. Note your App ID and App Secret from the application page",
-            "3. Enable the required intents (C2C, Group, Guild messages)",
-            "4. Configure sandbox or publish the bot",
+            "1. 去 q.qq.com 注册一个 QQ 机器人应用",
+            "2. 在应用页面记下 App ID 与 App Secret",
+            "3. 开启需要的事件（C2C、群聊、频道消息）",
+            "4. 配置沙箱或发布机器人",
         ],
         "vars": [
-            {"name": "QQ_APP_ID", "prompt": "QQ Bot App ID", "password": False,
-             "help": "Your QQ Bot App ID from q.qq.com."},
-            {"name": "QQ_CLIENT_SECRET", "prompt": "QQ Bot App Secret", "password": True,
-             "help": "Your QQ Bot App Secret from q.qq.com."},
+            {"name": "QQ_APP_ID", "prompt": "QQ 机器人 App ID", "password": False,
+             "help": "q.qq.com 上那个 App ID。"},
+            {"name": "QQ_CLIENT_SECRET", "prompt": "QQ 机器人 App Secret", "password": True,
+             "help": "q.qq.com 上那个 App Secret。"},
             {"name": "QQ_ALLOWED_USERS",
-             "prompt": "Allowed user OpenIDs (comma-separated, leave empty for open access)",
+             "prompt": "白名单用户 OpenID（逗号分隔；留空 = 谁都能用）",
              "password": False, "is_allowlist": True,
-             "help": "Optional — restrict DM access to specific user OpenIDs."},
+             "help": "可选 —— 把私聊限制在指定用户 OpenID。"},
             {"name": "QQBOT_HOME_CHANNEL",
-             "prompt": "Home channel (user/group OpenID for cron delivery, or empty)", "password": False,
-             "help": "OpenID to deliver cron results and notifications to."},
+             "prompt": "主页频道（接收定时任务的用户/群 OpenID，可留空）", "password": False,
+             "help": "接收定时任务结果与通知的 OpenID。"},
         ],
     },
     {
         "key": "yuanbao", "label": "Yuanbao", "emoji": "💎", "token_var": "YUANBAO_APP_ID",
         "setup_instructions": [
-            "1. Download the Yuanbao app from https://yuanbao.tencent.com/",
-            "2. In the app, go to PAI → My Bot and create a new bot",
-            "3. After the bot is created, copy the App ID and App Secret",
-            "4. Enter them below and Hermes will connect automatically over WebSocket",
+            "1. 从 https://yuanbao.tencent.com/ 下载元宝 App",
+            "2. 在 App 里进 PAI → My Bot，新建一个机器人",
+            "3. 建好后复制 App ID 与 App Secret",
+            "4. 填在下面，Coco 会自动用 WebSocket 连上",
         ],
         "vars": [
             {"name": "YUANBAO_APP_ID", "prompt": "App ID", "password": False,
-             "help": "The App ID from your Yuanbao IM Bot credentials."},
+             "help": "元宝 IM 机器人凭据里的 App ID。"},
             {"name": "YUANBAO_APP_SECRET", "prompt": "App Secret", "password": True,
-             "help": "The App Secret (used for HMAC signing) from your Yuanbao IM Bot."},
+             "help": "元宝 IM 机器人凭据里的 App Secret（用于 HMAC 签名）。"},
         ],
     },
 ]
@@ -394,7 +394,7 @@ def _setup_standard_platform(platform: dict):
 
 # Weixin DM policy by menu index (index 2 = allowlist is prompted separately).
 _WEIXIN_DM_POLICIES = {
-    0: ("pairing", "false", print_success, "  DM pairing enabled."),
+    0: ("pairing", "false", print_success, "  已启用配对授权。"),
     1: ("open", "true", print_warning, "  Open DM access enabled for Weixin."),
     3: ("disabled", "false", print_warning, "  Direct messages disabled."),
 }
@@ -415,10 +415,10 @@ def _setup_weixin():
     _print_setup_header("💬 Weixin / WeChat")
     print()
     _gw()._print_info_lines(
-        "  1. Hermes will open Tencent iLink QR login in this terminal.",
-        "  2. Use WeChat to scan and confirm the QR code.",
-        "  3. Hermes will store the returned account_id/token in ~/.hermes/.env.",
-        "  4. This adapter supports native text, image, video, and document delivery.",
+        "  1. Coco 会在当前终端里打开腾讯 iLink 扫码登录。",
+        "  2. 用微信扫码并确认。",
+        "  3. 登录返回的 account_id/token 会存进 ~/.hermes/.env。",
+        "  4. 这条通道支持文本、图片、视频和文件。",
     )
 
     if not _confirm_reconfigure("Weixin", "WEIXIN_ACCOUNT_ID", "WEIXIN_TOKEN"):
@@ -427,32 +427,32 @@ def _setup_weixin():
     try:
         from gateway.platforms.weixin import check_weixin_requirements, qr_login
     except Exception as exc:
-        _gw().print_error(f"  Weixin adapter import failed: {exc}")
-        _gw().print_info("  Install gateway dependencies first, then retry.")
+        _gw().print_error(f"  微信通道加载失败：{exc}")
+        _gw().print_info("  先装网关依赖再重试。")
         return
 
     if not check_weixin_requirements():
-        _gw().print_error("  Missing dependencies: Weixin needs aiohttp and cryptography.")
-        _gw().print_info("  Install them, then rerun `hermes gateway setup`.")
+        _gw().print_error("  缺依赖：微信通道需要 aiohttp 和 cryptography。")
+        _gw().print_info("  装好后重新跑「coco gateway setup」。")
         return
 
     print()
-    if not _gw().prompt_yes_no("  Start QR login now?", True):
-        _gw().print_info("  Cancelled.")
+    if not _gw().prompt_yes_no("  现在开始扫码登录吗？", True):
+        _gw().print_info("  已取消。")
         return
 
     try:
         credentials = _gw().asyncio.run(qr_login(str(_gw().get_hermes_home())))
     except KeyboardInterrupt:
         print()
-        _gw().print_warning("  Weixin setup cancelled.")
+        _gw().print_warning("  微信配置已取消。")
         return
     except Exception as exc:
-        _gw().print_error(f"  QR login failed: {exc}")
+        _gw().print_error(f"  扫码登录失败：{exc}")
         return
 
     if not credentials:
-        _gw().print_warning("  QR login did not complete.")
+        _gw().print_warning("  扫码登录没完成。")
         return
 
     account_id = credentials.get("account_id", "")
@@ -468,22 +468,22 @@ def _setup_weixin():
     print()
     access_choices = [
         "用私聊配对审批（推荐）", "允许所有私聊", "只允许名单里的用户 ID",
-        "Disable direct messages",
+        "不放行私聊",
     ]
-    access_idx = _gw().prompt_choice("  How should direct messages be authorized?", access_choices, 0)
+    access_idx = _gw().prompt_choice("  私聊怎么授权？", access_choices, 0)
     if access_idx == 2:
-        allowlist = _prompt_csv("  Allowed Weixin user IDs (comma-separated)", user_id or "")
+        allowlist = _prompt_csv("  微信白名单用户 ID（逗号分隔）", user_id or "")
         _save_env_values(
             WEIXIN_DM_POLICY="allowlist", WEIXIN_ALLOW_ALL_USERS="false", WEIXIN_ALLOWED_USERS=allowlist
         )
-        _gw().print_success("  Weixin allowlist saved.")
+        _gw().print_success("  微信白名单已保存。")
     else:
         policy, allow_all, emit, message = _WEIXIN_DM_POLICIES.get(access_idx, _WEIXIN_DM_POLICIES[3])
         _save_env_values(WEIXIN_DM_POLICY=policy, WEIXIN_ALLOW_ALL_USERS=allow_all, WEIXIN_ALLOWED_USERS="")
         emit(message)
         if access_idx == 0:
             _gw().print_info(
-                "  Unknown DM users can request access and you approve them with `hermes pairing approve`."
+                "  陌生私聊用户会来申请，你用「coco pairing approve」批准。"
             )
 
     print()
@@ -491,27 +491,27 @@ def _setup_weixin():
     group_choices = [
         "关闭群聊（推荐）", "允许所有群聊", "只允许名单里的群 ID",
     ]
-    group_idx = _gw().prompt_choice("  How should group chats be handled?", group_choices, 0)
+    group_idx = _gw().prompt_choice("  群聊怎么处理？", group_choices, 0)
     if group_idx == 0:
         _save_env_values(WEIXIN_GROUP_POLICY="disabled", WEIXIN_GROUP_ALLOWED_USERS="")
-        _gw().print_info("  Group chats disabled.")
+        _gw().print_info("  已关闭群聊。")
     elif group_idx == 1:
         _save_env_values(WEIXIN_GROUP_POLICY="open", WEIXIN_GROUP_ALLOWED_USERS="")
-        _gw().print_warning("  All group chats enabled (only takes effect if iLink delivers group events).")
+        _gw().print_warning("  已放行所有群（只有 iLink 投递群事件时才生效）。")
     else:
-        allow_groups = _prompt_csv("  Allowed group chat IDs (comma-separated, not member user IDs)", "")
+        allow_groups = _prompt_csv("  群白名单 ID（逗号分隔，填群 ID 不是成员 ID）", "")
         _save_env_values(WEIXIN_GROUP_POLICY="allowlist", WEIXIN_GROUP_ALLOWED_USERS=allow_groups)
-        _gw().print_success("  Group allowlist saved (only takes effect if iLink delivers group events).")
+        _gw().print_success("  群白名单已保存（只有 iLink 投递群事件时才生效）。")
 
     if user_id:
         print()
         _offer_home_channel("WEIXIN_HOME_CHANNEL", user_id, "your Weixin user ID")
 
     print()
-    _gw().print_success("Weixin configured!")
-    _gw().print_info(f"  Account ID: {account_id}")
+    _gw().print_success("微信配置完成！")
+    _gw().print_info(f"  账号 ID：{account_id}")
     if user_id:
-        _gw().print_info(f"  User ID: {user_id}")
+        _gw().print_info(f"  用户 ID：{user_id}")
 
 
 def _setup_qqbot():
@@ -530,25 +530,25 @@ def _setup_qqbot():
             credentials = qr_register()
         except KeyboardInterrupt:
             print()
-            _gw().print_warning("  QQ Bot setup cancelled.")
+            _gw().print_warning("  QQ 机器人配置已取消。")
             return
         if not credentials:
-            _gw().print_info("  QR setup did not complete. Continuing with manual input.")
+            _gw().print_info("  扫码没完成，改用手动填写。")
 
     if not credentials:
         print()
         _gw()._print_info_lines(
-            "  Go to https://q.qq.com to register a QQ Bot application.",
-            "  Note your App ID and App Secret from the application page.",
+            "  去 https://q.qq.com 注册一个 QQ 机器人应用。",
+            "  在应用页面记下 App ID 和 App Secret。",
         )
         print()
         app_id = _gw().prompt("  App ID", password=False)
         if not app_id:
-            _gw().print_warning("  Skipped — QQ Bot won't work without an App ID.")
+            _gw().print_warning("  已跳过 —— 没有 App ID，QQ 机器人用不了。")
             return
         app_secret = _gw().prompt("  App Secret", password=True)
         if not app_secret:
-            _gw().print_warning("  Skipped — QQ Bot won't work without an App Secret.")
+            _gw().print_warning("  已跳过 —— 没有 App Secret，QQ 机器人用不了。")
             return
         credentials = {"app_id": app_id.strip(), "client_secret": app_secret.strip(), "user_openid": ""}
 
@@ -559,38 +559,38 @@ def _setup_qqbot():
 
     print()
     access_choices = ["用私聊配对审批（推荐）", "允许所有私聊", "只允许名单里的用户 OpenID"]
-    access_idx = _gw().prompt_choice("  How should direct messages be authorized?", access_choices, 0)
+    access_idx = _gw().prompt_choice("  私聊怎么授权？", access_choices, 0)
     if access_idx == 0:
         _gw().save_env_value("QQ_ALLOW_ALL_USERS", "false")
         allowed = ""
         if user_openid:
             print()
-            if _gw().prompt_yes_no(f"  Add yourself ({user_openid}) to the allow list?", True):
+            if _gw().prompt_yes_no(f"  把你自己（{user_openid}）加进白名单吗？", True):
                 allowed = user_openid
-                _gw().print_success(f"  Allow list set to {user_openid}")
+                _gw().print_success(f"  白名单已设为 {user_openid}")
         _gw().save_env_value("QQ_ALLOWED_USERS", allowed)
-        _gw().print_success("  DM pairing enabled.")
-        _gw().print_info("  Unknown users can request access; approve with `hermes pairing approve`.")
+        _gw().print_success("  已启用配对授权。")
+        _gw().print_info("  陌生用户会来申请，你用「coco pairing approve」批准。")
     elif access_idx == 1:
         _save_env_values(QQ_ALLOW_ALL_USERS="true", QQ_ALLOWED_USERS="")
-        _gw().print_warning("  Open DM access enabled for QQ Bot.")
+        _gw().print_warning("  已放开 QQ 机器人的私聊访问。")
     else:
-        allowlist = _prompt_csv("  Allowed user OpenIDs (comma-separated)", user_openid or "")
+        allowlist = _prompt_csv("  白名单用户 OpenID（逗号分隔）", user_openid or "")
         _save_env_values(QQ_ALLOW_ALL_USERS="false", QQ_ALLOWED_USERS=allowlist)
-        _gw().print_success("  Allowlist saved.")
+        _gw().print_success("  白名单已保存。")
 
     print()
     if user_openid:
         _offer_home_channel("QQBOT_HOME_CHANNEL", user_openid, "your QQ user ID")
     else:
-        home_channel = _gw().prompt("  Home channel OpenID (for cron/notifications, or empty)", password=False)
+        home_channel = _gw().prompt("  主页频道 OpenID（接收定时任务与通知，可留空）", password=False)
         if home_channel:
             _gw().save_env_value("QQBOT_HOME_CHANNEL", home_channel.strip())
-            _gw().print_success(f"  Home channel set to {home_channel.strip()}")
+            _gw().print_success(f"  主页频道已设为 {home_channel.strip()}")
 
     print()
-    _gw().print_success("🐧 QQ Bot configured!")
-    _gw().print_info(f"  App ID: {credentials['app_id']}")
+    _gw().print_success("🐧 QQ Bot 配置完成！")
+    _gw().print_info(f"  App ID：{credentials['app_id']}")
 
 
 def _signal_line_input(prompt_text: str) -> str | None:
@@ -598,7 +598,7 @@ def _signal_line_input(prompt_text: str) -> str | None:
     try:
         return _gw().line_input(prompt_text).strip()
     except (EOFError, KeyboardInterrupt):
-        print("\n  Setup cancelled.")
+        print("\n  已取消配置。")
         return None
 
 
@@ -613,86 +613,86 @@ def _setup_signal():
 
     print()
     if shutil.which("signal-cli"):
-        _gw().print_success("signal-cli found on PATH.")
+        _gw().print_success("PATH 里找到了 signal-cli。")
     else:
-        _gw().print_warning("signal-cli not found on PATH.")
+        _gw().print_warning("PATH 里没找到 signal-cli。")
         _gw()._print_info_lines(
-            "  Signal requires signal-cli running as an HTTP daemon.", "  Install options:",
+            "  Signal 需要一个跑成 HTTP 服务的 signal-cli。", "  安装方式：",
             "    Linux:  download from https://github.com/AsamK/signal-cli/releases",
             "    macOS:  brew install signal-cli", "    Docker: bbernhard/signal-cli-rest-api",
         )
         print()
         _gw()._print_info_lines(
-            "  After installing, link your account and start the daemon:",
-            '    signal-cli link -n "HermesAgent"',
+            "  装好后，先链接账号再启动服务：",
+            '    signal-cli link -n "Coco"',
             "    signal-cli --account +YOURNUMBER daemon --http 127.0.0.1:8080",
         )
         print()
 
     print()
-    _gw().print_info("  Enter the URL where signal-cli HTTP daemon is running.")
+    _gw().print_info("  填 signal-cli 的 HTTP 服务地址。")
     default_url = existing_url or "http://127.0.0.1:8080"
-    url = _signal_line_input(f"  HTTP URL [{default_url}]: ")
+    url = _signal_line_input(f"  HTTP 地址 [{default_url}]： ")
     if url is None:
         return
     url = url or default_url
 
-    _gw().print_info("  Testing connection...")
+    _gw().print_info("  正在测试连接…")
     try:
         import httpx
         resp = httpx.get(f"{url.rstrip('/')}/api/v1/check", timeout=10.0)
         if resp.status_code == 200:
-            _gw().print_success("  signal-cli daemon is reachable!")
+            _gw().print_success("  signal-cli 服务可以连上。")
         else:
-            _gw().print_warning(f"  signal-cli responded with status {resp.status_code}.")
-            if not _gw().prompt_yes_no("  Continue anyway?", False):
+            _gw().print_warning(f"  signal-cli 返回状态码 {resp.status_code}。")
+            if not _gw().prompt_yes_no("  还要继续吗？", False):
                 return
     except Exception as e:
-        _gw().print_warning(f"  Could not reach signal-cli at {url}: {e}")
-        if not _gw().prompt_yes_no("  Save this URL anyway? (you can start signal-cli later)", True):
+        _gw().print_warning(f"  连不上 {url} 上的 signal-cli：{e}")
+        if not _gw().prompt_yes_no("  还是保存这个地址吗？（你可以稍后再启动 signal-cli）", True):
             return
 
     _gw().save_env_value("SIGNAL_HTTP_URL", url)
 
     print()
-    _gw()._print_info_lines("  Enter your Signal account phone number in E.164 format.", "  Example: +15551234567")
+    _gw()._print_info_lines("  填你的 Signal 账号手机号，用 E.164 格式。", "  例如：+15551234567")
     default_account = existing_account or ""
-    account = _signal_line_input(f"  Account number{f' [{default_account}]' if default_account else ''}: ")
+    account = _signal_line_input(f"  账号号码{f' [{default_account}]' if default_account else ''}： ")
     if account is None:
         return
     account = account or default_account
     if not account:
-        _gw().print_error("  Account number is required.")
+        _gw().print_error("  账号号码是必填的。")
         return
 
     _gw().save_env_value("SIGNAL_ACCOUNT", account)
 
     print()
     _gw()._print_info_lines(
-        "  The gateway DENIES all users by default for security.",
-        "  Enter phone numbers or UUIDs of allowed users (comma-separated).",
+        "  出于安全，网关默认拒绝所有用户。",
+        "  填白名单用户的手机号或 UUID（逗号分隔）。",
     )
     default_allowed = _gw().get_env_value("SIGNAL_ALLOWED_USERS") or account
-    allowed = _signal_line_input(f"  Allowed users [{default_allowed}]: ")
+    allowed = _signal_line_input(f"  白名单 [{default_allowed}]： ")
     if allowed is None:
         return
     _gw().save_env_value("SIGNAL_ALLOWED_USERS", allowed or default_allowed)
 
     print()
-    if _gw().prompt_yes_no("  Enable group messaging? (disabled by default for security)", False):
+    if _gw().prompt_yes_no("  要开启群消息吗？（出于安全默认关闭）", False):
         print()
-        _gw().print_info("  Enter group IDs to allow, or * for all groups.")
+        _gw().print_info("  填放行的群 ID，* 表示所有群。")
         existing_groups = _gw().get_env_value("SIGNAL_GROUP_ALLOWED_USERS") or ""
-        groups = _signal_line_input(f"  Group IDs [{existing_groups or '*'}]: ")
+        groups = _signal_line_input(f"  群 ID [{existing_groups or '*'}]： ")
         if groups is None:
             return
         _gw().save_env_value("SIGNAL_GROUP_ALLOWED_USERS", groups or existing_groups or "*")
 
     print()
-    _gw().print_success("Signal configured!")
+    _gw().print_success("Signal 配置完成！")
     _gw()._print_info_lines(
-        f"  URL: {url}", f"  Account: {account}", "  DM auth: via SIGNAL_ALLOWED_USERS + DM pairing",
-        f"  Groups: {'enabled' if _gw().get_env_value('SIGNAL_GROUP_ALLOWED_USERS') else 'disabled'}",
+        f"  地址：{url}", f"  账号：{account}", "  私聊授权：靠白名单 + 配对",
+        f"  群聊：{'已开启' if _gw().get_env_value('SIGNAL_GROUP_ALLOWED_USERS') else '已关闭'}",
     )
 
 

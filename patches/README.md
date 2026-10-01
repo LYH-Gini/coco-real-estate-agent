@@ -429,3 +429,18 @@ python3 scripts/smoke_test_real_estate.py
   以及平台清单每行括号里的状态词（`configured` / `not configured` / `partially configured`）——
   后者是**语义值**（三处判断逻辑在比它），建议在**显示层**翻译，不要动比较逻辑。
 - **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
+
+### 28 网关向导的平台专属文案中文化（微信 / QQ / Signal + 平台注册表说明）
+
+- **改了什么**：`hermes_cli/gateway_setup_wizard.py` 共 123 处 —— 微信流程（扫码登录说明、依赖缺失、
+  私聊/群聊授权、白名单与主页频道）、QQ 机器人流程（扫码/手动、App ID 与 Secret、白名单、主页频道）、
+  Signal 流程（signal-cli 安装与连通性、账号号码、白名单、群聊），以及 `_PLATFORMS` 注册表里
+  **Mattermost / BlueBubbles / QQ Bot / Yuanbao** 四个平台的步骤说明、提问与帮助文本。
+- **两处口径决定**：① Signal 的链接设备名 `signal-cli link -n "HermesAgent"` → `-n "Coco"`；
+  ② 微信/QQ 的授权选项在更早一轮已是中文（`用私聊配对审批（推荐）` 等），**保持原样不再改**，
+  只补了同组里漏掉的一句英文（`Disable direct messages`）。
+- **品牌针同步**：Mattermost 的 help 由英文变成中文后，自检第 **26** 项与 `tests/real_estate/test_coco_branding.py`
+  的针一并改成 `Coco 送定时任务结果与通知的频道 ID`（第 25 项同理）。
+- **一个易踩的坑**：**别从工具输出里照抄带电话号码的示例串** —— 输出会把号段打码（`+15551234567`
+  显示成 `+155****4567`），照抄必然配不上；改这类文案时从文件里取原文（`src.index('  Example: ')`）。
+- **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
