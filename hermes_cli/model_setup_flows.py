@@ -35,10 +35,10 @@ def _env_base_url(base_url_env: str) -> str:
 def _prompt_base_url_override(effective_base: str, base_url_env: str, *, persist_env: bool = True) -> str:
     """Optional ``Base URL [...]`` prompt; a valid override is saved to *base_url_env*."""
     from hermes_cli.config import save_env_value
-    override = _ask(f"Base URL [{effective_base}]: ", cancel_msg="", on_cancel="")
+    override = _ask(f"接口地址 [{effective_base}]： ", cancel_msg="", on_cancel="")
     if override and base_url_env:
         if not override.startswith(_HTTP):
-            print("  Invalid URL — must start with http:// or https://. Keeping current value.")
+            print("  地址不对 —— 必须以 http:// 或 https:// 开头。保持当前值。")
         else:
             if persist_env:
                 save_env_value(base_url_env, override)
@@ -48,7 +48,7 @@ def _prompt_base_url_override(effective_base: str, base_url_env: str, *, persist
 
 def _report_live_models(model_list, source: str) -> None:
     if model_list:
-        print(f"  Found {len(model_list)} model(s) from {source}")
+        print(f"  从 {source} 读到 {len(model_list)} 个模型")
 
 
 def _model_flow_openrouter(config, current_model=""):
@@ -108,7 +108,7 @@ def _model_flow_moa(config, current_model=""):
     moa = normalize_moa_config(config.get("moa") if isinstance(config, dict) else {})
     presets = moa.get("presets") or {}
     if not presets:
-        print("No MoA presets configured. Run `hermes moa configure <name>` first.")
+        print("还没配置 MoA 预设。先跑「coco cli moa configure <名称>」。")
         return
 
     names = list(presets.keys())
@@ -127,16 +127,16 @@ def _model_flow_moa(config, current_model=""):
     idx = _curses_choice(title, rows, default_idx)
     if idx is None:
         _print_numbered(title, rows, default_idx)
-        raw = _ask(f"  Choice [1-{len(rows)}]: ", raw=True, cancel_msg="No change.")
+        raw = _ask(f"  请选择 [1-{len(rows)}]： ", raw=True, cancel_msg="不改。")
         if raw is None:
             return
         try:
             idx = default_idx if not raw else max(0, min(len(rows) - 1, int(raw) - 1))
         except ValueError:
-            print("No change.")
+            print("不改。")
             return
     if idx < 0:
-        print("No change.")
+        print("不改。")
         return
 
     selected_name = names[idx]
@@ -161,7 +161,7 @@ def _model_flow_moa(config, current_model=""):
         print(f"    {i}. {slot.get('provider')}:{slot.get('model')}")
     agg = preset.get("aggregator") or {}
     print(
-        f"  Aggregator:  {agg.get('provider')}:{agg.get('model')}  (acting model — runs every step and carries almost all of the cost)"
+        f"  聚合器：{agg.get('provider')}:{agg.get('model')}（实际干活的模型 —— 每一步都由它跑，绝大部分费用也在它身上）"
     )
 
 
@@ -207,14 +207,14 @@ def _nous_model_catalog(free_tier: bool, portal_url: str, model_ids: list, prici
         model_ids, unavailable_models = partition_nous_models_by_tier(model_ids, pricing, free_tier=True)
 
     if not model_ids and not unavailable_models:
-        print("No models available for Nous Portal after filtering.")
+        print("按当前筛选条件，Nous Portal 没有可用模型。")
         return None
     if free_tier and not model_ids:
-        print("No free models currently available.")
+        print("现在没有免费模型可用。")
         if unavailable_models:
             from hermes_cli.auth import DEFAULT_NOUS_PORTAL_URL
             _url = (portal_url or DEFAULT_NOUS_PORTAL_URL).rstrip("/")
-            print(unavailable_message or f"Upgrade at {_url} to access paid models.")
+            print(unavailable_message or f"想用付费模型，去 {_url} 升级。")
         return None
     return model_ids, pricing, unavailable_models, unavailable_message, _policy_narrowed
 
@@ -235,9 +235,9 @@ def _nous_verified_credentials(creds_or_none=None):
             try:
                 _login_nous(_nous_login_args(None), PROVIDER_REGISTRY["nous"])
             except Exception as login_exc:
-                print(f"Re-login failed: {login_exc}")
+                print(f"重新登录失败：{login_exc}")
             return None
-        print(f"Could not verify credentials: {msg}")
+        print(f"没法验证凭据：{msg}")
         return None
 
 
@@ -299,7 +299,7 @@ def _model_flow_nous(config, current_model="", args=None):
     from hermes_cli.model_switch_providers import _free_tier_nous_row
     tier_row = _free_tier_nous_row({"name": "Nous Portal", "models": []})
     if tier_row is None:
-        print("The Nous free tier is off for this install; sign in with `hermes auth upgrade` to use Nous models.")
+        print("这台实例的 Nous 免费额度没开；要用 Nous 的模型，用「coco cli auth upgrade」登录。")
         return
     if tier_row["models"]:
         # Free-tier identity: the welcome host serves the single pinned model; no Portal catalog,
@@ -309,11 +309,11 @@ def _model_flow_nous(config, current_model="", args=None):
             return
         selected = tier_row["models"][0]
         _nous_persist_selection(selected, creds)
-        print(f"Default model set to: {selected} (via {tier_row['name']})")
+        print(f"默认模型已设为：{selected}（来自 {tier_row['name']}）")
         return
     model_ids = get_curated_nous_model_ids()
     if not model_ids:
-        print("No curated models available for Nous Portal.")
+        print("Nous Portal 没有可用的精选模型。")
         return
 
     # Verify credentials are still valid (catches expired sessions early)
@@ -346,17 +346,17 @@ def _model_flow_nous(config, current_model="", args=None):
     _policy_notice = nous_policy_notice(removed=_policy_narrowed)
     if _policy_notice:
         print(_policy_notice)
-    print(f'Showing {len(model_ids)} curated models — use "Enter custom model name" for others.')
+    print(f'这里列出 {len(model_ids)} 个精选模型 —— 要用别的，选「自定义模型名」。')
 
     selected = _prompt_model_selection(
         model_ids, current_model=current_model, pricing=pricing, unavailable_models=unavailable_models,
         portal_url=_nous_portal_url, unavailable_message=unavailable_message, confirm_provider="nous",
         confirm_base_url=creds.get("base_url", ""), confirm_api_key=creds.get("api_key", ""))
     if not selected:
-        print("No change.")
+        print("不改。")
         return
     config = _nous_persist_selection(selected, creds)
-    print(f"Default model set to: {selected} (via Nous Portal)")
+    print(f"默认模型已设为：{selected}（来自 Nous Portal）")
     # Offer Tool Gateway enablement for paid subscribers
     prompt_enable_tool_gateway(config)
 
@@ -475,7 +475,7 @@ def _copilot_model_list(live_ids) -> list:
     from hermes_cli.models import _PROVIDER_MODELS
     if live_ids:
         model_list = [model_id for model_id in live_ids if model_id]
-        print(f"  Found {len(model_list)} model(s) from GitHub Copilot")
+        print(f"  从 GitHub Copilot 读到 {len(model_list)} 个模型")
         return model_list
     model_list = _PROVIDER_MODELS.get("copilot", [])
     if model_list:
@@ -506,7 +506,7 @@ def _copilot_obtain_token() -> bool:
          "    → GitHub App token (ghu_*)     via environment variable",
          "    ✗ Classic PAT (ghp_*)          NOT supported by Copilot API", "", "  Options:",
          "    1. Login with GitHub (OAuth device code flow)", "    2. Enter a token manually", "    3. Cancel", "")
-    choice = _ask("  Choice [1-3]: ", raw=True, cancel_msg="")
+    choice = _ask("  请选择 [1-3]： ", raw=True, cancel_msg="")
     if choice is None:
         return False
     if choice == "1":
@@ -514,20 +514,20 @@ def _copilot_obtain_token() -> bool:
             from hermes_cli.copilot_auth import copilot_device_code_login
             token = copilot_device_code_login()
             if not token:
-                print("  Login cancelled or failed.")
+                print("  登录被取消或失败。")
                 return False
             save_env_value("COPILOT_GITHUB_TOKEN", token)
             _say("  Copilot token saved.", "")
         except Exception as exc:
-            print(f"  Login failed: {exc}")
+            print(f"  登录失败：{exc}")
             return False
         return True
     if choice == "2":
-        new_key = _ask("  Token (COPILOT_GITHUB_TOKEN): ", secret=True, cancel_msg="")
+        new_key = _ask("  Token（COPILOT_GITHUB_TOKEN）： ", secret=True, cancel_msg="")
         if new_key is None:
             return False
         if not new_key:
-            print("  Cancelled.")
+            print("  已取消。")
             return False
         # Validate token type
         with contextlib.suppress(ImportError):
@@ -539,7 +539,7 @@ def _copilot_obtain_token() -> bool:
         save_env_value("COPILOT_GITHUB_TOKEN", new_key)
         _say("  Token saved.", "")
         return True
-    print("  Cancelled.")
+    print("  已取消。")
     return False
 
 
@@ -572,15 +572,15 @@ def _model_flow_copilot(config, current_model=""):
         live_models = fetch_api_models(api_key, effective_base)
 
     selected = _pick_model_or_prompt(
-        _copilot_model_list(live_models), "Model name: ", current_model=_normalize(current_model),
+        _copilot_model_list(live_models), "模型名： ", current_model=_normalize(current_model),
         confirm_provider=provider_id, confirm_base_url=effective_base, confirm_api_key=api_key)
     if not selected:
-        print("No change.")
+        print("不改。")
         return
     selected = _normalize(selected)
     _persist_model(selected, provider_id, base_url=effective_base,
                    api_mode=copilot_model_api_mode(selected, catalog=catalog, api_key=api_key))
-    print(f"Default model set to: {selected} (via {pconfig.name})")
+    print(f"默认模型已设为：{selected}（来自 {pconfig.name}）")
 
 
 def _model_flow_copilot_acp(config, current_model=""):
@@ -612,11 +612,11 @@ def _model_flow_copilot_acp(config, current_model=""):
         catalog_api_key = resolve_api_key_provider_credentials("copilot").get("api_key", "")
     _catalog, catalog_ids, _normalize = _copilot_catalog(catalog_api_key)
     selected = _pick_model_or_prompt(
-        _copilot_model_list(catalog_ids), "Model name: ", current_model=_normalize(current_model),
+        _copilot_model_list(catalog_ids), "模型名： ", current_model=_normalize(current_model),
         confirm_provider=provider_id, confirm_base_url=effective_base, confirm_api_key=catalog_api_key)
     if selected:
         selected = _normalize(selected)
-    _finish_model(selected, provider_id, f"Default model set to: {selected} (via {pconfig.name})",
+    _finish_model(selected, provider_id, f"默认模型已设为：{selected}（来自 {pconfig.name}）",
                   base_url=effective_base, api_mode="chat_completions")
 
 
@@ -637,10 +637,10 @@ def _model_flow_kimi(config, current_model=""):
     is_coding_plan = existing_key.startswith("sk-kimi-")
     if is_coding_plan:
         effective_base = KIMI_CODE_BASE_URL
-        print(f"  Detected Kimi Coding Plan key → {effective_base}")
+        print(f"  识别到 Kimi Coding Plan 的 key → {effective_base}")
     else:
         effective_base = pconfig.inference_base_url
-        print(f"  Using Moonshot endpoint → {effective_base}")
+        print(f"  用 Moonshot 端点 → {effective_base}")
     # Clear any manual base URL override so auto-detection works at runtime
     if base_url_env and get_env_value(base_url_env):
         save_env_value(base_url_env, "")
@@ -648,7 +648,7 @@ def _model_flow_kimi(config, current_model=""):
 
     model_list = _PROVIDER_MODELS.get("kimi-coding" if is_coding_plan else "moonshot", [])
     selected = _pick_model_or_prompt(
-        model_list, "Enter model name: ", current_model=current_model, confirm_provider=provider_id,
+        model_list, "填模型名： ", current_model=current_model, confirm_provider=provider_id,
         confirm_base_url=effective_base, confirm_api_key=existing_key)
     # api_mode is dropped so the runtime auto-detects it from the URL.
     _finish_model(selected, provider_id, f"Default model set to: {selected} (via {'Kimi Coding' if is_coding_plan else 'Moonshot'})",
@@ -684,7 +684,7 @@ def _model_flow_stepfun(config, current_model=""):
 
     region_idx = _prompt_provider_choice([label for _, label in ordered_regions])
     if region_idx is None or ordered_regions[region_idx][0] == "cancel":
-        print("No change.")
+        print("不改。")
         return
     effective_base = _stepfun_base_url_for_region(ordered_regions[region_idx][0])
     if base_url_env:
@@ -692,16 +692,16 @@ def _model_flow_stepfun(config, current_model=""):
 
     model_list = fetch_api_models(existing_key, effective_base)
     if model_list:
-        print(f"  Found {len(model_list)} model(s) from {pconfig.name} API")
+        print(f"  从 {pconfig.name} 接口读到 {len(model_list)} 个模型")
     else:
         model_list = _PROVIDER_MODELS.get(provider_id, [])
         if model_list:
-            print(f"  Could not auto-detect models from {pconfig.name} API — showing Step Plan fallback catalog.")
+            print(f"  没法从 {pconfig.name} 接口自动读取模型 —— 改列 Step Plan 的备选清单。")
 
     selected = _pick_model_or_prompt(
-        model_list, "Model name: ", current_model=current_model, confirm_provider=provider_id,
+        model_list, "模型名： ", current_model=current_model, confirm_provider=provider_id,
         confirm_base_url=effective_base, confirm_api_key=existing_key)
-    model = _finish_model(selected, provider_id, f"Default model set to: {selected} (via {pconfig.name})",
+    model = _finish_model(selected, provider_id, f"默认模型已设为：{selected}（来自 {pconfig.name}）",
                           base_url=effective_base, drop_api_mode=True)
     if model is not None:
         # Sync the caller's config dict so the setup wizard's final save_config(config) preserves our model
@@ -721,7 +721,7 @@ def _model_flow_vertex(config, current_model=""):
     # 1. Credential source detection (fast, no network / no google-auth import).
     sa_path = (get_env_value("VERTEX_CREDENTIALS_PATH") or get_env_value("GOOGLE_APPLICATION_CREDENTIALS") or "").strip()
     if sa_path:
-        print(f"  Vertex credentials: service account JSON ({sa_path}) ✓")
+        print(f"  Vertex 凭据：服务账号 JSON（{sa_path}）✓")
     else:
         _say("  Vertex credentials: Application Default Credentials (ADC)",
              "    Vertex uses OAuth2, not a static API key. Either:",
@@ -735,14 +735,14 @@ def _model_flow_vertex(config, current_model=""):
 
     # 2. Project ID (optional — falls back to the project embedded in creds).
     current_project = str(vertex_cfg.get("project_id") or "").strip()
-    project_input = _ask(f"  GCP project ID [{current_project or 'from credentials'}]: ", cancel_msg="")
+    project_input = _ask(f"  GCP 项目 ID [{current_project or 'from credentials'}]： ", cancel_msg="")
     if project_input is None:
         return
     project_id = project_input or current_project
 
     # 3. Region (default global — required for the Gemini 3.x previews).
     current_region = str(vertex_cfg.get("region") or "global").strip() or "global"
-    region_input = _ask(f"  Vertex region [{current_region}]: ", cancel_msg="")
+    region_input = _ask(f"  Vertex 区域 [{current_region}]： ", cancel_msg="")
     if region_input is None:
         return
     region = region_input or current_region
@@ -760,7 +760,7 @@ def _model_flow_vertex(config, current_model=""):
 
     # base_url is computed at runtime from project+region; do not pin it.
     # api_mode is dropped: chat_completions is the profile default.
-    _finish_model(selected, "vertex", f"  Default model set to: {selected} (via Google Vertex AI, {region})", no_change="  No change.",
+    _finish_model(selected, "vertex", f"  Default model set to: {selected} (via Google Vertex AI, {region})", no_change="  不改。",
                   drop_base_url=True, drop_api_mode=True, finish=_finish)
 
 
@@ -777,16 +777,16 @@ def _select_zai_endpoint(current_base: str) -> str:
     default_idx = next((idx for idx, (_, url) in enumerate(options) if normalized_current == url.rstrip("/")),
                        len(options) if normalized_current else 0)
     choices = [f"{label} ({url})" for label, url in options] + ["Custom proxy URL"]
-    selected = _prompt_provider_choice(choices, default=default_idx, title="Select Z.AI / GLM endpoint:")
+    selected = _prompt_provider_choice(choices, default=default_idx, title="选择 Z.AI / GLM 的接口端点：")
     if selected is None:
         return current_base
     if selected != len(options):
         return options[selected][1].rstrip("/")
-    override = _ask(f"Custom base URL [{current_base}]: ", cancel_msg="")
+    override = _ask(f"自定义接口地址 [{current_base}]： ", cancel_msg="")
     if not override:
         return current_base
     if not override.startswith(_HTTP):
-        print("  Invalid URL — must start with http:// or https://. Keeping current value.")
+        print("  地址不对 —— 必须以 http:// 或 https:// 开头。保持当前值。")
         return current_base
     return override.rstrip("/")
 
@@ -810,7 +810,7 @@ def _gemini_tier_ok(existing_key: str, pconfig, base_url_env: str) -> bool:
         from agent.gemini_native_adapter import probe_gemini_tier
     except Exception:
         return True
-    print("  Checking Gemini API tier...")
+    print("  正在检查 Gemini 接口档位…")
     tier = probe_gemini_tier(existing_key, _env_base_url(base_url_env) or pconfig.inference_base_url)
     if tier == "free":
         _say(*_GEMINI_FREE_TIER_NOTICE)
@@ -968,13 +968,13 @@ def _model_flow_api_key_provider(config, provider_id, current_model=""):
         except Exception:
             pricing = {}
     selected = _pick_model_or_prompt(
-        model_list, "Model name: ", current_model=current_model, pricing=pricing, confirm_provider=provider_id,
+        model_list, "模型名： ", current_model=current_model, pricing=pricing, confirm_provider=provider_id,
         confirm_base_url=effective_base, confirm_api_key=existing_key)
     if selected and is_opencode:
         selected = normalize_opencode_model_id(provider_id, selected)
     # OpenCode pins its api_mode; everyone else drops it so the runtime auto-detects.
     _finish_model(
-        selected, provider_id, f"Default model set to: {selected} (via {pconfig.name})", base_url=effective_base,
+        selected, provider_id, f"默认模型已设为：{selected}（来自 {pconfig.name}）", base_url=effective_base,
         api_mode=opencode_model_api_mode(provider_id, selected) if selected and is_opencode else None,
         drop_api_mode=not is_opencode)
 
@@ -985,23 +985,23 @@ def _anthropic_authenticate() -> bool:
     from hermes_cli.config import save_env_value, save_anthropic_api_key
     _say("", "  Choose authentication method:", "", "    1. Claude Pro/Max subscription (OAuth login)",
          "    2. Anthropic API key (pay-per-token)", "    3. Cancel", "")
-    choice = _ask("  Choice [1/2/3]: ", raw=True, cancel_msg="")
+    choice = _ask("  请选择 [1/2/3]： ", raw=True, cancel_msg="")
     if choice is None:
         return False
     if choice == "1":
         return _run_anthropic_oauth_flow(save_env_value)
     if choice == "2":
         _say("", "  Get an API key at: https://platform.claude.com/settings/keys", "")
-        api_key = _ask("  API key (sk-ant-...): ", secret=True, cancel_msg="")
+        api_key = _ask("  API key（sk-ant-…）： ", secret=True, cancel_msg="")
         if api_key is None:
             return False
         if not api_key:
-            print("  Cancelled.")
+            print("  已取消。")
             return False
         save_anthropic_api_key(api_key, save_fn=save_env_value)
-        print("  ✓ API key saved.")
+        print("  ✓ API key 已保存。")
         return True
-    print("  No change.")
+    print("  不改。")
     return False
 
 
@@ -1037,11 +1037,11 @@ def _model_flow_anthropic(config, current_model=""):
                     source_suffix = format_secret_source_suffix(var)
                     if source_suffix:
                         break
-            print(f"  Anthropic credentials: {existing_key[:12]}... ✓{source_suffix}")
+            print(f"  Anthropic 凭据：{existing_key[:12]}… ✓{source_suffix}")
         elif cc_available:
-            print("  Claude Code credentials: ✓ (auto-detected)")
+            print("  Claude Code 凭据：✓（自动识别到）")
         print()
-        choice = _prompt_auth_credentials_choice("Anthropic credentials:")
+        choice = _prompt_auth_credentials_choice("Anthropic 凭据：")
         if choice == "reauth":
             needs_auth = True
         elif choice == "cancel":
@@ -1053,7 +1053,7 @@ def _model_flow_anthropic(config, current_model=""):
     print()
 
     selected = _pick_model_or_prompt(
-        _PROVIDER_MODELS.get("anthropic", []), "Model name (e.g., claude-sonnet-4-20250514): ",
+        _PROVIDER_MODELS.get("anthropic", []), "模型名（例如 claude-sonnet-4-20250514）： ",
         current_model=current_model, confirm_provider="anthropic")
     # Clear base_url: resolve_runtime_provider() always hardcodes Anthropic's URL, and a
     # stale value can contaminate other providers on a later switch.
@@ -1085,10 +1085,10 @@ def _external_process_login_gate(profile, status) -> bool:
     try:
         subprocess.run(login, check=False)
     except (KeyboardInterrupt, OSError):
-        print("Login cancelled or failed.")
+        print("登录被取消或失败。")
         return False
     if not profile.setup_status()["logged_in"]:
-        print("Login failed.")
+        print("登录失败。")
         return False
     _say("", f"  {profile.display_name} credentials: ✓", "")
     return True
@@ -1173,7 +1173,7 @@ def _model_flow_plugin_provider(config, provider_id, current_model=""):
     live, notes = _plugin_flow_live_rows(profile, api_key, base_url)
     model_list = merge_profile_catalog(provider_id, profile, live) or []
     selected = _pick_model_or_prompt(
-        model_list, "Model name: ", current_model=current_model, confirm_provider=provider_id,
+        model_list, "模型名： ", current_model=current_model, confirm_provider=provider_id,
         confirm_base_url=base_url, confirm_api_key=api_key, notes=notes)
     _finish_model(selected, provider_id, f"Default model set to: {selected} (via {profile.display_name or provider_id})",
                   base_url=base_url or None, api_mode=profile.api_mode or None)

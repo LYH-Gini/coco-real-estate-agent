@@ -13,8 +13,8 @@ from hermes_cli.auth_constants import DEFAULT_NOUS_PORTAL_URL
 
 logger = logging.getLogger("hermes_cli.auth")
 
-_CUSTOM_LABEL = "Enter custom model name"
-_SKIP_LABEL = "Skip (keep current)"
+_CUSTOM_LABEL = "自定义模型名"
+_SKIP_LABEL = "跳过（保持当前）"
 _CURRENT_SUFFIX = "  ← currently in use"
 
 
@@ -41,7 +41,7 @@ def _confirm_selection_guards(
     print(combined_message(warnings))
     print("=" * 72)
     try:
-        response = input("Switch anyway? [y/N]: ").strip().lower()
+        response = input("还是要切换吗？[y/N]： ").strip().lower()
     except (KeyboardInterrupt, EOFError):
         print()
         return False
@@ -135,7 +135,7 @@ class _ModelPickerRows:
 
     def menu_title(self) -> str:
         """``Select default model:`` plus an aligned pricing header hint when priced."""
-        title = "Select default model:"
+        title = "选择默认模型："
         if self.has_pricing:
             # Each choice is "  {label}" (2 spaces) plus a 3-char cursor region ("-> " or "   "),
             # so content starts at col 5.
@@ -179,7 +179,7 @@ def _prompt_model_selection(
 
     def _custom_selection() -> Optional[str]:
         try:
-            custom = line_input("Enter model name: ").strip()
+            custom = line_input("填模型名： ").strip()
         except (EOFError, KeyboardInterrupt):
             return None
         return _confirmed_selection(custom) if custom else None
@@ -223,7 +223,7 @@ def _prompt_model_selection(
         model_search_labels += [_CUSTOM_LABEL, _SKIP_LABEL]
 
         idx = curses_radiolist(
-            "Select default model:",
+            "选择默认模型：",
             choices,
             selected=0,  # cursor on the current model (index 0 if it was reordered to top)
             cancel_returns=-1,
@@ -265,7 +265,7 @@ def _prompt_model_selection(
 
     while True:
         try:
-            choice = input(f"Choice [1-{n + 2}] (default: skip): ").strip()
+            choice = input(f"请选择 [1-{n + 2}]（直接回车 = 跳过）： ").strip()
             if not choice:
                 return None
             idx = int(choice)
@@ -275,9 +275,9 @@ def _prompt_model_selection(
                 return _custom_selection()
             if idx == n + 2:
                 return None
-            print(f"Please enter 1-{n + 2}")
+            print(f"请输入 1-{n + 2}")
         except ValueError:
-            print("Please enter a number")
+            print("请输入数字")
         except (KeyboardInterrupt, EOFError):
             return None
 

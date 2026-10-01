@@ -23,7 +23,7 @@ def _say(*lines: str) -> None:
     print("\n".join(lines))
 
 
-def _ask(prompt: str, *, secret: bool = False, raw: bool = False, cancel_msg: str | None = "\nCancelled.",
+def _ask(prompt: str, *, secret: bool = False, raw: bool = False, cancel_msg: str | None = "\n已取消。",
          on_cancel=None):
     """One stripped prompt answer. ``raw`` uses builtin ``input`` (numbered fallbacks),
     ``secret`` the masked prompt, else ``line_input``. Ctrl-C/EOF prints *cancel_msg*
@@ -186,12 +186,12 @@ def _run_login(login_fn, *args, **kwargs) -> bool:
         login_fn(*args, **kwargs)
     except SystemExit as exc:
         if exc.code in (130, None, 0):
-            print("Sign-in was cancelled.")
+            print("登录被取消了。")
         elif isinstance(exc.code, str) and exc.code.strip():
-            print(f"Sign-in did not complete: {exc.code.strip()}")
-            print(f"Run `{retry_command}` to try again.")
+            print(f"登录没完成：{exc.code.strip()}")
+            print(f"重试请跑「{retry_command}」。")
         else:
-            print(f"Sign-in did not complete; run `{retry_command}` to try again.")
+            print(f"登录没完成；重试请跑「{retry_command}」。")
         return False
     except Exception as exc:
         for line in sign_in_failure_lines(exc, service_host=service_host, retry_command=retry_command):
@@ -208,7 +208,7 @@ def _oauth_gate(logged_in: bool, name: str, login_fn, *login_args, fresh_name: s
         _say(f"Not logged into {name}. Starting login...", "")
         return _run_login(login_fn, *login_args)
     _say(f"  {name} credentials: ✓", "")
-    choice = _prompt_auth_credentials_choice(f"{name} credentials:")
+    choice = _prompt_auth_credentials_choice(f"{name} 凭据：")
     if choice == "cancel":
         return False
     if choice == "reauth":
@@ -216,7 +216,7 @@ def _oauth_gate(logged_in: bool, name: str, login_fn, *login_args, fresh_name: s
         if not _run_login(login_fn, *login_args, force_new_login=True):
             return False
         if recheck is not None and not recheck():
-            print("Login failed.")
+            print("登录失败。")
             return False
     return True
 
@@ -241,7 +241,7 @@ def _models_dev_merged(provider_id: str, curated) -> list:
 
 def _show_curated(model_list) -> None:
     if model_list:
-        print(f'  Showing {len(model_list)} curated models — use "Enter custom model name" for others.')
+        print(f'  这里列出 {len(model_list)} 个精选模型 —— 要用别的，选「自定义模型名」。')
 
 
 def _prune_replaced_custom_model_config_credentials(base_url: str, *, provider_name: str = "") -> None:
@@ -321,5 +321,5 @@ def _prompt_auth_credentials_choice(title: str) -> str:
         return ("use", "reauth", "cancel")[idx]
     _print_numbered(title, choices, 0)
     print()
-    choice = _ask("  Choice [1/2/3]: ", raw=True, cancel_msg=None, on_cancel="1")
+    choice = _ask("  请选择 [1/2/3]： ", raw=True, cancel_msg=None, on_cancel="1")
     return {"2": "reauth", "3": "cancel"}.get(choice, "use")

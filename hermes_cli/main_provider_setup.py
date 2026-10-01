@@ -46,7 +46,7 @@ def _clear_stale_openai_base_url():
     if stale_url:
         save_env_value("OPENAI_BASE_URL", "")
         shown = f"{stale_url[:40]}..." if len(stale_url) > 40 else stale_url
-        print(f"Cleared stale OPENAI_BASE_URL from .env (was: {shown})")
+        print(f"已清掉 .env 里过期的 OPENAI_BASE_URL（原值：{shown}）")
 
 
 # (task_key, display_name, short_description)
@@ -261,7 +261,7 @@ def _aux_select_for_task(task: str) -> None:
         providers = build_aux_picker_rows(current_provider=current_provider, current_model=current_model,
                                           current_base_url=current_base_url)
     except Exception as exc:
-        print(f"Could not detect authenticated providers: {exc}")
+        print(f"没法识别已登录的服务商：{exc}")
         providers = []
 
     # (slug, label, models); "auto" always first
@@ -283,7 +283,7 @@ def _aux_select_for_task(task: str) -> None:
         return
     if slug == "__auto__":
         _save_aux_choice(task, provider="auto", model="", base_url="", api_key="", reasoning_effort="")
-        print(f"{display_name}: reset to auto.")
+        print(f"{display_name}：已重置为自动。")
     elif slug == "__custom__":
         _aux_flow_custom_endpoint(task, task_cfg)
     else:
@@ -307,24 +307,24 @@ def _aux_flow_provider_model(task: str, provider_slug: str, curated_models: list
     # list (rare) fall back to a raw input prompt.
     if not model_list:
         _say(f"No curated model list for {provider_slug}.", "Enter a model slug manually (blank = use provider default):")
-        selected = _ask("Model: ", cancel_msg="")
+        selected = _ask("模型： ", cancel_msg="")
         if selected is None:
             return
     else:
         selected = _prompt_model_selection(model_list, current_model=current_model, pricing=pricing,
                                            confirm_provider=provider_slug)
         if selected is None:
-            print("No change.")
+            print("不改。")
             return
 
     effort = _prompt_aux_reasoning_effort(task, current_effort) if _aux_task_takes_reasoning(task) else None
     _save_aux_choice(task, provider=provider_slug, model=selected or "", base_url="", api_key="",
                      reasoning_effort=effort)
-    effort_note = f" · reasoning {effort}" if effort else ""
+    effort_note = f" · 推理 {effort}" if effort else ""
     if selected:
-        print(f"{display_name}: {provider_slug} · {selected}{effort_note}")
+        print(f"{display_name}：{provider_slug} · {selected}{effort_note}")
     else:
-        print(f"{display_name}: {provider_slug} (provider default model){effort_note}")
+        print(f"{display_name}：{provider_slug}（服务商默认模型）{effort_note}")
 
 
 def _aux_flow_custom_endpoint(task: str, task_cfg: dict) -> None:
@@ -335,27 +335,27 @@ def _aux_flow_custom_endpoint(task: str, task_cfg: dict) -> None:
 
     _say("", f"  Custom endpoint for {display_name}",
          "  Provide an OpenAI-compatible base URL (e.g. http://localhost:11434/v1)", "")
-    url = _ask(f"Base URL [{current_base_url}]: " if current_base_url else "Base URL: ", cancel_msg="")
+    url = _ask(f"接口地址 [{current_base_url}]： " if current_base_url else "接口地址： ", cancel_msg="")
     if url is None:
         return
     url = url or current_base_url
     if not url:
-        print("No URL provided. No change.")
+        print("没填地址，不改。")
         return
-    model = _ask(f"Model slug (optional) [{current_model}]: " if current_model else "Model slug (optional): ",
+    model = _ask(f"模型标识（可选）[{current_model}]： " if current_model else "模型标识（可选）： ",
                  cancel_msg="")
     if model is None:
         return
     model = model or current_model
-    api_key = _ask("API key (optional, blank = use OPENAI_API_KEY): ", secret=True, cancel_msg="")
+    api_key = _ask("API key（可选，留空则用 OPENAI_API_KEY）： ", secret=True, cancel_msg="")
     if api_key is None:
         return
     effort = (_prompt_aux_reasoning_effort(task, _aux_effort_word(task_cfg))
               if _aux_task_takes_reasoning(task) else None)
 
     _save_aux_choice(task, provider="custom", model=model, base_url=url, api_key=api_key, reasoning_effort=effort)
-    print(f"{display_name}: custom ({_short_url(url)})" + (f" · {model}" if model else "")
-          + (f" · reasoning {effort}" if effort else ""))
+    print(f"{display_name}：自定义（{_short_url(url)}）" + (f" · {model}" if model else "")
+          + (f" · 推理 {effort}" if effort else ""))
 
 
 _CANCELLED = object()
@@ -372,16 +372,16 @@ def _ask_index(prompt: str, count: int, *, echo_cancel: bool):
             idx = int(val) - 1
             if 0 <= idx < count:
                 return idx
-            print(f"Please enter 1-{count}")
+            print(f"请输入 1-{count}")
         except ValueError:
-            print("Please enter a number")
+            print("请输入数字")
         except (KeyboardInterrupt, EOFError):
             if echo_cancel:
                 print()
             return _CANCELLED
 
 
-def _prompt_provider_choice(choices, *, default=0, title="Select provider:"):
+def _prompt_provider_choice(choices, *, default=0, title="选择服务商："):
     """Provider menu with curses arrow keys; numbered-list fallback when curses is unavailable
     (piped stdin, non-TTY). Returns the selected index, or None if the user cancels."""
     with contextlib.suppress(Exception):
@@ -428,16 +428,16 @@ def _prompt_custom_api_mode_selection(base_url: str, current_api_mode: str = "")
         _say(f"  {idx}. {label}{suffix}", f"     {description}")
 
     try:
-        raw = input("Choice [1-4, Enter to keep current/detected]: ").strip().lower()
+        raw = input("请选择 [1-4；直接回车 = 保持当前/识别到的]： ").strip().lower()
     except (KeyboardInterrupt, EOFError):
-        print("\nCancelled.")
+        print("\n已取消。")
         raise
 
     if not raw:
         return default_mode or None
     if raw in _CUSTOM_API_MODE_ANSWERS:
         return _CUSTOM_API_MODE_ANSWERS[raw] or None
-    print(f"Invalid API mode choice: {raw}. Falling back to auto-detect.")
+    print(f"接口模式选得不对（{raw}），改用自动识别。")
     return None
 
 
@@ -524,7 +524,7 @@ def _save_custom_provider(base_url, api_key="", model="", context_length=None, n
     providers.append(entry)
     cfg["custom_providers"] = providers
     save_config(cfg)
-    print(f'  💾 Saved to custom providers as "{name}" (edit in config.yaml)')
+    print(f'  💾 已存为自定义服务商「{name}」（可在 config.yaml 里改）')
 
 
 def _remove_custom_provider(config):
@@ -533,16 +533,16 @@ def _remove_custom_provider(config):
     cfg = load_config()
     providers = cfg.get("custom_providers") or []
     if not isinstance(providers, list) or not providers:
-        print("No custom providers configured.")
+        print("还没配置自定义服务商。")
         return
 
-    print("Remove a custom provider:\n")
+    print("删除自定义服务商：\n")
     choices = [
         f"{entry.get('name', 'unnamed')} ({_short_url(entry.get('base_url', ''))})" if isinstance(entry, dict) else str(entry)
         for entry in providers]
     choices.append("Cancel")
 
-    idx = _radiolist("Select provider to remove:", list(choices))
+    idx = _radiolist("选择要删除的服务商：", list(choices))
     if idx is not None:
         print()
         if idx < 0:
@@ -552,20 +552,20 @@ def _remove_custom_provider(config):
             print(f"  {i}. {c}")
         print()
         try:
-            val = input(f"Choice [1-{len(choices)}]: ").strip()
+            val = input(f"请选择 [1-{len(choices)}]： ").strip()
             idx = int(val) - 1 if val else None
         except (ValueError, KeyboardInterrupt, EOFError):
             idx = None
 
     if idx is None or idx >= len(providers):
-        print("No change.")
+        print("不改。")
         return
 
     removed = providers.pop(idx)
     cfg["custom_providers"] = providers
     save_config(cfg)
     removed_name = removed.get("name", "unnamed") if isinstance(removed, dict) else str(removed)
-    print(f'✅ Removed "{removed_name}" from custom providers.')
+    print(f'✅ 已从自定义服务商里删掉「{removed_name}」。')
 
 
 def _prompt_reasoning_effort_selection(efforts, current_effort="", *, default_label=""):
@@ -602,13 +602,13 @@ def _prompt_reasoning_effort_selection(efforts, current_effort="", *, default_la
 
     n = len(ordered)
     rows = [_label(effort) for effort in ordered] + [label for _, label in tail]
-    idx = _radiolist("Select reasoning effort:", rows, default_idx)
+    idx = _radiolist("选择推理强度：", rows, default_idx)
     if idx is not None:
         if idx < 0:
             return None
         print()
     else:
-        print("Select reasoning effort:")
+        print("选择推理强度：")
         for i, row in enumerate(rows, 1):
             print(f"  {i}. {row}")
         print()
@@ -623,7 +623,7 @@ def _prompt_reasoning_effort_selection(efforts, current_effort="", *, default_la
 def _offer_reasoning_after_pick(model_before: str) -> None:
     """Post-flow effort step for ``select_provider_and_model``: when a flow saved a different
     ``model.default`` (every flow persists through ``_save_model_choice``), offer the effort for
-    the new model + provider. A flow that made no change (cancel, "No change.") never prompts."""
+    the new model + provider. A flow that made no change (cancel, "不改。") never prompts."""
     from hermes_cli.config import load_config
     model_cfg = load_config().get("model")
     if not isinstance(model_cfg, dict):
@@ -650,7 +650,7 @@ def _prompt_main_reasoning_effort(model: str, provider: str) -> None:
     cfg = load_config()
     _set_reasoning_effort(cfg, selected)
     save_config(cfg)
-    print("Reasoning disabled for this model." if selected == "none" else f"Reasoning effort set to: {selected}")
+    print("这个模型不支持推理强度设置。" if selected == "none" else f"推理强度已设为：{selected}")
 
 
 def _main_model_reasoning_efforts(model: str, provider: str) -> Optional[list[str]]:
@@ -692,12 +692,12 @@ def _prompt_api_key(pconfig, existing_key: str, provider_id: str = "", existing_
         return entered
 
     if not existing_key:
-        print(f"No {pconfig.name} API key configured.")
+        print(f"还没配 {pconfig.name} 的 API key。")
         if not key_env:
             return "", True
         new_key = _prompt_new_key(allow_lmstudio_default=True)
         if not new_key:
-            print("Cancelled.")
+            print("已取消。")
             return "", True
         save_env_value(key_env, new_key)
         _say("API key saved.", "")
@@ -706,7 +706,7 @@ def _prompt_api_key(pconfig, existing_key: str, provider_id: str = "", existing_
     # Already configured — offer K / R / C
     from hermes_cli.env_loader import format_secret_source_suffix
     source_suffix = format_secret_source_suffix(key_env) if key_env else ""
-    print(f"  {pconfig.name} API key: {existing_key[:8]}... ✓{source_suffix}")
+    print(f"  {pconfig.name} API key：{existing_key[:8]}… ✓{source_suffix}")
     if not key_env:
         # Nothing we can rewrite; just acknowledge and move on.
         print()
@@ -725,7 +725,7 @@ def _prompt_api_key(pconfig, existing_key: str, provider_id: str = "", existing_
         return new_key, False
     if choice.startswith("c") and not pool_backed:
         save_env_value(key_env, "")
-        print(f"  API key cleared.  Re-run `hermes setup` to configure {pconfig.name} again.")
+        print(f"  API key 已清除。想再配 {pconfig.name}，重跑「coco setup」。")
         return "", True
     # Keep (default, or any other input)
     print()
@@ -754,9 +754,9 @@ def _run_anthropic_oauth_flow(save_env_value):
             creds = None
         if creds and (is_claude_code_token_valid(creds) or bool(creds.get("refreshToken"))):
             use_anthropic_claude_code_credentials(save_fn=save_env_value)
-            print("  ✓ Claude Code credentials linked.")
+            print("  ✓ 已链接 Claude Code 的凭据。")
             from hermes_constants import display_hermes_home as _dhh_fn
-            print(f"    Hermes will use Claude's credential store directly instead of copying a setup-token into {_dhh_fn()}/.env.")
+            print(f"    会直接用 Claude 的凭据库，不往 {_dhh_fn()}/.env 里拷 setup-token。")
             return True
         return False
 
@@ -766,7 +766,7 @@ def _run_anthropic_oauth_flow(save_env_value):
         if not token:
             return token
         save_anthropic_oauth_token(token, save_fn=save_env_value)
-        print("  ✓ Setup-token saved.")
+        print("  ✓ setup-token 已保存。")
         return True
 
     try:
@@ -777,7 +777,7 @@ def _run_anthropic_oauth_flow(save_env_value):
             if _activate_claude_code_credentials_if_available():
                 return True
             save_anthropic_oauth_token(token, save_fn=save_env_value)
-            print("  ✓ OAuth credentials saved.")
+            print("  ✓ OAuth 凭据已保存。")
             return True
 
         # Subprocess completed but no token auto-detected — ask user to paste
@@ -787,7 +787,7 @@ def _run_anthropic_oauth_flow(save_env_value):
             return False
         if saved:
             return True
-        print("  ⚠ Could not detect saved credentials.")
+        print("  ⚠ 没找到已保存的凭据。")
         return False
 
     except FileNotFoundError:
@@ -803,7 +803,7 @@ def _run_anthropic_oauth_flow(save_env_value):
             return False
         if saved:
             return True
-        print("  Cancelled — install Claude Code and try again.")
+        print("  已取消 —— 先装好 Claude Code 再试。")
         return False
 
 

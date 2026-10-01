@@ -130,15 +130,15 @@ def _print_switch_summary(cli, result, old_model, *, one_turn: bool, strict_cont
         f"via {result.provider_label or result.target_provider}. "
         f"{'This override applies to the next turn only. ' if one_turn else ''}"
         f"Adjust your self-identification accordingly.]")
-    _cprint(f"  ✓ Model switched: {_display_new}")
-    _cprint(f"    Provider: {result.provider_label or result.target_provider}")
+    _cprint(f"  ✓ 已切换模型：{_display_new}")
+    _cprint(f"    服务商：{result.provider_label or result.target_provider}")
     if result.target_provider == "moa":
         # The preset name hides who pays: the aggregator runs every tool-loop step (#112359).
         from hermes_cli.moa_config import normalize_moa_config
         moa_cfg = cli.config.get("moa") if isinstance(cli.config, dict) else {}
         agg = normalize_moa_config(moa_cfg)["presets"].get(result.new_model, {}).get("aggregator") or {}
         if agg:
-            _cprint(f"    Acting model (billed for the run): {agg.get('provider')}:{agg.get('model')}")
+            _cprint(f"    实际执行的模型（按它计费）：{agg.get('provider')}:{agg.get('model')}")
 
     # Provider-aware context chain: Codex OAuth / Copilot / Nous caps win over the raw
     # models.dev entry (gpt-5.5 is 1.05M on openai but 272K on Codex OAuth).
@@ -157,17 +157,17 @@ def _print_switch_summary(cli, result, old_model, *, one_turn: bool, strict_cont
         ctx = None
     if ctx:
         from agent.context_pin import context_pin_suffix
-        _cprint(f"    Context: {ctx:,} tokens"
+        _cprint(f"    上下文：{ctx:,} tokens"
                 f"{context_pin_suffix(ctx, getattr(agent, '_config_context_length', None) if agent else None)}")
     if mi:
         if mi.max_output:
-            _cprint(f"    Max output: {mi.max_output:,} tokens")
-        _cprint(f"    Capabilities: {mi.format_capabilities()}")
+            _cprint(f"    最大输出：{mi.max_output:,} tokens")
+        _cprint(f"    能力：{mi.format_capabilities()}")
     cache_enabled = (
         (base_url_host_matches(result.base_url or "", "openrouter.ai") and "claude" in result.new_model.lower())
         or result.api_mode == "anthropic_messages")
     if cache_enabled:
-        _cprint("    Prompt caching: enabled")
+        _cprint("    提示缓存：已开启")
     if result.warning_message:
         _cprint(f"    ⚠ {result.warning_message}")
 
@@ -228,7 +228,7 @@ def _apply_reasoning_after_switch(cli, effort: str, *, persist_global: bool) -> 
     saved = persist_global and save_config_value("agent.reasoning_effort", effort)
     if saved:
         CLI_CONFIG.setdefault("agent", {})["reasoning_effort"] = effort
-    _cprint(f"    Reasoning effort: {effort}" + (" (saved to config)" if saved else ""))
+    _cprint(f"    推理强度：{effort}" + ("（已存进配置）" if saved else ""))
 
 
 def _commit_model_switch(
@@ -251,11 +251,11 @@ def _commit_model_switch(
     if persist_global:
         from hermes_cli.model_switch import persist_model_selection
         persist_model_selection(result)
-        _cprint("    Saved to config.yaml (--global)" if picker else "    Saved to config.yaml")
+        _cprint("    已写入 config.yaml（--global）" if picker else "    已写入 config.yaml")
     elif one_turn:
-        _cprint("    (next turn only — restores after one response)")
+        _cprint("    （只下一轮有效 —— 一次回复后自动还原）")
     else:
-        _cprint("    (session only — add --global to persist)")
+        _cprint("    （只本次会话有效 —— 想长期生效加 --global）")
     # The row records what THIS session runs even on --global (else a later resume restores the
     # stale creation-time model); --once is restored after one turn and never touches the row.
     if not one_turn:
@@ -278,16 +278,16 @@ def _show_model_picker(cli, ctx, force_refresh: bool) -> None:
     except Exception:
         providers = []
     if not providers:
-        _cprint("  No authenticated providers found.")
+        _cprint("  没有已登录的服务商。")
         _cprint("")
-        _cprint("  /model <name>                        switch model (this session)")
-        _cprint("  /model <name> --global               switch model and persist as default")
-        _cprint("  /model <name> --once                 switch for the next turn only")
-        _cprint("  /model <name> --session              switch for this session only")
-        _cprint("  /model <name> --provider <slug>      switch provider + model")
-        _cprint("  /model <name> --reasoning <level>    switch and set reasoning effort")
-        _cprint("  /model --provider <slug>             switch provider")
-        _cprint("  /model --refresh                     re-fetch live model lists")
+        _cprint("  /model <name>                        切模型（本次会话）")
+        _cprint("  /model <name> --global               切模型并设为默认")
+        _cprint("  /model <name> --once                 只切下一轮")
+        _cprint("  /model <name> --session              只切本次会话")
+        _cprint("  /model <name> --provider <slug>      同时换服务商和模型")
+        _cprint("  /model <name> --reasoning <level>    切模型并设置推理强度")
+        _cprint("  /model --provider <slug>             换服务商")
+        _cprint("  /model --refresh                     重新拉取在线模型列表")
         return
     cli._open_model_picker(
         providers, cli.model or "unknown", get_label(cli.provider) if cli.provider else "unknown",
@@ -365,8 +365,8 @@ class CLIModelSwitchMixin:
             slug = current_model.split("/", 1)[1]
             if not self._model_is_default:
                 self._console_print(
-                    f"[yellow]⚠️  Stripped provider prefix from '{current_model}'; "
-                    f"using '{slug}' for OpenAI Codex.[/]")
+                    f"[yellow]⚠️  已去掉「{current_model}」里的服务商前缀； "
+                    f"OpenAI Codex 用「{slug}」。[/]")
             self.model = slug
             current_model = slug
             changed = True
@@ -553,12 +553,12 @@ class CLIModelSwitchMixin:
         from cli import _cprint
         try:
             if result.success and not self._confirm_expensive_model_switch(result):
-                _cprint("  Model switch cancelled.")
+                _cprint("  已取消切换模型。")
                 return
             self._apply_model_switch_result(
                 result, persist_global, custom_providers=custom_providers, reasoning_effort=reasoning_effort)
         except Exception as exc:
-            _cprint(f"  ✗ Model selection failed: {exc}")
+            _cprint(f"  ✗ 选模型失败：{exc}")
 
     def _close_model_picker(self) -> None:
         self._model_picker_state = None
@@ -684,8 +684,8 @@ class CLIModelSwitchMixin:
                 for _k, _v in _cli_snapshot.items():
                     setattr(self, _k, _v)
                 _cprint(
-                    f"  ⚠ Model switch to {result.new_model} failed ({exc}); "
-                    f"staying on {old_model}.")
+                    f"  ⚠ 切到 {result.new_model} 失败（{exc}）； "
+                    f"继续用 {old_model}。")
                 return False
         return True
 
@@ -820,7 +820,7 @@ class CLIModelSwitchMixin:
             try:
                 from hermes_cli.models import clear_provider_models_cache
                 clear_provider_models_cache()
-                _cprint("  Cleared model picker cache. Refreshing...")
+                _cprint("  已清掉模型列表缓存，正在重新拉取…")
             except Exception:
                 pass
 
@@ -858,7 +858,7 @@ class CLIModelSwitchMixin:
         thread when the TUI is active (see _run_confirm_and_apply) so the modal can render."""
         from cli import _cprint
         if not self._confirm_expensive_model_switch(result):
-            _cprint("  Model switch cancelled.")
+            _cprint("  已取消切换模型。")
             return
         _commit_model_switch(self, result, persist_global=persist_global, one_turn=one_turn,
                              reasoning_effort=reasoning_effort)
@@ -884,7 +884,7 @@ class CLIModelSwitchMixin:
         try:
             from hermes_cli.config import load_config, save_config
         except Exception as exc:
-            _cprint(f"❌ could not load config: {exc}")
+            _cprint(f"❌ 没法读取配置：{exc}")
             return
         result = crs.apply(
             load_config(), new_value,
@@ -893,7 +893,7 @@ class CLIModelSwitchMixin:
         for line in result.message.splitlines():
             _cprint(f"  {prefix} {line}" if line.startswith("openai_runtime") else f"    {line}")
         if result.success and result.requires_new_session:
-            _cprint("    Tip: `/reset` starts a new session immediately.")
+            _cprint("    小提示：`/reset` 可以立刻开一个新会话。")
 
     def _should_handle_model_command_inline(self, text: str, has_images: bool = False) -> bool:
         """Return True when /model should be handled immediately on the UI thread."""
@@ -932,4 +932,4 @@ class CLIModelSwitchMixin:
         _retire_agent(self)
         self._pending_moa_disable_after_turn = True
         self._pending_agent_seed = payload
-        _cprint(f"  MoA one-shot queued with preset {preset}; previous model will be restored after this turn.")
+        _cprint(f"  已排队 MoA 单次运行（预设 {preset}）；这一轮结束后会还原原来的模型。")

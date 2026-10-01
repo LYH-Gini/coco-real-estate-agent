@@ -444,3 +444,18 @@ python3 scripts/smoke_test_real_estate.py
 - **一个易踩的坑**：**别从工具输出里照抄带电话号码的示例串** —— 输出会把号段打码（`+15551234567`
   显示成 `+155****4567`），照抄必然配不上；改这类文案时从文件里取原文（`src.index('  Example: ')`）。
 - **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
+
+### 29 `coco model` 文案中文化（模型主流程 + 切换结果 + 服务商配置）
+
+- **改了什么**：5 个官方文件共 133 处 —— `model_setup_flows.py`（各服务商的模型选择、接口地址、
+  免费额度与登录失败提示）、`model_setup_flows_common.py`（登录流程与取消）、`auth_model_picker.py`
+  （模型选择菜单的「自定义模型名」「跳过（保持当前）」）、`cli_model_switch_mixin.py`（切换结果块
+  与 `/model` 帮助）、`main_provider_setup.py`（服务商/自定义服务商/推理强度与 Claude Code 凭据）。
+- **两处口径**：MoA 与 auth 两条命令改用 `coco cli moa configure` / `coco cli auth upgrade`
+  （`coco` 无对应子命令，走逃生口）；服务商与模型名、环境变量名、`/model` 的参数、`tokens` 一律保留。
+- **还没做（③b）**：冷门服务商流程（`model_setup_flows_custom.py` / `_azure.py` / `_bedrock.py`）
+  与**密钥录入页的说明与提问**（`config_defaults.py` 的 `OPTIONAL_ENV_VARS`，`model`/`setup`/`tools` 三处共用）。
+- **一个不属于本批的红灯**：`tests/hermes_cli/test_model_catalog.py::TestDefaultModelFromCache::…`
+  读 `website/static/api/model-catalog.json`，而 `website/` 已在 `fa1f5d79`（删除装机用不到的官方目录）整体删除
+  —— 属既有红灯，与文案无关，别再当新问题查。
+- **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
