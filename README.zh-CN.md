@@ -115,7 +115,7 @@ SSH 重新连接后，按顺序执行：
 curl -fsSL https://gitee.com/LYH-Gini/coco-real-estate-agent/raw/master/install.sh -o install.sh && bash install.sh
 ```
 
-**海外服务器（GitHub 源）：**
+**港澳台地区及海外服务器（GitHub 源）：**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/LYH-Gini/coco-real-estate-agent/master/install.sh -o install.sh && bash install.sh
 ```
