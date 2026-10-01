@@ -4207,7 +4207,7 @@ def _poll_registration(*, device_code: str, interval: int, expire_in: int, domai
 
         poll_count += 1
         if poll_count == 1:
-            print("  Fetching configuration results...", end="", flush=True)
+            print("  正在获取配置结果...", end="", flush=True)
         elif poll_count % 6 == 0:
             print(".", end="", flush=True)
 
@@ -4333,18 +4333,18 @@ def qr_register(*, initial_domain: str = "feishu", timeout_seconds: int = 600) -
 
 def _qr_register_inner(*, initial_domain: str, timeout_seconds: int) -> Optional[dict]:
     """Run init → begin → poll → probe. Raises on network/protocol errors."""
-    print("  Connecting to Feishu / Lark...", end="", flush=True)
+    print("  正在连接飞书 / Lark...", end="", flush=True)
     _init_registration(initial_domain)
     begin = _begin_registration(initial_domain)
-    print(" done.")
+    print(" 完成。")
     print()
     qr_url = begin["qr_url"]
     if _render_qr(qr_url):
-        print(f"\n  Scan the QR code above, or open this URL directly:\n  {qr_url}")
+        print(f"\n  扫上面这个二维码，或者直接打开这个链接：\n  {qr_url}")
     else:
-        print(f"  Open this URL in Feishu / Lark on your phone:\n\n  {qr_url}\n")
+        print(f"  用手机上的飞书 / Lark 打开这个链接：\n\n  {qr_url}\n")
         from hermes_cli.managed_uv import pip_install_hint
-        print(f"  Tip: {pip_install_hint('qrcode')}  to display a scannable QR code here next time")
+        print(f"  提示：{pip_install_hint('qrcode')}  下次就能在这里显示可扫的二维码")
     print()
     result = _poll_registration(
         device_code=begin["device_code"], interval=begin["interval"],
@@ -4415,13 +4415,13 @@ def interactive_setup() -> None:
     from hermes_cli.cli_output import prompt, print_header, print_info, print_success, print_warning
     from hermes_cli.setup_platforms import declines_reconfigure
 
-    print_header("Feishu / Lark")
-    if declines_reconfigure("Feishu / Lark", "Reconfigure Feishu / Lark?", "FEISHU_APP_ID"):
+    print_header("飞书 / Lark")
+    if declines_reconfigure("飞书 / Lark", "要重新配置飞书 / Lark 吗？", "FEISHU_APP_ID"):
         return
 
     method_idx = prompt_choice(
-        "How would you like to set up Feishu / Lark?",
-        ["Scan QR code to create a new bot automatically (recommended)", "Enter existing App ID and App Secret manually"],
+        "飞书 / Lark 怎么配置？",
+        ["扫码自动添加机器人（推荐）", "手动填写已有的 App ID 与 App Secret"],
         0,
     )
     credentials = None
@@ -4429,36 +4429,36 @@ def interactive_setup() -> None:
         try:
             credentials = qr_register()
         except KeyboardInterrupt:
-            print_warning("Feishu / Lark setup cancelled.")
+            print_warning("飞书 / Lark 配置已取消。")
             return
         except Exception as exc:
-            print_warning(f"QR registration failed: {exc}")
+            print_warning(f"扫码注册失败：{exc}")
         if not credentials:
-            print_info("QR setup did not complete. Continuing with manual input.")
+            print_info("扫码没完成，改用手动填写。")
     used_qr = bool(credentials)
 
     if not credentials:
-        print_info("Go to https://open.feishu.cn/ (or https://open.larksuite.com/ for Lark)")
-        print_info("Create an app, enable the Bot capability, and copy the credentials.")
+        print_info("去 https://open.feishu.cn/（Lark 用 https://open.larksuite.com/）")
+        print_info("建一个应用、开启机器人能力，然后复制凭据。")
         app_id = prompt("App ID", password=False)
         if not app_id:
-            print_warning("Skipped — Feishu / Lark won't work without an App ID.")
+            print_warning("已跳过 —— 没有 App ID，飞书 / Lark 用不了。")
             return
         app_secret = prompt("App Secret", password=True)
         if not app_secret:
-            print_warning("Skipped — Feishu / Lark won't work without an App Secret.")
+            print_warning("已跳过 —— 没有 App Secret，飞书 / Lark 用不了。")
             return
-        domain = "lark" if prompt_choice("Domain", ["feishu (China)", "lark (International)"], 0) == 1 else "feishu"
+        domain = "lark" if prompt_choice("服务器区域", ["feishu（中国）", "lark（国际）"], 0) == 1 else "feishu"
         bot_name = None
         try:
             bot_info = probe_bot(app_id, app_secret, domain)
             if bot_info:
                 bot_name = bot_info.get("bot_name")
-                print_success(f"Credentials verified — bot: {bot_name or 'unnamed'}")
+                print_success(f"凭据已验证 —— 机器人：{bot_name or '未命名'}")
             else:
-                print_warning("Could not verify bot connection. Credentials saved anyway.")
+                print_warning("没验证通机器人连接，凭据还是先存下了。")
         except Exception as exc:
-            print_warning(f"Credential verification skipped: {exc}")
+            print_warning(f"跳过了凭据验证：{exc}")
 
         credentials = {"app_id": app_id, "app_secret": app_secret, "domain": domain, "open_id": None, "bot_name": bot_name}
 
@@ -4473,58 +4473,58 @@ def interactive_setup() -> None:
         connection_mode = "websocket"
     else:
         mode_idx = prompt_choice(
-            "Connection mode",
-            ["WebSocket (recommended — no public URL needed)", "Webhook (requires a reachable HTTP endpoint)"],
+            "连接方式",
+            ["WebSocket（推荐 —— 不需要公网地址）", "Webhook（需要有个能访问到的 HTTP 入口）"],
             0,
         )
         connection_mode = "webhook" if mode_idx == 1 else "websocket"
         if connection_mode == "webhook":
-            print_info("Webhook defaults: 127.0.0.1:8765/feishu/webhook")
-            print_info("Override with FEISHU_WEBHOOK_HOST / FEISHU_WEBHOOK_PORT / FEISHU_WEBHOOK_PATH")
-            print_info("For signature verification, set FEISHU_ENCRYPT_KEY and FEISHU_VERIFICATION_TOKEN")
+            print_info("Webhook 默认：127.0.0.1:8765/feishu/webhook")
+            print_info("要改就用 FEISHU_WEBHOOK_HOST / FEISHU_WEBHOOK_PORT / FEISHU_WEBHOOK_PATH 覆盖")
+            print_info("要校验签名就设置 FEISHU_ENCRYPT_KEY 和 FEISHU_VERIFICATION_TOKEN")
     save_env_value("FEISHU_CONNECTION_MODE", connection_mode)
 
     if bot_name:
-        print_success(f"Bot created: {bot_name}")
+        print_success(f"机器人已创建：{bot_name}")
 
     access_idx = prompt_choice(
-        "How should direct messages be authorized?",
-        ["Use DM pairing approval (recommended)", "Allow all direct messages", "Only allow listed user IDs"],
+        "私聊怎么授权？",
+        ["用私聊配对审批（推荐）", "允许所有私聊", "只允许名单里的用户 ID"],
         0,
     )
     save_env_value("FEISHU_ALLOW_ALL_USERS", "true" if access_idx == 1 else "false")
     if access_idx == 2:
-        allowlist = prompt("Allowed user IDs (comma-separated)", open_id or "", password=False).replace(" ", "")
+        allowlist = prompt("白名单用户 ID（逗号分隔）", open_id or "", password=False).replace(" ", "")
         save_env_value("FEISHU_ALLOWED_USERS", allowlist)
-        print_success("Allowlist saved.")
+        print_success("白名单已保存。")
     else:
         save_env_value("FEISHU_ALLOWED_USERS", "")
         if access_idx == 0:
-            print_success("DM pairing enabled.")
-            print_info("Unknown users can request access; approve with `coco pairing approve`.")
+            print_success("已启用配对授权。")
+            print_info("陌生用户会来申请，你用「coco pairing approve」批准。")
         else:
-            print_warning("Open DM access enabled for Feishu / Lark.")
+            print_warning("已放开飞书 / Lark 的私聊访问。")
 
     group_idx = prompt_choice(
-        "How should group chats be handled?",
-        ["Respond only when @mentioned in groups (recommended)", "Disable group chats"], 0,
+        "群聊怎么处理？",
+        ["只在群里被 @ 时回复（推荐）", "关闭群聊"], 0,
     )
     save_env_value("FEISHU_GROUP_POLICY", "open" if group_idx == 0 else "disabled")
-    print_info("Group chats enabled (bot must be @mentioned)." if group_idx == 0 else "Group chats disabled.")
+    print_info("群聊已开启（机器人要被 @ 才回）。" if group_idx == 0 else "群聊已关闭。")
 
-    print_info("Leave blank to clear a previously saved home channel (cron / notifications).")
-    home_channel = prompt("Home chat ID (optional, for cron/notifications)", password=False).strip()
+    print_info("留空就清掉以前存的主页频道（定时任务 / 通知用）。")
+    home_channel = prompt("主页频道 ID（可选，定时任务/通知用）", password=False).strip()
     if home_channel:
         save_env_value("FEISHU_HOME_CHANNEL", home_channel)
-        print_success(f"Home channel set to {home_channel}")
+        print_success(f"主页频道已设为 {home_channel}")
     elif remove_env_value("FEISHU_HOME_CHANNEL"):
-        print_info("Home channel cleared.")
+        print_info("主页频道已清除。")
 
-    print_success("🪽 Feishu / Lark configured!")
-    print_info(f"App ID: {app_id}")
-    print_info(f"Domain: {domain}")
+    print_success("🪽 飞书 / Lark 配置完成！")
+    print_info(f"App ID：{app_id}")
+    print_info(f"域名：{domain}")
     if bot_name:
-        print_info(f"Bot: {bot_name}")
+        print_info(f"机器人：{bot_name}")
 
 
 def _apply_yaml_config(yaml_cfg: dict, feishu_cfg: dict) -> dict | None:

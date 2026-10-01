@@ -548,3 +548,21 @@ python3 scripts/smoke_test_real_estate.py
 - **还没做（⑤b，低优先级）**：Windows SCM 服务检查、容器拒绝安装、多路复用/迁移拒绝与孤儿进程、
   Docker root 提示、s6 细节等边缘分支（选到才出现）。
 - **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
+
+### 36 飞书配置向导文案中文化（`plugins/platforms/feishu/adapter.py`）
+
+- **改了什么**：45 处 —— `interactive_setup()` 这条「一步步问用户」的向导全线中文：进入向导的问句与两项选择、
+  扫码流程（连接/取结果/二维码链接/取消/失败）、手动填凭据（官网地址、App ID/App Secret 提问与跳过提示、
+  服务器区域、凭据校验结果）、连接方式（WebSocket/Webhook 与 Webhook 默认值提示）、私聊授权（三种方式、
+  白名单、配对提示）、群聊（两种处理）、主页频道与收尾屏。
+- **口径**：`App ID` / `App Secret` **不译**（飞书后台的字段名，要照着抄；与 QQ 机器人向导一致）；
+  `WebSocket` / `Webhook` / `FEISHU_*` 环境变量 / URL / `coco pairing approve` 命令 保留原样；
+  选项措辞沿用已审过的 QQ 机器人那套（`扫码自动添加机器人（推荐）`、`用私聊配对审批（推荐）`…）。
+- **顺带一处**：`declines_reconfigure` 的 label 由 `Feishu / Lark` 改成 `飞书 / Lark`（它会拼进
+  「{label}：已经配好了」这句，不改就是半中半英）。
+- **不碰**：飞书注册/配对参数（`from=coco&tp=coco`）与首次对话欢迎语 —— 自检第 06 / 20 项正盯着它们。
+- **连带检查**：`tests/gateway/test_setup_feishu.py` 的断言都是配置值（非文案），无需改；跑测试 447 通过。
+  **已知的既有红灯（与本次无关，已用 stash 验证）**：把 `tests/gateway/` 下 26 个含飞书的用例**一起**跑时，
+  `test_setup_feishu.py::TestSetupFeishuAdapterIntegration::test_qr_env_produces_valid_adapter_settings`
+  会因跨文件状态污染失败（单文件跑通过，官方英文版本同样失败）。
+- **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
