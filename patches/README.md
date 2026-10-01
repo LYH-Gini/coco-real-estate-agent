@@ -471,3 +471,16 @@ python3 scripts/smoke_test_real_estate.py
   定位到节点，按 span 替换；长中文再按 64 字拆成相邻字符串，避免超长行。
 - **还没做**：平台类密钥 56 条（③b2）与冷门服务商流程（③c，`model_setup_flows_{custom,azure,bedrock}.py`）。
 - **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
+
+### 31 平台类密钥文案中文化（Telegram / Discord / Slack / Mattermost / Matrix / BlueBubbles / QQ / IRC / API / Webhook）
+
+- **改了什么**：`config_defaults.py` 的 `_msg` 类 64 条（说明 52 + 提问 12）—— 各平台的凭据说明、白名单、
+  @ 提及与自动开话题开关、IRC 与 API 服务、代理模式、Webhook。
+- **口径**：示例里的 `hermes` 改成 coco（`@coco:example.org`、`#coco`、`COCO_BOT`）；**默认值照实保留**
+  （IRC 昵称默认 `hermes-bot`、API 服务默认模型名 `'hermes-agent'`）—— 改了就是谎报默认值。
+- **仍保留英文的**：纯「产品名 + 术语」短标签（`Mattermost server URL`、`QQ App ID`、`Webhook port`、
+  `IRC nickname` 等）。要全统一，是下一轮单独一句话的事（口径变了得整库重扫一遍）。
+- **一个挑选口径的坑**：判「含英文散文」时，`\bAllow\b` 这类词边界匹配不到 `Allowed …`、
+  `\be\.g\.\b` 匹配不到 `e.g. ` —— 两处都漏过条目（`Allowed Slack member IDs`、
+  `SearXNG URL (e.g. …)`），靠渲染抽查才发现。**挑选后必须抽查渲染**，别只信正则。
+- **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。

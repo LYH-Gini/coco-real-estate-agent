@@ -2963,151 +2963,139 @@ OPTIONAL_ENV_VARS = {
         advanced=True),
     # ── Messaging platforms ──
     "TELEGRAM_BOT_TOKEN": _msg(
-        "Complete Telegram bot token created by @BotFather (numeric bot ID followed by a colon "
-        "and secret)", "Telegram bot token", "https://t.me/BotFather", password=True),
+        "@BotFather 给的完整 Telegram 机器人 token（数字机器人 ID + 冒号 + 密钥）", "Telegram bot token", "https://t.me/BotFather", password=True),
     "TELEGRAM_ALLOWED_USERS": _msg(
-        "Optional comma-separated numeric Telegram user IDs allowed immediately; leave blank to "
-        "approve new users through DM pairing", "Allowed Telegram user IDs (comma-separated)",
+        "可选：逗号分隔的数字用户 ID，直接放行这些人；留空则新用户走配对码审批", "Allowed Telegram user IDs (comma-separated)",
         "https://t.me/userinfobot"),
     "TELEGRAM_PROXY": _msg(
-        "Proxy URL for Telegram connections (overrides HTTPS_PROXY). Supports http://, "
-        "https://, socks5://", "Telegram proxy URL (optional)"),
-    "DISCORD_BOT_TOKEN": _msg("Discord bot token from Developer Portal", "Discord bot token",
+        "Telegram 连接用的代理地址（会覆盖 HTTPS_PROXY）。支持 http://、https://、socks5://", "Telegram 代理地址（可选）"),
+    "DISCORD_BOT_TOKEN": _msg("开发者后台里的 Discord 机器人 token", "Discord bot token",
         "https://discord.com/developers/applications", password=True),
-    "DISCORD_ALLOWED_USERS": _msg("Comma-separated Discord user IDs allowed to use the bot",
+    "DISCORD_ALLOWED_USERS": _msg("逗号分隔的 Discord 用户 ID 白名单",
         "Allowed Discord user IDs (comma-separated)", None),
     "DISCORD_REPLY_TO_MODE": _msg(
-        "Discord reply threading mode: 'off' (no reply references), 'first' (reply on first "
-        "message only, default), 'all' (reply on every chunk)",
-        "Discord reply mode (off/first/all)", None),
+        "Discord 回复串模式：off（不引用原消息）、first（只对第一条回复，默认）、all（每条都回复）",
+        "Discord 回复模式（off/first/all）", None),
     "SLACK_BOT_TOKEN": _msg(
-        "Slack bot token (xoxb-). Get from OAuth & Permissions after installing your app. "
-        "Required scopes: chat:write, app_mentions:read, channels:history, groups:history, "
-        "im:history, im:read, im:write, mpim:history, mpim:read, users:read, files:read, "
-        "files:write", "Slack Bot Token (xoxb-...)", "https://api.slack.com/apps",
+        "Slack 机器人 token（xoxb-）。装上应用后在 OAuth & Permissions 里获取。需要的权限：chat"
+        ":write、app_mentions:read、channels:history、groups:history、im:hist"
+        "ory、im:read、im:write、mpim:history、mpim:read、users:read、files:rea"
+        "d、files:write", "Slack Bot Token (xoxb-...)", "https://api.slack.com/apps",
         help=("In your Slack app, add the required bot scopes, install the app to the workspace, "
         "then copy OAuth & Permissions > Bot User OAuth Token."), password=True),
     "SLACK_APP_TOKEN": _msg(
-        "Slack app-level token (xapp-) for Socket Mode. Get from Basic Information → App-Level "
-        "Tokens. Also ensure Event Subscriptions include: message.im, message.channels, "
-        "message.groups, message.mpim, app_mention", "Slack App Token (xapp-...)",
+        "Slack 应用级 token（xapp-），Socket Mode 用。在 Basic Information → App-L"
+        "evel Tokens 里获取。另外确认 Event Subscriptions 包含：message.im、message.c"
+        "hannels、message.groups、message.mpim、app_mention", "Slack App Token (xapp-...)",
         "https://api.slack.com/apps",
         help=("In your Slack app, enable Socket Mode, then create Basic Information > App-Level "
         "Tokens with the connections:write scope."), password=True),
     "SLACK_ALLOWED_USERS": _msg(
-        "Comma-separated Slack member IDs allowed to use Hermes, e.g. U01ABC2DEF3. Without "
-        "this, Slack may connect but deny messages by default.", "Allowed Slack member IDs",
+        "逗号分隔的 Slack 成员 ID 白名单（如 U01ABC2DEF3）。不填的话，Slack 可能连上了但默认拒收消息。", "白名单 Slack 成员 ID",
         "https://api.slack.com/apps",
         help=("In Slack, open your profile, choose More or the three-dot menu, then Copy member "
         "ID. Add multiple IDs comma-separated.")),
-    "MATTERMOST_URL": _msg("Mattermost server URL (e.g. https://mm.example.com)",
+    "MATTERMOST_URL": _msg("Mattermost 服务地址（如 https://mm.example.com）",
         "Mattermost server URL", "https://mattermost.com/deploy/"),
-    "MATTERMOST_TOKEN": _msg("Mattermost bot token or personal access token",
+    "MATTERMOST_TOKEN": _msg("Mattermost 的机器人 token 或个人访问令牌",
         "Mattermost bot token", None, password=True),
-    "MATTERMOST_ALLOWED_USERS": _msg("Comma-separated Mattermost user IDs allowed to use the bot",
+    "MATTERMOST_ALLOWED_USERS": _msg("逗号分隔的 Mattermost 用户 ID 白名单",
         "Allowed Mattermost user IDs (comma-separated)", None),
     "MATTERMOST_REQUIRE_MENTION": _msg(
-        "Require @mention in Mattermost channels (default: true). Set to false to respond to "
-        "all messages.", "Require @mention in channels", None),
+        "Mattermost 频道里要 @ 才回（默认 true）。设成 false 则所有消息都回。", "频道里需要 @ 才回", None),
     "MATTERMOST_FREE_RESPONSE_CHANNELS": _msg(
-        "Comma-separated Mattermost channel IDs where bot responds without @mention",
+        "这些 Mattermost 频道 ID（逗号分隔）里不用 @ 也回",
         "Free-response channel IDs (comma-separated)", None),
-    "MATRIX_HOMESERVER": _msg("Matrix homeserver URL (e.g. https://matrix.example.org)",
+    "MATRIX_HOMESERVER": _msg("Matrix 服务器地址（如 https://matrix.example.org）",
         "Matrix homeserver URL", "https://matrix.org/ecosystem/servers/"),
     "MATRIX_ACCESS_TOKEN": _msg("Matrix access token (preferred over password login)",
         "Matrix access token", None, password=True),
-    "MATRIX_USER_ID": _msg("Matrix user ID (e.g. @hermes:example.org)",
+    "MATRIX_USER_ID": _msg("Matrix 用户 ID（如 @coco:example.org）",
         "Matrix user ID (@user:server)", None),
     "MATRIX_ALLOWED_USERS": _msg(
-        "Comma-separated Matrix user IDs allowed to use the bot (@user:server format)",
+        "逗号分隔的 Matrix 用户 ID 白名单（@user:server 格式）",
         "Allowed Matrix user IDs (comma-separated)", None),
     "MATRIX_REQUIRE_MENTION": _msg(
-        "Require @mention in Matrix rooms (default: true). Set to false to respond to all "
-        "messages.", "Require @mention in rooms (true/false)", None, advanced=True),
+        "Matrix 房间里要 @ 才回（默认 true）。设成 false 则所有消息都回。", "房间里需要 @ 才回（true/false）", None, advanced=True),
     "MATRIX_FREE_RESPONSE_ROOMS": _msg(
-        "Comma-separated Matrix room IDs where bot responds without @mention",
+        "这些 Matrix 房间 ID（逗号分隔）里不用 @ 也回",
         "Free-response room IDs (comma-separated)", None, advanced=True),
-    "MATRIX_AUTO_THREAD": _msg("Auto-create threads for messages in Matrix rooms (default: true)",
-        "Auto-create threads in rooms (true/false)", None, advanced=True),
-    "MATRIX_DM_AUTO_THREAD": _msg("Auto-create threads for DM messages in Matrix (default: false)",
-        "Auto-create threads in DMs (true/false)", None, advanced=True),
+    "MATRIX_AUTO_THREAD": _msg("Matrix 房间里的消息自动开话题（默认 true）",
+        "房间里自动开话题（true/false）", None, advanced=True),
+    "MATRIX_DM_AUTO_THREAD": _msg("Matrix 私聊消息自动开话题（默认 false）",
+        "私聊自动开话题（true/false）", None, advanced=True),
     "MATRIX_DEVICE_ID": _msg(
-        "Stable Matrix device ID for E2EE persistence across restarts (e.g. HERMES_BOT)",
+        "稳定的 Matrix 设备 ID，让端到端加密在重启后不丢（如 COCO_BOT）",
         "Matrix device ID (stable across restarts)", None, advanced=True),
     "MATRIX_RECOVERY_KEY": _msg(
-        "Matrix recovery key for cross-signing verification after device key rotation (from "
-        "Element: Settings → Security → Recovery Key)", "Matrix recovery key", None, password=True,
+        "Matrix 恢复密钥，设备密钥轮换后用它做交叉签名验证（Element：Settings → Security → Recov"
+        "ery Key）", "Matrix recovery key", None, password=True,
         advanced=True),
     "BLUEBUBBLES_SERVER_URL": _msg(
-        "BlueBubbles server URL for iMessage integration (e.g. http://192.168.1.10:1234)",
+        "BlueBubbles 服务地址，接 iMessage 用（如 http://192.168.1.10:1234）",
         "BlueBubbles server URL", "https://bluebubbles.app/"),
     "BLUEBUBBLES_PASSWORD": _msg(
-        "BlueBubbles server password (from BlueBubbles Server → Settings → API)",
+        "BlueBubbles 服务端密码（BlueBubbles Server → Settings → API）",
         "BlueBubbles server password", None, password=True),
     "BLUEBUBBLES_ALLOWED_USERS": _msg(
-        "Comma-separated iMessage addresses (email or phone) allowed to use the bot",
+        "逗号分隔的 iMessage 地址（邮箱或手机号）白名单",
         "Allowed iMessage addresses (comma-separated)", None),
-    "BLUEBUBBLES_ALLOW_ALL_USERS": _msg("Allow all BlueBubbles users without allowlist",
-        "Allow All BlueBubbles Users", password=None),
-    "QQ_APP_ID": _msg("QQ Bot App ID from QQ Open Platform (q.qq.com)", "QQ App ID",
+    "BLUEBUBBLES_ALLOW_ALL_USERS": _msg("不设白名单，放行所有 BlueBubbles 用户",
+        "放行所有 BlueBubbles 用户", password=None),
+    "QQ_APP_ID": _msg("QQ 开放平台（q.qq.com）里的机器人 App ID", "QQ App ID",
         "https://q.qq.com", password=None),
-    "QQ_CLIENT_SECRET": _msg("QQ Bot Client Secret from QQ Open Platform", "QQ Client Secret",
+    "QQ_CLIENT_SECRET": _msg("QQ 开放平台里的机器人 Client Secret", "QQ Client Secret",
         password=True),
-    "QQ_ALLOWED_USERS": _msg("Comma-separated QQ user IDs allowed to use the bot",
+    "QQ_ALLOWED_USERS": _msg("逗号分隔的 QQ 用户 ID 白名单",
         "QQ Allowed Users", password=None),
-    "QQ_GROUP_ALLOWED_USERS": _msg("Comma-separated QQ group IDs allowed to interact with the bot",
+    "QQ_GROUP_ALLOWED_USERS": _msg("逗号分隔的 QQ 群 ID 白名单",
         "QQ Group Allowed Users", password=None),
-    "QQ_ALLOW_ALL_USERS": _msg("Allow all QQ users without an allowlist (true/false)",
-        "Allow All QQ Users", password=None),
-    "QQBOT_HOME_CHANNEL": _msg("Default QQ channel/group for cron delivery and notifications",
+    "QQ_ALLOW_ALL_USERS": _msg("不设白名单，放行所有 QQ 用户（true/false）",
+        "放行所有 QQ 用户", password=None),
+    "QQBOT_HOME_CHANNEL": _msg("默认的 QQ 频道/群，用来收定时任务与通知",
         "QQ Home Channel", password=None),
-    "QQBOT_HOME_CHANNEL_NAME": _msg("Display name for the QQ home channel", "QQ Home Channel Name",
+    "QQBOT_HOME_CHANNEL_NAME": _msg("QQ 主页频道的显示名", "QQ Home Channel Name",
         password=None),
-    "QQ_SANDBOX": _msg("Enable QQ sandbox mode for development testing (true/false)",
+    "QQ_SANDBOX": _msg("开 QQ 沙箱模式，用于开发测试（true/false）",
         "QQ Sandbox Mode", password=None),
-    "IRC_SERVER": _msg("IRC server hostname (e.g. irc.libera.chat)", "IRC server", None),
-    "IRC_CHANNEL": _msg("IRC channel to join (e.g. #hermes)", "IRC channel", None),
-    "IRC_NICKNAME": _msg("Bot nickname on IRC (default: hermes-bot)", "IRC nickname", None),
-    "IRC_SERVER_PASSWORD": _msg("IRC server password (if required)", "IRC server password", None,
+    "IRC_SERVER": _msg("IRC 服务器地址（如 irc.libera.chat）", "IRC server", None),
+    "IRC_CHANNEL": _msg("要加入的 IRC 频道（如 #coco）", "IRC channel", None),
+    "IRC_NICKNAME": _msg("IRC 上的机器人昵称（默认 hermes-bot）", "IRC nickname", None),
+    "IRC_SERVER_PASSWORD": _msg("IRC 服务器密码（需要时填）", "IRC server password", None,
         password=True, advanced=True),
-    "IRC_NICKSERV_PASSWORD": _msg("NickServ password for nick identification", "NickServ password",
+    "IRC_NICKSERV_PASSWORD": _msg("NickServ 密码，用于识别昵称", "NickServ password",
         None, password=True, advanced=True),
     "GATEWAY_ALLOW_ALL_USERS": _msg(
-        "Allow all users to interact with messaging bots (true/false). Default: false.",
-        "Allow all users (true/false)", None, advanced=True),
+        "放行所有用户使用聊天机器人（true/false）。默认 false。",
+        "放行所有用户（true/false）", None, advanced=True),
     "API_SERVER_ENABLED": _msg(
-        "Enable the OpenAI-compatible API server (true/false). Allows frontends like Open "
-        "WebUI, LobeChat, etc. to connect.", "Enable API server (true/false)", None, advanced=True),
+        "开启 OpenAI 兼容的 API 服务（true/false）。让 Open WebUI、LobeChat 这类前端能连上来。", "开启 API 服务（true/false）", None, advanced=True),
     "API_SERVER_KEY": _msg(
-        "Bearer token for API server authentication. Required whenever the API server is "
-        "enabled; server refuses to start without it.", "API server auth key", None, password=True,
+        "API 服务的鉴权 bearer token。只要开了 API 服务就必须填；不填服务会拒绝启动。", "API server auth key", None, password=True,
         advanced=True),
-    "API_SERVER_PORT": _msg("Port for the API server (default: 8642).", "API server port", None,
+    "API_SERVER_PORT": _msg("API 服务端口（默认 8642）。", "API server port", None,
         advanced=True),
     "API_SERVER_HOST": _msg(
-        "Host/bind address for the API server (default: 127.0.0.1). API_SERVER_KEY is still "
-        "required even on loopback binds.", "API server host", None, advanced=True),
+        "API 服务监听地址（默认 127.0.0.1）。就算只监听本机，也必须填 API_SERVER_KEY。", "API server host", None, advanced=True),
     "API_SERVER_MODEL_NAME": _msg(
-        "Model name advertised on /v1/models. Defaults to the profile name (or 'hermes-agent' "
-        "for the default profile). Useful for multi-user setups with OpenWebUI.",
+        "/v1/models 上对外报的模型名。默认用配置档名（默认档为 'hermes-agent'）。多用户配 OpenWebUI "
+        "时有用。",
         "API server model name", None, advanced=True),
     "GATEWAY_PROXY_URL": _msg(
-        "URL of a remote Hermes API server to forward messages to (proxy mode). When set, the "
-        "gateway handles platform I/O only — all agent work is delegated to the remote server. "
-        "Use for Docker E2EE containers that relay to a host agent. Also configurable via "
-        "gateway.proxy_url in config.yaml.",
-        "Remote Hermes API server URL (e.g. http://192.168.1.100:8642)", None, advanced=True),
+        "要转发消息过去的远程 Coco API 服务地址（代理模式）。设置后，网关只做平台收发，所有 agent 工作交给远程服务 ——"
+        " 适合 Docker 端到端加密容器转发到宿主上的 agent。也可在 config.yaml 的 gateway.proxy_"
+        "url 里配。",
+        "远程 API 服务地址（如 http://192.168.1.100:8642）", None, advanced=True),
     "GATEWAY_PROXY_KEY": _msg(
-        "Bearer token for authenticating with the remote Hermes API server (proxy mode). Must "
-        "match the API_SERVER_KEY on the remote host.", "Remote API server auth key", None,
+        "连远程 Coco API 服务用的鉴权 bearer token（代理模式）。必须与远端主机上的 API_SERVER_KEY "
+        "一致。", "Remote API server auth key", None,
         password=True, advanced=True),
     "WEBHOOK_ENABLED": _msg(
-        "Enable the webhook platform adapter for receiving events from GitHub, GitLab, etc.",
-        "Enable webhooks (true/false)", None),
-    "WEBHOOK_PORT": _msg("Port for the webhook HTTP server (default: 8644).", "Webhook port", None),
+        "开启 webhook 通道，接收 GitHub、GitLab 等发来的事件",
+        "开启 webhook（true/false）", None),
+    "WEBHOOK_PORT": _msg("webhook HTTP 服务端口（默认 8644）。", "Webhook port", None),
     "WEBHOOK_SECRET": _msg(
-        "Global HMAC secret for webhook signature validation (overridable per route in "
-        "config.yaml).", "Webhook secret", None, password=True),
+        "webhook 签名校验用的全局 HMAC 密钥（可在 config.yaml 里按路由单独覆盖）。", "Webhook secret", None, password=True),
     # ── Agent settings ── (MESSAGING_CWD is gone: use terminal.cwd in config.yaml, which the
     # gateway bridges to TERMINAL_CWD.)
     "SUDO_PASSWORD": _setting(
