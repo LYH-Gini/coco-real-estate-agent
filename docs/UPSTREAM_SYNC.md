@@ -165,6 +165,35 @@ comm -23 /tmp/old_zh.txt /tmp/new_zh.txt    # 逐个确认：是「我们被覆�
 grep -c '"ddgs' pyproject.toml    # 应为 1；为 0 说明被冲（ddgs 没了 web_search 会失效）
 ```
 
+**第三件事：中文文案重打表（汉化改动，数量最大）**
+
+官方层文件被快照式替换后，我们汉化的文案会整片回到英文。这一块**不靠人工重译**：
+
+```bash
+python3 scripts/coco_cn_strings.py           # 只检查：OK / 待重打 / ANCHOR 三类，退出码 1 = 没落地
+python3 scripts/coco_cn_strings.py --apply   # 执行重打（sync_upstream.sh 已自动跑过，这里只是复核）
+```
+
+判定口径：
+
+- 输出「全部已是中文，无需处理」→ 到位，**零重复工**；
+- 输出「待重打 N 处」→ 还没 apply（不该发生：同步脚本会自动跑）；
+- 输出 `ANCHOR` → **官方这一版也改过这句**（或把代码搬了家）：脚本找不到官方原文也找不到我们的中文，
+  按 `patches/README.md` 在新版里重新译一遍，再更新表条目。**这是唯一需要人工的中文活**；
+- 自检第 **A41** 项 = 这条链路的守门员（表没落地 / 有 ANCHOR → FAIL）。
+
+**表条目的锚点必须是官方原文**（`git show <官方基线提交>:<路径>`），**不要**用「上一次提交」当锚点 ——
+同一句改过两遍时，锚点会变成中文，同步后就改不回来（2026-10-01 实测踩过：11 个文件里 2 个、21 条失效）。
+新登记或更新条目后，按下面做一次真演练（必须逐字一致）：
+
+```bash
+# 官方基线文件铺回工作区 → apply → 与工作区逐字比对
+for f in <改过的文件...>; do git show <官方基线提交>:"$f" > "$f"; done
+python3 scripts/coco_cn_strings.py --apply
+git diff --stat   # 应只剩功能类改动，没有中文缺失
+```
+
+
 
 - [ ] **配置版本号**：官方 `_config_version` 变了没？（对照
       `hermes_cli/config_defaults.py` 的 `"_config_version"` 值）
