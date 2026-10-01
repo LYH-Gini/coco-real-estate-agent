@@ -21,19 +21,19 @@ _RUN_KW = dict(capture_output=True, text=True, encoding="utf-8", errors="replace
 def _prompt_vercel_sandbox_settings(config: dict):
     """Prompt for Vercel Sandbox settings without exposing unsupported disk sizing."""
     terminal = config.setdefault("terminal", {})
-    _setup._info(None, "Vercel Sandbox settings:", "  Filesystem persistence uses Vercel snapshots.",
-                 "  Snapshots restore files only; live processes do not continue after sandbox recreation.")
+    _setup._info(None, "Vercel Sandbox 设置：", "  文件持久化靠 Vercel 快照。",
+                 "  快照只恢复文件；沙箱重建后原来的进程不会继续跑。")
     from tools.terminal_tool_backends import _SUPPORTED_VERCEL_RUNTIMES
     current_runtime = terminal.get("vercel_runtime") or "node24"
     supported_label = ", ".join(_SUPPORTED_VERCEL_RUNTIMES)
-    runtime = _setup.prompt(f"  Runtime ({supported_label})", current_runtime).strip() or current_runtime
+    runtime = _setup.prompt(f"  运行时（{supported_label}）", current_runtime).strip() or current_runtime
     if runtime not in _SUPPORTED_VERCEL_RUNTIMES:
-        _setup.print_warning(f"Unsupported Vercel runtime '{runtime}', keeping {current_runtime}.")
+        _setup.print_warning(f"不支持的 Vercel 运行时「{runtime}」，保持 {current_runtime}。")
         runtime = current_runtime if current_runtime in _SUPPORTED_VERCEL_RUNTIMES else "node24"
     terminal["vercel_runtime"] = runtime
     _setup.save_env_value("TERMINAL_VERCEL_RUNTIME", runtime)
     persist_label = "yes" if terminal.get("container_persistent", True) else "no"
-    persist = _setup.prompt("  Persist filesystem with snapshots? (yes/no)", persist_label).lower()
+    persist = _setup.prompt("  要不要用快照持久化文件？（yes/no）", persist_label).lower()
     terminal["container_persistent"] = persist in {"yes", "true", "y", "1"}
     # (key, prompt label, default, parser) — unparseable input leaves the value untouched.
     for key, label, default, parse in (
@@ -45,12 +45,12 @@ def _prompt_vercel_sandbox_settings(config: dict):
             pass
     if terminal.get("container_disk", 51200) not in {0, 51200}:
         _setup.print_warning(
-            "Vercel Sandbox does not support custom disk sizing; resetting container_disk to 51200.")
+            "Vercel Sandbox 不支持自定义磁盘大小；已把 container_disk 重置为 51200。")
     terminal["container_disk"] = 51200
-    _setup._info(None, "Vercel authentication:", "  Use a long-lived Vercel access token plus project/team IDs.")
+    _setup._info(None, "Vercel 鉴权：", "  用一个长期有效的 Vercel access token，外加 project/team ID。")
     linked = _read_nearest_vercel_project()
     if linked:
-        _setup.print_info("  Found defaults in nearest .vercel/project.json.")
+        _setup.print_info("  在最近的 .vercel/project.json 里找到了默认值。")
     _setup.remove_env_value("VERCEL_OIDC_TOKEN")
     # (label, env var, linked-project fallback key, secret) — prompted in order, saved when non-empty.
     for label, env_var, linked_key, secret in (
@@ -96,7 +96,7 @@ def _existing_secret_keeps(env_var: str, label: str, question: str) -> bool:
     """True when ``env_var`` is already set and the user declines to update it."""
     if not _setup.get_env_value(env_var):
         return False
-    _setup.print_info(f"  {label}: already configured")
+    _setup.print_info(f"  {label}：已经配好了")
     return not _setup.prompt_yes_no(question, False)
 
 
@@ -116,20 +116,20 @@ def _ensure_sdk(package: str, manual_hint: str, *, show_stderr: bool = False, in
     try:
         __import__(package)
     except ImportError:
-        _setup.print_info(f"Installing {package} SDK...")
+        _setup.print_info(f"正在安装 {package} SDK…")
         if install is None:
             from hermes_cli.tools_config import _pip_install
             install = lambda pkg: _pip_install([pkg])  # noqa: E731
         result = install(package)
         if result.returncode == 0:
-            _setup.print_success(f"{package} SDK installed")
+            _setup.print_success(f"{package} SDK 已安装")
         else:
-            _setup.print_warning(f"Install failed — run manually: {manual_hint}")
+            _setup.print_warning(f"安装失败 —— 请手动执行：{manual_hint}")
             if show_stderr and result.stderr:
-                _setup.print_info(f"  Error: {result.stderr.strip().splitlines()[-1]}")
+                _setup.print_info(f"  错误：{result.stderr.strip().splitlines()[-1]}")
 
 
-def _report_binary(found: str | None, missing: str, install_hint: str, found_prefix: str = "Found: ") -> None:
+def _report_binary(found: str | None, missing: str, install_hint: str, found_prefix: str = "已找到： ") -> None:
     if found:
         _setup.print_info(f"{found_prefix}{found}")
     else:
@@ -138,38 +138,38 @@ def _report_binary(found: str | None, missing: str, install_hint: str, found_pre
 
 
 def _setup_backend_local(config: dict) -> None:
-    _setup.print_success("Terminal backend: Local")
-    _setup.print_info("Commands run directly on this machine.")
+    _setup.print_success("终端后端：本机")
+    _setup.print_info("命令直接在这台机器上跑。")
     # Gateway cwd defaults to home; sudo stays off. Both configurable via `hermes setup terminal`.
     config["terminal"].setdefault("cwd", str(Path.home()))
 
 
 def _setup_backend_docker(config: dict) -> None:
-    _setup.print_success("Terminal backend: Docker / Podman")
+    _setup.print_success("终端后端：Docker / Podman")
     docker_exe = find_docker()
-    _report_binary(docker_exe, "Docker or Podman not found in PATH!",
+    _report_binary(docker_exe, "PATH 里没找到 Docker 或 Podman。",
                    "Install Docker: https://docs.docker.com/get-docker/ "
                    "or Podman: https://podman.io/docs/installation",
-                   f"{docker_runtime_name(docker_exe)} found: " if docker_exe else "")
+                   f"{docker_runtime_name(docker_exe)} 已找到： " if docker_exe else "")
     # Image and resource limits use defaults; tune via `hermes setup terminal`.
     config["terminal"].setdefault("docker_image", _SANDBOX_IMAGE)
-    _setup._info(None, "Docker sandboxes can be protected with the egress credential firewall.",
-                 "It routes sandbox traffic through iron-proxy so containers receive "
-                 "proxy tokens instead of real API keys.",
-                 "   Docker only for now; Modal, SSH, Daytona, and Singularity are not wired yet.")
-    if _setup.prompt_yes_no("  Enable egress firewall for Docker sandboxes?", False):
+    _setup._info(None, "Docker 沙箱可以用出口凭据防火墙保护：",
+                 "它把沙箱流量经 iron-proxy 转发，容器拿到的是 "
+                 "代理令牌、不是真实 API key。",
+                 "   目前只支持 Docker；Modal、SSH、Daytona、Singularity 还没接。")
+    if _setup.prompt_yes_no("  要给 Docker 沙箱开出口防火墙吗？", False):
         proxy_cfg = config.setdefault("proxy", {})
         proxy_cfg["enabled"] = True
         proxy_cfg.setdefault("enforce_on_docker", True)
-        _setup.print_success("Egress firewall enabled in config")
+        _setup.print_success("配置里已开启出口防火墙")
         _setup.print_info(
-            "Run `hermes egress setup` then `hermes egress start` to mint tokens and launch the proxy.")
+            "跑「coco cli egress setup」再跑「coco cli egress start」，就能签发令牌并启动代理。")
     else:
-        _setup.print_info("Skipping egress firewall. You can enable it later with `hermes egress setup`.")
+        _setup.print_info("跳过出口防火墙。以后想开，跑「coco cli egress setup」。")
 
 
 def _setup_backend_singularity(config: dict) -> None:
-    _setup.print_success("Terminal backend: Singularity/Apptainer")
+    _setup.print_success("终端后端：Singularity/Apptainer")
     _report_binary(shutil.which("apptainer") or shutil.which("singularity"),
                    "Singularity/Apptainer not found in PATH!",
                    "Install: https://apptainer.org/docs/admin/main/installation.html")
@@ -177,8 +177,8 @@ def _setup_backend_singularity(config: dict) -> None:
 
 
 def _setup_backend_modal(config: dict) -> None:
-    _setup.print_success("Terminal backend: Modal")
-    _setup.print_info("Serverless cloud sandboxes. Each session gets its own container.")
+    _setup.print_success("终端后端：Modal")
+    _setup.print_info("无服务器云沙箱，每个会话一个独立容器。")
     from tools.managed_tool_gateway import is_managed_tool_gateway_ready
     from tools.tool_backend_helpers import normalize_modal_mode
     managed_modal_available = bool(
@@ -191,19 +191,19 @@ def _setup_backend_modal(config: dict) -> None:
         # Default to the configured mode; when unset, to "direct" only if Modal creds exist.
         default_idx = {"managed": 0, "direct": 1}.get(modal_mode, 1 if _setup.get_env_value("MODAL_TOKEN_ID") else 0)
         use_managed_modal = _setup.prompt_choice(
-            "Select how Modal execution should be billed:",
-            ["Use my Nous subscription", "Use my own Modal account"], default_idx) == 0
+            "选择 Modal 执行怎么计费：",
+            ["用我的 Nous 订阅", "用我自己的 Modal 账号"], default_idx) == 0
     if use_managed_modal:
         config["terminal"]["modal_mode"] = "managed"
-        _setup.print_info("Modal execution will use the managed Nous gateway and bill to your subscription.")
+        _setup.print_info("Modal 执行会走 Nous 托管网关，费用记在你的订阅上。")
         if _setup.get_env_value("MODAL_TOKEN_ID") or _setup.get_env_value("MODAL_TOKEN_SECRET"):
             _setup.print_info(
-                "Direct Modal credentials are still configured, but this backend is pinned to managed mode.")
+                "你配了直连 Modal 的凭据，但这个后端被固定为托管模式。")
         return
     config["terminal"]["modal_mode"] = "direct"
-    _setup.print_info("Requires a Modal account: https://modal.com")
+    _setup.print_info("需要一个 Modal 账号：https://modal.com")
     _ensure_sdk("modal", "uv pip install modal")
-    _setup._info(None, "Modal authentication:", "  Get your token at: https://modal.com/settings")
+    _setup._info(None, "Modal 鉴权：", "  在这里拿 token：https://modal.com/settings")
     if _existing_secret_keeps("MODAL_TOKEN_ID", "Modal token", "  Update Modal credentials?"):
         return
     _prompt_secret_env("    Modal Token ID", "MODAL_TOKEN_ID")
@@ -211,33 +211,33 @@ def _setup_backend_modal(config: dict) -> None:
 
 
 def _setup_backend_daytona(config: dict) -> None:
-    _setup.print_success("Terminal backend: Daytona")
-    _setup._info("Persistent cloud development environments.",
-                 "Each session gets a dedicated sandbox with filesystem persistence.",
-                 "Sign up at: https://daytona.io")
+    _setup.print_success("终端后端：Daytona")
+    _setup._info("带持久化的云开发环境。",
+                 "每个会话一个专属沙箱，文件会留档。",
+                 "注册地址：https://daytona.io")
     _ensure_sdk("daytona", "uv pip install daytona", show_stderr=True)
     print()
     had_key = bool(_setup.get_env_value("DAYTONA_API_KEY"))
     if not _existing_secret_keeps("DAYTONA_API_KEY", "Daytona API key", "  Update API key?"):
         _prompt_secret_env("    Daytona API key", "DAYTONA_API_KEY",
-                           confirm_msg="    Updated" if had_key else "    Configured")
+                           confirm_msg="    已更新" if had_key else "    已配置")
     config["terminal"].setdefault("daytona_image", _SANDBOX_IMAGE)
 
 
 def _setup_backend_vercel(config: dict) -> None:
-    _setup.print_success("Terminal backend: Vercel Sandbox")
-    _setup._info("Cloud microVM sandboxes with snapshot-backed filesystem persistence.",
-                 "Requires the optional SDK: pip install 'hermes-agent[vercel]'")
+    _setup.print_success("终端后端：Vercel Sandbox")
+    _setup._info("云上 microVM 沙箱，文件靠快照持久化。",
+                 "需要装可选 SDK：pip install 'hermes-agent[vercel]'")
     _ensure_sdk("vercel", "pip install 'hermes-agent[vercel]'", show_stderr=True, install=_pip_install_vercel)
     _prompt_vercel_sandbox_settings(config)
 
 
 def _setup_backend_ssh(config: dict) -> None:
-    _setup.print_success("Terminal backend: SSH")
-    _setup.print_info("Run commands on a remote machine via SSH.")
+    _setup.print_success("终端后端：SSH")
+    _setup.print_info("通过 SSH 在远程机器上跑命令。")
     # (label, env var, fallback default when .env is empty); the port is only saved when not 22.
     fields = (
-        ("  SSH host (hostname or IP)", "TERMINAL_SSH_HOST", ""),
+        ("  SSH 主机（主机名或 IP）", "TERMINAL_SSH_HOST", ""),
         ("  SSH user", "TERMINAL_SSH_USER", os.getenv("USER", "")),
         ("  SSH port", "TERMINAL_SSH_PORT", "22"),
         ("  SSH private key path", "TERMINAL_SSH_KEY", str(Path.home() / ".ssh" / "id_rsa")))
@@ -252,17 +252,17 @@ def _setup_backend_ssh(config: dict) -> None:
             # skipping the save alone would leave the stale value in .env.
             _setup.remove_env_value(env_var)
     host, user, port, ssh_key = values
-    if host and _setup.prompt_yes_no("  Test SSH connection?", True):
-        _setup.print_info("  Testing connection...")
+    if host and _setup.prompt_yes_no("  要测一下 SSH 连接吗？", True):
+        _setup.print_info("  正在测试连接…")
         import subprocess
         ssh_cmd = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", *(["-i", ssh_key] if ssh_key else []),
                    *(["-p", port] if port and port != "22" else []), f"{user}@{host}" if user else host, "echo ok"]
         result = subprocess.run(ssh_cmd, timeout=10, **_RUN_KW)
         if result.returncode == 0:
-            _setup.print_success("  SSH connection successful!")
+            _setup.print_success("  SSH 连接成功。")
         else:
-            _setup.print_warning(f"  SSH connection failed: {result.stderr.strip()}")
-            _setup.print_info("  Check your SSH key and host settings.")
+            _setup.print_warning(f"  SSH 连接失败：{result.stderr.strip()}")
+            _setup.print_info("  检查一下 SSH 密钥和主机设置。")
 
 
 def _setup_backend_plugin(config: dict, backend: str) -> None:
@@ -274,11 +274,11 @@ def _setup_backend_plugin(config: dict, backend: str) -> None:
             _setup.print_info(line)
         provider.post_setup()
     except Exception as exc:
-        _setup.print_warning(f"Backend plugin setup hook failed: {exc}")
+        _setup.print_warning(f"后端插件的配置钩子失败了：{exc}")
 
 
 _BUILTIN_TERMINAL_BACKENDS = [
-    ("local", "Local - run directly on this machine (default)"),
+    ("local", "本机 —— 直接在这台机器上跑（默认）"),
     ("docker", "Docker/Podman - isolated container with configurable resources"),
     ("modal", "Modal - serverless cloud sandbox"), ("ssh", "SSH - run on a remote machine"),
     ("daytona", "Daytona - persistent cloud development environment"),
@@ -296,10 +296,10 @@ _BACKEND_ENV_MIRROR = {"modal": ("TERMINAL_MODAL_MODE", "modal_mode", "auto"),
 def setup_terminal_backend(config: dict):
     """Configure the terminal execution backend."""
     import platform as _platform
-    _setup.print_header("Terminal Backend")
-    _setup._info("Choose where Hermes runs shell commands and code.",
-                 "This affects tool execution, file access, and isolation.",
-                 f"   Guide: {_setup._DOCS_BASE}/user-guide/configuration#terminal-backend-configuration", None)
+    _setup.print_header("终端后端")
+    _setup._info("选择 Coco 在哪里跑命令和代码。",
+                 "这会影响工具执行、文件访问和隔离性。",
+                 f"   文档：{_setup._DOCS_BASE}/user-guide/configuration#terminal-backend-configuration", None)
     current_backend = _setup.cfg_get(config, "terminal", "backend", default="local")
     backends = list(_BUILTIN_TERMINAL_BACKENDS)
     if _platform.system() == "Linux":
@@ -317,10 +317,10 @@ def setup_terminal_backend(config: dict):
             plugin_backend_names.append(pname)
     except Exception:
         pass
-    terminal_choices = [label for _, label in backends] + [f"Keep current ({current_backend})"]
-    terminal_idx = _setup.prompt_choice("Select terminal backend:", terminal_choices, len(backends))
+    terminal_choices = [label for _, label in backends] + [f"保持当前（{current_backend}）"]
+    terminal_idx = _setup.prompt_choice("选择终端后端：", terminal_choices, len(backends))
     if terminal_idx == len(backends):
-        _setup.print_info(f"Keeping current backend: {current_backend}")
+        _setup.print_info(f"保持当前后端：{current_backend}")
         return
     selected_backend = backends[terminal_idx][0] if 0 <= terminal_idx < len(backends) else None
     config.setdefault("terminal", {})["backend"] = selected_backend
@@ -336,7 +336,7 @@ def setup_terminal_backend(config: dict):
         _setup.save_env_value(env_var, config["terminal"].get(key, default))
     _setup.save_config(config)
     print()
-    _setup.print_success(f"Terminal backend set to: {selected_backend}")
+    _setup.print_success(f"终端后端已设为：{selected_backend}")
 
 
 import hermes_cli.setup as _setup  # noqa: E402  (bottom: hermes_cli.setup imports this module)

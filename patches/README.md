@@ -502,3 +502,19 @@ python3 scripts/smoke_test_real_estate.py
   生成新条目时会把它顶成 ANCHOR —— 已把它改成「官方原文 → 当前中文」（表格只留一条，不留中间态）。
 - **既有红灯（与本批无关，已在 HEAD 干净工作树复现）**：`test_model*.py + test_setup*.py + test_config*.py`
   多文件同跑时有 **8 例顺序污染**（单跑各文件全绿）；另有 `test_model_catalog.py` 读已删除的 `website/…` 那条。
+
+### 33 终端后端与语音合成向导文案中文化（`setup_terminal.py` + `setup_tts.py`）
+
+- **改了什么**：共 113 处 —— `setup_terminal.py`（67：本机 / Docker·Podman / SSH / Modal / Daytona /
+  Vercel Sandbox / Singularity 七条后端分支的说明与提问，含出口防火墙那两行）、
+  `setup_tts.py`（46：espeak-ng 与 neutts/kittentts 安装、xAI Grok OAuth 登录、服务商选择与计费说明）。
+- **口径**：`hermes egress setup/start` → `coco cli egress setup/start`（`coco` 无该子命令，走逃生口）；
+  包名（`uv pip install modal` / `pip install 'hermes-agent[vercel]'`）、变量名（`MODAL_TOKEN_ID`/`DAYTONA_API_KEY`）、
+  URL、后端与产品名一律保留。
+- **同批补扫的 15 条**：首轮漏了 `prompt_choice` 的**选项文案**与几处 `print` 拼串
+  （`Local - run directly on this machine (default)`、`Keep current (…)`、`Found: `、
+  `Edge TTS (free, cloud-based, no setup needed)`、`KittenTTS is lightweight (…)` 等）。
+  **教训：`prompt_choice(...)` 的 choices 列表也算用户可见文案，扫的时候要一起抓。**
+- **连带改的用例**：`tests/hermes_cli/test_setup.py`（用问题原文做桩的 4 处 + `Keep current (` 前缀断言）、
+  `test_setup_terminal.py`（`Podman found:` → `Podman 已找到：`）。
+- **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。

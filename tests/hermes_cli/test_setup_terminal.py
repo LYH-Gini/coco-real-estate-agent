@@ -44,5 +44,5 @@ def test_docker_wizard_reports_the_resolved_podman_runtime(monkeypatch, capsys):
     setup_terminal._setup_backend_docker({"terminal": {}})
 
     out = capsys.readouterr().out
-    assert "Podman found: /usr/bin/podman" in out
-    assert "not found in PATH" not in out
+    assert "Podman 已找到： /usr/bin/podman" in out
+    assert "没找到 Docker 或 Podman" not in out

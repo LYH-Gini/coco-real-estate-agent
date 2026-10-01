@@ -11,9 +11,9 @@ from hermes_cli.setup import setup_model_provider
 
 
 def _maybe_keep_current_tts(question, choices):
-    if question != "Select TTS provider:":
+    if question != "选择语音合成服务商：":
         return None
-    assert choices[-1].startswith("Keep current (")
+    assert choices[-1].startswith("保持当前（")
     return len(choices) - 1
 
 
@@ -136,9 +136,9 @@ def test_modal_setup_persists_direct_mode_when_user_chooses_their_own_account(tm
     config = load_config()
 
     def fake_prompt_choice(question, choices, default=0):
-        if question == "Select terminal backend:":
+        if question == "选择终端后端：":
             return 2
-        if question == "Select how Modal execution should be billed:":
+        if question == "选择 Modal 执行怎么计费：":
             return 1
         raise AssertionError(f"Unexpected prompt_choice call: {question}")
 
@@ -180,7 +180,7 @@ def test_vercel_setup_configures_access_token_auth(tmp_path, monkeypatch):
     config = load_config()
 
     def fake_prompt_choice(question, choices, default=0):
-        if question == "Select terminal backend:":
+        if question == "选择终端后端：":
             return 5
         raise AssertionError(f"Unexpected prompt_choice call: {question}")
 
@@ -221,7 +221,7 @@ def test_vercel_setup_prefills_project_and_team_from_link_file(tmp_path, monkeyp
     config["terminal"]["container_disk"] = 999
 
     def fake_prompt_choice(question, choices, default=0):
-        if question == "Select terminal backend:":
+        if question == "选择终端后端：":
             return 5
         raise AssertionError(f"Unexpected prompt_choice call: {question}")
 
