@@ -2716,33 +2716,32 @@ OPTIONAL_ENV_VARS = {
     "OPENROUTER_API_KEY": _env("OpenRouter API key (for vision, web scraping helpers, and MoA)",
         "OpenRouter API key", url="https://openrouter.ai/keys", password=True, tools=["vision_analyze"],
         category="provider", advanced=True),
-    "GOOGLE_API_KEY": _prov("Google AI Studio API key (also recognized as GEMINI_API_KEY)",
+    "GOOGLE_API_KEY": _prov("Google AI Studio 的 API key（也认 GEMINI_API_KEY）",
         "Google AI Studio API key", "https://aistudio.google.com/app/apikey"),
-    "GEMINI_API_KEY": _prov("Google AI Studio API key (alias for GOOGLE_API_KEY)", "Gemini API key",
+    "GEMINI_API_KEY": _prov("Google AI Studio 的 API key（GOOGLE_API_KEY 的别名）", "Gemini API key",
         "https://aistudio.google.com/app/apikey"),
     "GEMINI_BASE_URL": _base_url("Google AI Studio", "Gemini"),
     "VERTEX_CREDENTIALS_PATH": _prov(
-        "Path to a Google Cloud service account JSON for Vertex AI (Gemini). Vertex uses "
-        "OAuth2, not a static API key — this points at the credentials Hermes mints short-lived "
-        "tokens from. Falls back to GOOGLE_APPLICATION_CREDENTIALS, then to ADC (gcloud auth "
-        "application-default login). Set project/region under vertex: in config.yaml.",
-        "Vertex service account JSON path (leave empty to use ADC / "
-        "GOOGLE_APPLICATION_CREDENTIALS)", "https://cloud.google.com/iam/docs/keys-create-delete",
+        "Google Cloud 服务账号 JSON 的路径（Vertex AI / Gemini 用）。Vertex 走 OAuth2"
+        "、不是固定 API key —— 这里指向 Coco 用来换取短期令牌的凭据；留空则依次回退到 GOOGLE_APPLICATI"
+        "ON_CREDENTIALS 和 ADC（gcloud auth application-default login）。项目与区"
+        "域在 config.yaml 的 vertex: 里配。",
+        "Vertex 服务账号 JSON 路径（留空 = 用 ADC / GOOGLE_APPLICATION_CREDENTIALS）", "https://cloud.google.com/iam/docs/keys-create-delete",
         password=False),
     "XAI_API_KEY": _prov("xAI API key", "xAI API key", "https://console.x.ai/"),
     "XAI_BASE_URL": _base_url("xAI"),
-    "NVIDIA_API_KEY": _prov("NVIDIA NIM API key (build.nvidia.com or local NIM endpoint)",
+    "NVIDIA_API_KEY": _prov("NVIDIA NIM 的 API key（build.nvidia.com 或本机 NIM 端点）",
         "NVIDIA NIM API key", "https://build.nvidia.com/"),
     "NVIDIA_BASE_URL": _prov(
-        "NVIDIA NIM base URL override (e.g. http://localhost:8000/v1 for local NIM)",
-        "NVIDIA NIM base URL (leave empty for default)", None, password=False),
-    "LM_API_KEY": _prov("LM Studio bearer token for auth-enabled local servers",
+        "NVIDIA NIM 接口地址（本机 NIM 可填 http://localhost:8000/v1）",
+        "NVIDIA NIM 接口地址（留空 = 默认）", None, password=False),
+    "LM_API_KEY": _prov("LM Studio 的 bearer token（针对开了鉴权的本机服务）",
         "LM Studio API key / bearer token", None),
     "LM_BASE_URL": _base_url("LM Studio"),
-    "GLM_API_KEY": _prov("Z.AI / GLM API key (also recognized as ZAI_API_KEY / Z_AI_API_KEY)",
+    "GLM_API_KEY": _prov("Z.AI / GLM 的 API key（也认 ZAI_API_KEY / Z_AI_API_KEY）",
         "Z.AI / GLM API key", "https://z.ai/"),
-    "ZAI_API_KEY": _prov("Z.AI API key (alias for GLM_API_KEY)", "Z.AI API key", "https://z.ai/"),
-    "Z_AI_API_KEY": _prov("Z.AI API key (alias for GLM_API_KEY)", "Z.AI API key", "https://z.ai/"),
+    "ZAI_API_KEY": _prov("Z.AI 的 API key（GLM_API_KEY 的别名）", "Z.AI API key", "https://z.ai/"),
+    "Z_AI_API_KEY": _prov("Z.AI 的 API key（GLM_API_KEY 的别名）", "Z.AI API key", "https://z.ai/"),
     "GLM_BASE_URL": _base_url("Z.AI / GLM"),
     "KIMI_API_KEY": _prov("Kimi / Moonshot API key", "Kimi API key",
         "https://platform.moonshot.cn/"),
@@ -2766,120 +2765,117 @@ OPTIONAL_ENV_VARS = {
     "MINIMAX_CN_API_KEY": _prov("MiniMax API key (China endpoint)", "MiniMax (China) API key",
         "https://www.minimaxi.com/"),
     "MINIMAX_CN_BASE_URL": _base_url("MiniMax (China)"),
-    "DEEPSEEK_API_KEY": _prov("DeepSeek API key for direct DeepSeek access", "DeepSeek API Key",
+    "DEEPSEEK_API_KEY": _prov("DeepSeek 官方直连用的 API key", "DeepSeek API Key",
         "https://platform.deepseek.com/api_keys", advanced=False),
     "DEEPSEEK_BASE_URL": _prov("Custom DeepSeek API base URL (advanced)", "DeepSeek Base URL", "",
         password=False, advanced=False),
     "DASHSCOPE_API_KEY": _prov("Alibaba Cloud DashScope API key (Qwen + multi-provider models)",
         "DashScope API Key", "https://modelstudio.console.alibabacloud.com/", advanced=False),
     "DASHSCOPE_BASE_URL": _prov(
-        "Custom DashScope base URL (default: coding-intl OpenAI-compat endpoint)",
+        "DashScope 自定义接口地址（默认：coding-intl 的 OpenAI 兼容端点）",
         "DashScope Base URL", "", password=False),
     "HERMES_QWEN_BASE_URL": _prov(
-        "Qwen Portal base URL override (default: https://portal.qwen.ai/v1)",
-        "Qwen Portal base URL (leave empty for default)", None, password=False),
-    "OPENCODE_ZEN_API_KEY": _prov("OpenCode Zen API key (pay-as-you-go access to curated models)",
+        "Qwen Portal 接口地址（默认 https://portal.qwen.ai/v1）",
+        "Qwen Portal 接口地址（留空 = 默认）", None, password=False),
+    "OPENCODE_ZEN_API_KEY": _prov("OpenCode Zen 的 API key（按量付费，用精选模型）",
         "OpenCode Zen API key", "https://opencode.ai/auth"),
     "COMMANDCODE_API_KEY": _prov(
-        "CommandCode API key (GOAT/Pro/Max/Provider plans — 30+ models via one key)",
+        "CommandCode 的 API key（GOAT/Pro/Max/Provider 套餐 —— 一个 key 用 30 多个"
+        "模型）",
         "CommandCode API key", "https://commandcode.ai/studio/"),
     "OPENCODE_ZEN_BASE_URL": _base_url("OpenCode Zen"),
-    "OPENCODE_GO_API_KEY": _prov("OpenCode Go API key ($10/month subscription for open models)",
+    "OPENCODE_GO_API_KEY": _prov("OpenCode Go 的 API key（$10/月订阅，用开源模型）",
         "OpenCode Go API key", "https://opencode.ai/auth"),
     "OPENCODE_GO_BASE_URL": _base_url("OpenCode Go"),
     "HF_TOKEN": _prov(
-        "Hugging Face token for Inference Providers (20+ open models via router.huggingface.co)",
+        "Hugging Face token，用于 Inference Providers（走 router.huggingface.c"
+        "o，20 多个开源模型）",
         "Hugging Face Token", "https://huggingface.co/settings/tokens", advanced=False),
     "HF_BASE_URL": _base_url("Hugging Face Inference Providers", "HF"),
     "OLLAMA_API_KEY": _prov("Ollama Cloud API key (ollama.com — cloud-hosted open models)",
         "Ollama Cloud API key", "https://ollama.com/settings"),
-    "OLLAMA_BASE_URL": _prov("Ollama Cloud base URL override (default: https://ollama.com/v1)",
-        "Ollama base URL (leave empty for default)", None, password=False),
+    "OLLAMA_BASE_URL": _prov("Ollama 接口地址（默认 https://ollama.com/v1）",
+        "Ollama 接口地址（留空 = 默认）", None, password=False),
     "XIAOMI_API_KEY": _prov(
-        "Xiaomi MiMo API key for MiMo models (mimo-v2.5-pro, mimo-v2.5, mimo-v2-pro, "
-        "mimo-v2-omni, mimo-v2-flash)", "Xiaomi MiMo API Key", "https://platform.xiaomimimo.com",
+        "小米 MiMo 的 API key，用于 MiMo 系列模型（mimo-v2.5-pro、mimo-v2.5、mimo-v2-p"
+        "ro、mimo-v2-omni、mimo-v2-flash）", "Xiaomi MiMo API Key", "https://platform.xiaomimimo.com",
         advanced=False),
     "XIAOMI_BASE_URL": _prov(
-        "Xiaomi MiMo base URL override (default: https://api.xiaomimimo.com/v1)",
-        "Xiaomi base URL (leave empty for default)", None, password=False),
-    "UPSTAGE_API_KEY": _prov("Upstage API key for Solar LLM models", "Upstage API Key",
+        "小米 MiMo 接口地址（默认 https://api.xiaomimimo.com/v1）",
+        "小米接口地址（留空 = 默认）", None, password=False),
+    "UPSTAGE_API_KEY": _prov("Upstage 的 API key，用于 Solar 系列模型", "Upstage API Key",
         "https://console.upstage.ai/api-keys", advanced=False),
-    "UPSTAGE_BASE_URL": _prov("Upstage base URL override (default: https://api.upstage.ai/v1)",
-        "Upstage base URL (leave empty for default)", None, password=False),
-    "AWS_REGION": _prov("AWS region for Bedrock API calls (e.g. us-east-1, eu-central-1)",
+    "UPSTAGE_BASE_URL": _prov("Upstage 接口地址（默认 https://api.upstage.ai/v1）",
+        "Upstage 接口地址（留空 = 默认）", None, password=False),
+    "AWS_REGION": _prov("Bedrock 调用的 AWS 区域（如 us-east-1、eu-central-1）",
         "AWS Region", "https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-regions.html",
         password=False),
-    "AWS_PROFILE": _prov("AWS named profile for Bedrock authentication (from ~/.aws/credentials)",
+    "AWS_PROFILE": _prov("Bedrock 认证用的 AWS profile（取自 ~/.aws/credentials）",
         "AWS Profile", None, password=False),
-    "AZURE_FOUNDRY_API_KEY": _prov("Azure Foundry API key for custom Azure endpoints",
+    "AZURE_FOUNDRY_API_KEY": _prov("Azure Foundry 的 API key，用于自定义 Azure 端点",
         "Azure Foundry API Key", "https://ai.azure.com/", advanced=False),
     "AZURE_FOUNDRY_BASE_URL": _prov(
-        "Azure Foundry base URL (set via 'hermes model' for endpoint-specific config)",
+        "Azure Foundry 接口地址（按端点配置时用「coco model」设置）",
         "Azure Foundry base URL", None, password=False),
     # ── Tool API keys ──
-    "EXA_API_KEY": _tool("Exa API key for AI-native web search and contents", "Exa API key",
+    "EXA_API_KEY": _tool("Exa 的 API key，用于联网搜索与正文抓取", "Exa API key",
         "https://exa.ai/", tools=["web_search", "web_extract"]),
-    "PARALLEL_API_KEY": _tool("Parallel API key for AI-native web search and extract",
+    "PARALLEL_API_KEY": _tool("Parallel 的 API key，用于联网搜索与抓取",
         "Parallel API key", "https://parallel.ai/", tools=["web_search", "web_extract"]),
-    "FIRECRAWL_API_KEY": _tool("Firecrawl API key for web search and scraping", "Firecrawl API key",
+    "FIRECRAWL_API_KEY": _tool("Firecrawl 的 API key，用于联网搜索与抓取", "Firecrawl API key",
         "https://firecrawl.dev/", tools=["web_search", "web_extract"]),
-    "FIRECRAWL_API_URL": _tool("Firecrawl API URL for self-hosted instances (optional)",
-        "Firecrawl API URL (leave empty for cloud)", None, password=False, advanced=True),
+    "FIRECRAWL_API_URL": _tool("Firecrawl 接口地址，自建实例用（可选）",
+        "Firecrawl 接口地址（留空 = 用云端）", None, password=False, advanced=True),
     "FIRECRAWL_GATEWAY_URL": _tool(
-        "Exact Firecrawl tool-gateway origin override for Nous Subscribers only (optional)",
-        "Firecrawl gateway URL (leave empty to derive from domain)", None, password=False,
+        "Firecrawl 工具网关的确切来源覆盖（仅 Nous 订阅用户，可选）",
+        "Firecrawl 网关地址（留空 = 按域名推导）", None, password=False,
         advanced=True),
     "TOOL_GATEWAY_URL": _tool(
-        "Exact shared tool-gateway origin for on-origin vendors and media uploads (optional)",
-        "Shared tool-gateway URL (leave empty to derive from domain)", None,
+        "共享工具网关的确切来源（同源厂商与媒体上传用，可选）",
+        "共享工具网关地址（留空 = 按域名推导）", None,
         password=False, advanced=True),
     "CONNECTOR_GATEWAY_URL": _tool(
-        "Exact connector-gateway origin for the connectors API (optional)",
-        "Connector-gateway URL (leave empty to derive from domain)", None,
+        "连接器网关的确切来源（连接器接口用，可选）",
+        "连接器网关地址（留空 = 按域名推导）", None,
         password=False, advanced=True),
     "TOOL_GATEWAY_DOMAIN": _tool(
-        "Shared tool-gateway domain suffix for Nous Subscribers only, used to derive vendor "
-        "hosts, e.g. nousresearch.com -> firecrawl-gateway.nousresearch.com",
+        "共享工具网关的域名后缀（仅 Nous 订阅用户），用来推导各厂商主机名，例如 nousresearch.com → firecr"
+        "awl-gateway.nousresearch.com",
         "Tool-gateway domain suffix", None, password=False, advanced=True),
     "TOOL_GATEWAY_SCHEME": _tool(
-        "Shared tool-gateway URL scheme for Nous Subscribers only, used to derive vendor hosts "
-        "(`https` by default, set `http` for local gateway testing)", "Tool-gateway URL scheme",
+        "共享工具网关的协议（仅 Nous 订阅用户），用来推导厂商主机名（默认 https，本机测试网关时填 http）", "Tool-gateway URL scheme",
         None, password=False, advanced=True),
     "TOOL_GATEWAY_USER_TOKEN": _tool(
-        "Explicit Nous Subscriber access token for tool-gateway requests (optional; otherwise "
-        "read from the Hermes auth store)", "Tool-gateway user token", None, advanced=True),
+        "工具网关请求用的 Nous 订阅访问令牌（可选；不填则从 Coco 的登录凭据里读）", "Tool-gateway user token", None, advanced=True),
     "TAVILY_API_KEY": _tool(
-        "Tavily API key for AI-native web search and extract (optional — keyless works when "
-        "Tavily is selected)", "Tavily API key", "https://app.tavily.com/home",
+        "Tavily 的 API key，用于联网搜索与抓取（可选 —— 选中 Tavily 时不给 key 也能用）", "Tavily API key", "https://app.tavily.com/home",
         tools=["web_search", "web_extract"]),
     "PERPLEXITY_API_KEY": _tool(
-        "Perplexity API key for the Search API web backend (ranked results + query-relevant page "
-        "snippets)", "Perplexity API key", "https://www.perplexity.ai/account/api",
+        "Perplexity 的 API key，用于 Search API 联网后端（带排序的结果 + 与问题相关的网页摘要）", "Perplexity API key", "https://www.perplexity.ai/account/api",
         tools=["web_search", "web_extract"]),
     "KEENABLE_API_KEY": _tool(
-        "Keenable API key for fast independent-index web search and page fetch (optional — "
-        "keyless free tier works without it)", "Keenable API key", "https://keenable.ai",
+        "Keenable 的 API key，用于快速独立索引的联网搜索与网页抓取（可选 —— 有免费额度，不给 key 也能用）", "Keenable API key", "https://keenable.ai",
         tools=["web_search", "web_extract"]),
-    "SEARXNG_URL": _tool("URL of your SearXNG instance for free self-hosted web search",
-        "SearXNG URL (e.g. http://localhost:8080)", "https://searxng.github.io/searxng/",
+    "SEARXNG_URL": _tool("你的 SearXNG 实例地址，用自建搜索（免费）",
+        "SearXNG 地址（如 http://localhost:8080）", "https://searxng.github.io/searxng/",
         tools=["web_search"], password=False),
     "BRAVE_SEARCH_API_KEY": _tool(
         "Brave Search API subscription token (free tier: 2,000 queries/mo)",
         "Brave Search subscription token", "https://brave.com/search/api/", tools=["web_search"]),
     "BROWSERBASE_API_KEY": _tool(
-        "Browserbase API key for cloud browser (optional — local browser works without this)",
+        "Browserbase 的 API key，用于云端浏览器（可选 —— 不给也能用本机浏览器）",
         "Browserbase API key", "https://browserbase.com/",
         tools=["browser_navigate", "browser_click"]),
     "BROWSERBASE_PROJECT_ID": _tool(
-        "Browserbase project ID (optional — only needed for cloud browser)",
+        "Browserbase 项目 ID（可选 —— 只有用云端浏览器才需要）",
         "Browserbase project ID", "https://browserbase.com/",
         tools=["browser_navigate", "browser_click"], password=False),
     "BROWSER_USE_API_KEY": _tool(
-        "Browser Use API key for cloud browser (optional — local browser works without this)",
+        "Browser Use 的 API key，用于云端浏览器（可选 —— 不给也能用本机浏览器）",
         "Browser Use API key", "https://browser-use.com/",
         tools=["browser_navigate", "browser_click"]),
     "FIRECRAWL_BROWSER_TTL": _tool(
-        "Firecrawl browser session TTL in seconds (optional, default 300)",
+        "Firecrawl 浏览器会话的存活秒数（可选，默认 300）",
         "Browser session TTL (seconds)", tools=["browser_navigate", "browser_click"],
         password=False),
     "AGENT_BROWSER_ENGINE": _env(
@@ -2889,82 +2885,81 @@ OPTIONAL_ENV_VARS = {
         tools=["browser_exec", "browser_navigate", "browser_snapshot", "browser_click", "browser_vision"],
         password=False, category="tool", advanced=True),
     "CAMOFOX_URL": _tool(
-        "Camofox browser server URL for local anti-detection browsing (e.g. http://localhost:9377)",
+        "Camofox 浏览器服务地址，用于本机反检测浏览（如 http://localhost:9377）",
         "Camofox server URL", "https://github.com/jo-inc/camofox-browser",
         tools=["browser_navigate", "browser_click"], password=False),
     "CAMOFOX_API_KEY": _tool(
-        "Optional bearer token sent as Authorization header to a remote/authenticated Camofox "
-        "server", "Camofox API key", "https://github.com/jo-inc/camofox-browser",
+        "访问远程/带鉴权的 Camofox 服务时发送的 bearer token（可选）", "Camofox API key", "https://github.com/jo-inc/camofox-browser",
         tools=["browser_navigate", "browser_click"], advanced=True),
-    "FAL_KEY": _tool("FAL API key for image and video generation", "FAL API key", "https://fal.ai/",
+    "FAL_KEY": _tool("FAL 的 API key，用于图片与视频生成", "FAL API key", "https://fal.ai/",
         tools=["image_generate", "video_generate"]),
-    "KREA_API_KEY": _tool("Krea API key for Krea 2 image generation (Medium + Large)",
+    "KREA_API_KEY": _tool("Krea 的 API key，用于 Krea 2 图片生成（Medium + Large）",
         "Krea API key", "https://www.krea.ai/settings/api-tokens", tools=["image_generate"]),
     "VOICE_TOOLS_OPENAI_KEY": _tool(
-        "OpenAI API key for voice transcription (Whisper) and OpenAI TTS",
-        "OpenAI API Key (for Whisper STT + TTS)", "https://platform.openai.com/api-keys",
+        "OpenAI 的 API key，用于语音转写（Whisper）与 OpenAI 语音合成",
+        "OpenAI API Key（语音转写 + 语音合成用）", "https://platform.openai.com/api-keys",
         tools=["voice_transcription", "openai_tts"]),
     "ELEVENLABS_API_KEY": _tool(
-        "ElevenLabs API key for premium text-to-speech voices and Scribe transcription",
+        "ElevenLabs 的 API key，用于高质量语音合成与 Scribe 转写",
         "ElevenLabs API key", "https://elevenlabs.io/",
         tools=["elevenlabs_tts", "voice_transcription"]),
-    "MISTRAL_API_KEY": _tool("Mistral API key for Voxtral TTS and transcription (STT)",
+    "MISTRAL_API_KEY": _tool("Mistral 的 API key，用于 Voxtral 语音合成与转写",
         "Mistral API key", "https://console.mistral.ai/"),
     "PORCUPINE_ACCESS_KEY": _tool(
-        "Picovoice access key for the Porcupine 'Hey Hermes' wake word engine (optional; "
-        "openWakeWord is the free default)", "Picovoice access key",
+        "Picovoice 的 access key，给 Porcupine「Hey Hermes」唤醒词引擎用（可选；openWake"
+        "Word 是免费默认）", "Picovoice access key",
         "https://console.picovoice.ai/"),
-    "GITHUB_TOKEN": _tool("GitHub token for Skills Hub (higher API rate limits, skill publish)",
+    "GITHUB_TOKEN": _tool("GitHub token，给技能仓库用（更高的接口频率上限、可发布技能）",
         "GitHub Token", "https://github.com/settings/tokens"),
     # ── Bundled skills (opt-in) ── category="skill" (not "tool") so the sandbox env blocklist in
     # tools/environments/local.py does NOT rewrite them; skills need them passed through to curl
     # via tools/env_passthrough.py.
-    "NOTION_API_KEY": _skill("Notion integration token (used by the `notion` skill)",
+    "NOTION_API_KEY": _skill("Notion 的集成令牌（给「notion」技能用）",
         "Notion API key", "https://www.notion.so/my-integrations"),
-    "LINEAR_API_KEY": _skill("Linear personal API key (used by the `linear` skill)",
+    "LINEAR_API_KEY": _skill("Linear 的个人 API key（给「linear」技能用）",
         "Linear API key", "https://linear.app/settings/account/security"),
-    "AIRTABLE_API_KEY": _skill("Airtable personal access token (used by the `airtable` skill)",
+    "AIRTABLE_API_KEY": _skill("Airtable 的个人访问令牌（给「airtable」技能用）",
         "Airtable API key", "https://airtable.com/create/tokens"),
-    "TENOR_API_KEY": _skill("Tenor API key for GIF search (used by the `gif-search` skill)",
+    "TENOR_API_KEY": _skill("Tenor 的 API key，用于搜 GIF（给「gif-search」技能用）",
         "Tenor API key", "https://developers.google.com/tenor/guides/quickstart"),
     # ── Honcho ──
-    "HONCHO_API_KEY": _tool("Honcho API key for AI-native persistent memory", "Honcho API key",
+    "HONCHO_API_KEY": _tool("Honcho 的 API key，用于 AI 原生长期记忆", "Honcho API key",
         "https://app.honcho.dev", tools=["honcho_context"]),
-    "HONCHO_BASE_URL": _tool("Base URL for self-hosted Honcho instances (no API key needed)",
+    "HONCHO_BASE_URL": _tool("自建 Honcho 实例的接口地址（不需要 API key）",
         "Honcho base URL (e.g. http://localhost:8000)", password=None),
     # ── Hindsight ──
-    "HINDSIGHT_API_KEY": _tool("Hindsight API key for graph-aware persistent memory",
+    "HINDSIGHT_API_KEY": _tool("Hindsight 的 API key，用于图结构长期记忆",
         "Hindsight API key", "https://hindsight.vectorize.io", tools=["hindsight_recall"]),
     "HINDSIGHT_API_URL": _tool(
-        "Base URL for the Hindsight API (default: https://api.hindsight.vectorize.io)",
+        "Hindsight 接口地址（默认 https://api.hindsight.vectorize.io）",
         "Hindsight API URL", password=None, advanced=True),
     # ── Supermemory ──
-    "SUPERMEMORY_API_KEY": _tool("Supermemory API key for conversation-scoped persistent memory",
+    "SUPERMEMORY_API_KEY": _tool("Supermemory 的 API key，用于按会话隔离的长期记忆",
         "Supermemory API key", "https://supermemory.ai", tools=["supermemory_search"]),
     # ── Mem0 ──
-    "MEM0_API_KEY": _tool("Mem0 Platform API key for semantic persistent memory", "Mem0 API key",
+    "MEM0_API_KEY": _tool("Mem0 Platform 的 API key，用于语义长期记忆", "Mem0 API key",
         "https://app.mem0.ai", tools=["mem0_search"]),
     # ── RetainDB ──
-    "RETAINDB_API_KEY": _tool("RetainDB API key for persistent memory", "RetainDB API key",
+    "RETAINDB_API_KEY": _tool("RetainDB 的 API key，用于长期记忆", "RetainDB API key",
         "https://retaindb.com", tools=["retaindb_search"]),
     "RETAINDB_BASE_URL": _tool(
-        "Base URL for self-hosted RetainDB instances (default: https://api.retaindb.com)",
+        "自建 RetainDB 实例的接口地址（默认 https://api.retaindb.com）",
         "RetainDB base URL", password=None, advanced=True),
     # ── ByteRover ──
-    "BRV_API_KEY": _tool("ByteRover API key (optional, for cloud sync — local-first by default)",
+    "BRV_API_KEY": _tool("ByteRover 的 API key（可选，用于云同步 —— 默认本地优先）",
         "ByteRover API key", "https://app.byterover.dev", tools=["brv_query"]),
     # ── OpenViking ──
-    "OPENVIKING_API_KEY": _tool("OpenViking API key (leave blank for local dev mode)",
+    "OPENVIKING_API_KEY": _tool("OpenViking 的 API key（留空 = 本机开发模式）",
         "OpenViking API key", tools=["viking_search"]),
-    "OPENVIKING_ENDPOINT": _tool("OpenViking server URL (default: http://127.0.0.1:1933)",
+    "OPENVIKING_ENDPOINT": _tool("OpenViking 服务地址（默认 http://127.0.0.1:1933）",
         "OpenViking endpoint", password=None, advanced=True),
     # ── Langfuse observability ──
     "HERMES_LANGFUSE_PUBLIC_KEY": _tool("Langfuse project public key (pk-lf-...)",
         "Langfuse public key", "https://cloud.langfuse.com", password=False),
     "HERMES_LANGFUSE_SECRET_KEY": _tool("Langfuse project secret key (sk-lf-...)",
         "Langfuse secret key", "https://cloud.langfuse.com"),
-    "HERMES_LANGFUSE_BASE_URL": _tool("Langfuse server URL (default: https://cloud.langfuse.com)",
-        "Langfuse server URL (leave empty for cloud.langfuse.com)", None, password=False,
+    "HERMES_LANGFUSE_BASE_URL": _tool("Langfuse 服务地址（默认 https://cloud.langfuse.com）",
+        "Langfuse 服务地址（留空 = cloud.langfuse.com）", None, password=False,
         advanced=True),
     # ── Messaging platforms ──
     "TELEGRAM_BOT_TOKEN": _msg(
@@ -3116,15 +3111,14 @@ OPTIONAL_ENV_VARS = {
     # ── Agent settings ── (MESSAGING_CWD is gone: use terminal.cwd in config.yaml, which the
     # gateway bridges to TERMINAL_CWD.)
     "SUDO_PASSWORD": _setting(
-        "Sudo password for terminal commands requiring root access; set to an explicit empty "
-        "string to try empty without prompting", "Sudo password", None, password=True),
+        "需要 root 权限的终端命令用的 sudo 密码；显式留空字符串表示直接试空密码、不再询问", "Sudo password", None, password=True),
     # HERMES_TOOL_PROGRESS_MODE (deprecated; use display.tool_progress) is intentionally NOT listed:
     # this dict feeds user-facing surfaces (dashboard keys page, setup checklists), so deprecated
     # knobs stay in config._EXTRA_ENV_KEYS only. HERMES_TOOL_PROGRESS is unsupported.
     "HERMES_PREFILL_MESSAGES_FILE": _setting(
-        "Path to JSON file with ephemeral prefill messages for few-shot priming",
+        "JSON 文件路径，放临时的预填消息（用于 few-shot 引导）",
         "Prefill messages file path", None),
     "HERMES_EPHEMERAL_SYSTEM_PROMPT": _setting(
-        "Ephemeral system prompt injected at API-call time (never persisted to sessions)",
+        "调用接口时临时注入的系统提示词（不会写进会话记录）",
         "Ephemeral system prompt", None),
 }

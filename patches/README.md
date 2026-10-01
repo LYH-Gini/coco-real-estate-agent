@@ -459,3 +459,15 @@ python3 scripts/smoke_test_real_estate.py
   读 `website/static/api/model-catalog.json`，而 `website/` 已在 `fa1f5d79`（删除装机用不到的官方目录）整体删除
   —— 属既有红灯，与文案无关，别再当新问题查。
 - **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
+
+### 30 密钥录入页文案中文化（服务商 / 工具 / 技能 / 设置四类）
+
+- **改了什么**：`hermes_cli/config_defaults.py` 的 `OPTIONAL_ENV_VARS` —— 84 条说明与提问（服务商 31、
+  工具 46、技能与设置 7）。这些条目被 `coco model`、`coco setup`、`coco tools` **三处共用**，改一次三处一起变中文。
+- **口径**：纯「产品名 + 术语」的短标签（`xAI API key`、`GitHub Token`、`HF`、14 条基址类）保留原文；
+  唤醒词 `'Hey Hermes'` 照实保留（改文案会与真实唤醒词不符，要改得连着功能一起改）；说明里的 "Hermes" 一律改 Coco。
+- **改法（长句跨行时别用字符串替换）**：这些说明常有**隐式拼接的多行字面量**，按 `ast` 的
+  `lineno/col_offset/end_lineno/end_col_offset`（col 是 **UTF-8 字节偏移**，多字节字符行要先编码再切片）
+  定位到节点，按 span 替换；长中文再按 64 字拆成相邻字符串，避免超长行。
+- **还没做**：平台类密钥 56 条（③b2）与冷门服务商流程（③c，`model_setup_flows_{custom,azure,bedrock}.py`）。
+- **上游变了怎么办**：同步会覆盖回英文，跑 `python3 scripts/coco_cn_strings.py --apply` 自动改回。
