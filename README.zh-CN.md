@@ -4,7 +4,7 @@
 
 [![Coco AI](https://img.shields.io/github/v/release/LYH-Gini/coco-real-estate-agent?label=Coco%20AI)](https://github.com/LYH-Gini/coco-real-estate-agent/releases/latest)
 
-> **当前版本：v0.21.5-7** · [Gitee](https://gitee.com/LYH-Gini/coco-real-estate-agent/releases) · [GitHub](https://github.com/LYH-Gini/coco-real-estate-agent/releases/tag/v0.21.5-7)
+> **当前版本：v0.21.5-8** · [Gitee](https://gitee.com/LYH-Gini/coco-real-estate-agent/releases) · [GitHub](https://github.com/LYH-Gini/coco-real-estate-agent/releases/tag/v0.21.5-8)
 
 ## 安全与免责声明
 
@@ -138,7 +138,7 @@ source ~/.bashrc
 coco version
 ```
 
-如果能看到版本号（例如 Coco v0.21.5-7），就说明核心程序安装成功了。
+如果能看到版本号（例如 Coco v0.21.5-8），就说明核心程序安装成功了。
 
 **3. 配置模型**。你需要一个 API Key（DeepSeek API Key 购买：[https://platform.deepseek.com/usage](https://platform.deepseek.com/usage)）：
 
@@ -186,7 +186,7 @@ coco update
 ```bash
 coco version
 ```
-输出形如：Coco v0.21.5-7。
+输出形如：Coco v0.21.5-8。
 
 **查看全部可用命令：**
 ```bash
