@@ -230,10 +230,12 @@ TOOLSETS = {
     "hermes-matrix": _bundle("Matrix bot toolset - decentralized encrypted messaging (full access)"),
     "hermes-dingtalk": _bundle("DingTalk bot toolset - enterprise messaging platform (full access)"),
     "hermes-feishu": {**_bundle("Feishu/Lark bot toolset - enterprise messaging via Feishu/Lark (full access)", _FEISHU_TOOLS), "includes": ["real_estate"]},
-    "hermes-weixin": _bundle("Weixin bot toolset - personal WeChat messaging via iLink (full access)"),
+    # 房产工具要跟着 Coco 支持的通道走（飞书 / 微信 / 企业微信）—— 某个通道漏挂，就是那个通道里
+    # 一个房产工具都没有（2026-10-03 修：微信、企业微信此前只有通用工具）。
+    "hermes-weixin": {**_bundle("Weixin bot toolset - personal WeChat messaging via iLink (full access)"), "includes": ["real_estate"]},
     "hermes-qqbot": _bundle("QQBot toolset - QQ messaging via Official Bot API v2 (full access)"),
-    "hermes-wecom": _bundle("WeCom bot toolset - enterprise WeChat messaging (full access)"),
-    "hermes-wecom-callback": _bundle("WeCom callback toolset - enterprise self-built app messaging (full access)"),
+    "hermes-wecom": {**_bundle("WeCom bot toolset - enterprise WeChat messaging (full access)"), "includes": ["real_estate"]},
+    "hermes-wecom-callback": {**_bundle("WeCom callback toolset - enterprise self-built app messaging (full access)"), "includes": ["real_estate"]},
     "hermes-yuanbao": {
         "description": "Yuanbao Bot 元宝消息平台工具集 - 群信息、成员查询、私聊、贴纸表情",
         "tools": _HERMES_CORE_TOOLS + _YUANBAO_TOOLS,

@@ -623,3 +623,24 @@ python3 scripts/smoke_test_real_estate.py
   `tests/gateway/test_unauthorized_sender_notices.py`。本批相关用例 **310 通过 / 11 跳过**，自检 122/122。
 - **上游变了怎么办**：同步后先跑 `python3 scripts/coco_cn_strings.py --apply`；若报 ANCHOR，说明该句官方改过，
   按本文件重新实现后再更新条目。
+
+### 39 房产工具集挂到微信 / 企业微信通道 + 定时任务推送不再写死飞书
+
+- **问题（真实事故）**：Coco 支持的通道里，房产工具集只挂在飞书（`hermes-feishu` 的 `includes`），
+  微信 / 企业微信 / 命令行的平台工具集里都没有它 —— 同一份配置下实测：飞书会话解析出 92 个房产工具、
+  微信会话 0 个。经纪人用微信装的实例里，Coco 只剩通用能力（说「我没有登记房源的能力」）。
+- **改法**：`toolsets.py` 给 `hermes-weixin` / `hermes-wecom` / `hermes-wecom-callback` 加
+  `includes: ["real_estate"]`（与飞书同款）；没有对外承诺的通道（Telegram / Discord / Slack / QQ）不动
+  —— 每多挂一个通道，那边每轮都要多发一份房产工具定义。
+- **同族的第二处**：`agent/coco_cron.py` 的任务推送地址原先写死 `feishu:<会话ID>`，
+  微信 / 企业微信实例上开了定时任务也一条都发不出来。现在按当前会话所在通道拼
+  （`session_platform()` 读网关会话上下文，与 `tools/real_estate_cron_tools._get_chat_id` 同源），
+  并在 `_sync_coco_jobs()` 里顺带纠正「同一会话、通道写错」的老任务
+  （`_deliver_needs_fix()` 只改平台前缀；`origin` / 其它会话 / 带话题的一律不动）。
+- **连带**：`plugins/platforms/feishu/adapter.py` 的注册调用显式传 `"feishu"`（见 06 号补丁）；
+  `enable_cron` 工具把当前通道一并传给注册函数。
+- **回归**：`tests/real_estate/test_platform_toolsets_carry_real_estate.py`（四个通道都挂上 + 其它通道没被加宽）、
+  `tests/real_estate/test_cron_deliver_platform.py`（真实网关形态：微信会话注册出的任务推微信、老任务被纠正、
+  别的会话地址不被改写）。自检第 01 项已扩成「工具集注册与通道挂载」，四个通道缺一个就 FAIL。
+- **上游变了怎么办**：`toolsets.py`、`plugins/platforms/feishu/adapter.py` 是同步时会被官方覆盖的文件，
+  按 01 / 06 号补丁重新应用；`agent/coco_cron.py`、`tools/real_estate_cron_tools.py` 是自有文件，不在覆盖范围。

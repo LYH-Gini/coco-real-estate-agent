@@ -38,11 +38,17 @@ from pathlib import Path
 CONTENT_CHECKS = [
     (
         "01",
-        "工具集注册",
+        "工具集注册与通道挂载",
         "toolsets.py",
-        [r'"real_estate"\s*:'],
-        "模型看不到房产工具（会自称没有登记房源/客户的能力）。"
-        "处理：在 TOOLSETS 里补 real_estate 定义，并把 real_estate 加进 hermes-feishu 的 includes。",
+        [r'"real_estate"\s*:',
+         r'"hermes-feishu":\s*\{[^\n]*"includes":\s*\["real_estate"\]',
+         r'"hermes-weixin":\s*\{[^\n]*"includes":\s*\["real_estate"\]',
+         r'"hermes-wecom":\s*\{[^\n]*"includes":\s*\["real_estate"\]',
+         r'"hermes-wecom-callback":\s*\{[^\n]*"includes":\s*\["real_estate"\]'],
+        "模型看不到房产工具（会自称没有登记房源/客户的能力）；"
+        "或某个通道漏挂房产工具集 —— 那个通道里一个房产工具都用不了（微信实例实测过）。"
+        "处理：在 TOOLSETS 里补 real_estate 定义，并确认 hermes-feishu / hermes-weixin / "
+        "hermes-wecom / hermes-wecom-callback 四个平台工具集的 includes 都带 real_estate。",
     ),
     (
         "02",

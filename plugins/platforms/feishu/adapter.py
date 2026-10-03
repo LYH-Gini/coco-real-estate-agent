@@ -2619,7 +2619,7 @@ class FeishuAdapter(BasePlatformAdapter):
             try:
                 from agent.coco_cron import register_coco_cron_jobs
                 await asyncio.get_event_loop().run_in_executor(
-                    None, register_coco_cron_jobs, chat_id
+                    None, register_coco_cron_jobs, chat_id, "feishu"
                 )
             except Exception as e:
                 logger.warning("[Feishu] Coco cron registration failed: %s", e)

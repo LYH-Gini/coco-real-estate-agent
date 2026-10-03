@@ -2,6 +2,7 @@
 # 基准：官方 3bd844edf1777a680115f88a68474b4fb434092f (2026-08-09)
 # 说明：本补丁记录 Coco 对该官方文件的改动，供理解与重新应用参考。
 #       上游版本变化后不要机械 git apply，按 patches/README.md 的语义重新实现。
+# 2026-10-03：房产工具从「只挂飞书」改为「飞书 + 微信 + 企业微信」都挂（漏挂的通道里一个房产工具都没有）。
 #
 --- a/toolsets.py
 +++ b/toolsets.py
@@ -32,7 +33,16 @@
 +        "includes": ["real_estate"]
      },
  
-     "hermes-weixin": {
+@@ -596,10 +599,10 @@
+-    "hermes-weixin": _bundle("Weixin bot toolset - personal WeChat messaging via iLink (full access)"),
+-    "hermes-qqbot": _bundle("QQBot toolset - QQ messaging via Official Bot API v2 (full access)"),
+-    "hermes-wecom": _bundle("WeCom bot toolset - enterprise WeChat messaging (full access)"),
+-    "hermes-wecom-callback": _bundle("WeCom callback toolset - enterprise self-built app messaging (full access)"),
++    "hermes-weixin": {**_bundle("Weixin bot toolset - personal WeChat messaging via iLink (full access)"), "includes": ["real_estate"]},
++    "hermes-qqbot": _bundle("QQBot toolset - QQ messaging via Official Bot API v2 (full access)"),
++    "hermes-wecom": {**_bundle("WeCom bot toolset - enterprise WeChat messaging (full access)"), "includes": ["real_estate"]},
++    "hermes-wecom-callback": {**_bundle("WeCom callback toolset - enterprise self-built app messaging (full access)"), "includes": ["real_estate"]},
+
 @@ -637,7 +640,30 @@
          "description": "Gateway toolset - union of all messaging platform tools",
          "tools": [],

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_chat_id(task_id: str = None, **kwargs) -> str:
-    """获取飞书会话 ID：调用方指定 > 框架会话上下文 > session_id 提取 > task_id > 环境变量
+    """获取会话 ID：调用方指定 > 框架会话上下文 > session_id 提取 > task_id > 环境变量
 
     2026-09-21 修（真实事故）：原实现只从 session_id 里切 oc_/ou_ 段，前提是那个值是
     ``agent:main:feishu:dm:oc_xxx`` 形态；但网关交给工具的是时间戳式**会话编号**
@@ -39,6 +39,25 @@ def _get_chat_id(task_id: str = None, **kwargs) -> str:
     if task_id and str(task_id).startswith(('oc_', 'ou_')):
         return task_id
     return os.getenv('COCO_CHAT_ID', '')
+
+
+def _get_platform(**kwargs) -> str:
+    """获取会话所在通道（weixin / feishu / wecom…），与 _get_chat_id 同一来源
+
+    2026-10-03 加：推送地址原先写死飞书，微信/企业微信实例上定时任务发不出去。
+    """
+    for key in ('platform', 'channel'):
+        v = kwargs.get(key)
+        if v:
+            return str(v)
+    try:
+        from gateway.session_context import get_session_env
+        v = get_session_env('HERMES_SESSION_PLATFORM', '')
+        if v:
+            return str(v)
+    except Exception as e:
+        logger.debug("[Coco] 读取会话通道失败: %s", e)
+    return (os.getenv('HERMES_SESSION_PLATFORM') or '').strip()
 
 
 def _schedule_text() -> str:
@@ -73,6 +92,7 @@ def enable_cron(task_id: str = None, **kwargs) -> str:
     """开启定时任务（时间表见 _schedule_text）"""
     from agent.coco_cron import enable_coco_cron_jobs
     chat_id = _get_chat_id(task_id, **kwargs)
+    platform = _get_platform(**kwargs)
     if not chat_id:
         logger.warning(
             "[Coco] enable_cron 取不到推送会话（session_id=%r task_id=%r，会话上下文为空）",
@@ -80,9 +100,9 @@ def enable_cron(task_id: str = None, **kwargs) -> str:
         )
         return json.dumps({
             "success": False,
-            "error": "没识别到当前对话，无法确定提醒发到哪里。请在飞书里重新发一句「开启定时任务」再试。",
+            "error": "没识别到当前对话，无法确定提醒发到哪里。请在当前对话里重新发一句「开启定时任务」再试。",
         }, ensure_ascii=False)
-    result = enable_coco_cron_jobs(chat_id)
+    result = enable_coco_cron_jobs(chat_id, platform)
     registered = result.get('registered', [])
     skipped = result.get('skipped', [])
     if result.get('error'):
@@ -137,7 +157,7 @@ registry.register(
         "type": "object",
         "properties": {
             # 声明出来才过得了框架的参数名校验；不传时按当前会话推送（默认路径）
-            "chat_id": {"type": "string", "description": "推送会话地址（形如 oc_xxx）。**一般不用传**：默认推到当前这段对话；只有经纪人明确要求把提醒发到别的会话时才填"},
+            "chat_id": {"type": "string", "description": "推送会话地址。**一般不用传**：默认推到当前这段对话；只有经纪人明确要求把提醒发到别的会话时才填"},
         },
     }},
     handler=lambda args, **kw: enable_cron(
@@ -147,6 +167,7 @@ registry.register(
             'chat_id': kw.get('chat_id'),
             'channel_id': kw.get('channel_id'),
             'conversation_id': kw.get('conversation_id'),
+            'platform': kw.get('platform'),
         }.items() if v is not None and k not in args},
         **args,
     ),

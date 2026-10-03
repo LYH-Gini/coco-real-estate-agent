@@ -172,6 +172,50 @@ def _job_spec_kwargs(item) -> dict:
     return kwargs
 
 
+# 任务推送地址的通道部分。原先写死 "feishu"，微信/企业微信实例上定时任务发不出来（2026-10-03 修），
+# 现在按当前会话所在通道拼。
+_DEFAULT_DELIVER_PLATFORM = "feishu"
+
+
+def session_platform(default: str = "") -> str:
+    """当前会话所在通道（weixin / feishu / wecom…）；脱离网关会话时返回 default
+
+    与 tools/real_estate_cron_tools._get_chat_id 同一来源：网关在每轮对话开始时把会话地址绑进
+    会话上下文，注册与工具两条路径都从这里取，不再各自猜。
+    """
+    try:
+        from gateway.session_context import get_session_env
+        value = (get_session_env("HERMES_SESSION_PLATFORM", "") or "").strip()
+        if value:
+            return value
+    except Exception as e:  # 官方重构或脱离网关运行时，不能连累注册
+        logger.debug("[Coco] 读取会话通道失败: %s", e)
+    return (os.getenv("HERMES_SESSION_PLATFORM") or "").strip() or default
+
+
+def deliver_target(chat_id: str, platform: str = "") -> str:
+    """任务推送地址，形如 ``weixin:会话ID``（官方 cron 的 deliver 格式）"""
+    resolved = (platform or "").strip() or session_platform()
+    if not resolved:
+        resolved = _DEFAULT_DELIVER_PLATFORM
+        logger.warning("[Coco] 定时任务推送通道识别不到，按 %s 兜底", resolved)
+    return f"{resolved}:{chat_id}"
+
+
+def _deliver_needs_fix(current: str, target: str) -> bool:
+    """任务推送地址要不要改：只改「同一个会话、通道写错」的那种
+
+    典型是 2026-10-03 之前注册的任务（微信实例上写的却是 feishu:同一个会话ID）。
+    写成 origin、其它会话、带话题（多一段冒号）的一律按原样留着 —— 那可能是经纪人自己设的。
+    """
+    cur = (current or "").strip()
+    if not cur or cur == target or ":" not in cur:
+        return False
+    _, cur_chat = cur.split(":", 1)
+    _, tgt_chat = target.split(":", 1)
+    return cur_chat == tgt_chat
+
+
 def _scripts_dir() -> Path:
     """cron 脚本目录（必须与官方调度器的解析规则一致：HERMES_HOME/scripts）"""
     return Path(_marker_path()).parent / "scripts"
@@ -208,8 +252,8 @@ def _install_cron_scripts() -> list:
     return installed
 
 
-def _sync_coco_jobs() -> dict:
-    """把已注册任务对齐到代码里的最新定义（提示词/时间/脚本）+ 清理废弃任务
+def _sync_coco_jobs(platform: str = "", chat_id: str = "") -> dict:
+    """把已注册任务对齐到代码里的最新定义（提示词/时间/脚本/推送地址）+ 清理废弃任务
 
     为什么要有这一步：任务定义是**注册时写进任务记录**的（cron/jobs.json），
     代码里改文案/改时间**不会**自动覆盖已经存在的任务——注册路径遇到同名任务一律跳过，
@@ -217,9 +261,12 @@ def _sync_coco_jobs() -> dict:
     改成四级全列后，经纪人机器上那条老任务仍是旧文案，早报继续漏 B 级。
 
     只动名字与 _AVAILABLE_JOBS 完全一致的任务；不相干的任务（经纪人自己建的）不碰。
-    返回 {"prompts": [...], "schedules": [...], "scripts": [...], "removed": [...], "installed": [...]}。
+    传了 platform + chat_id 时顺带纠正推送地址写错通道的老任务（见 _deliver_needs_fix）。
+    返回 {"prompts": [...], "schedules": [...], "scripts": [...], "delivers": [...],
+          "removed": [...], "installed": [...]}。
     """
-    result = {"prompts": [], "schedules": [], "scripts": [], "removed": [], "installed": []}
+    result = {"prompts": [], "schedules": [], "scripts": [], "delivers": [],
+              "removed": [], "installed": []}
     result["installed"] = _install_cron_scripts()
     try:
         from cron.jobs import list_jobs, remove_job, update_job
@@ -238,7 +285,9 @@ def _sync_coco_jobs() -> dict:
                 result["removed"].append(name)
                 logger.info("[Coco] deprecated cron job removed: %s", name)
 
-        for item in _AVAILABLE_JOBS:  # 2) 对齐提示词 / 时间 / 脚本
+        target_deliver = deliver_target(chat_id, platform) if (platform and chat_id) else ""
+
+        for item in _AVAILABLE_JOBS:  # 2) 对齐提示词 / 时间 / 脚本 / 推送地址
             job = existing.get(item[2])
             if not job:
                 continue
@@ -253,13 +302,16 @@ def _sync_coco_jobs() -> dict:
                 updates["script"] = want["script"]
             if "no_agent" in want and bool(job.get("no_agent")) != bool(want["no_agent"]):
                 updates["no_agent"] = want["no_agent"]
+            if target_deliver and _deliver_needs_fix(job.get("deliver"), target_deliver):
+                updates["deliver"] = target_deliver
             if not updates:
                 continue
             if update_job(job.get("id"), updates) is None:
                 logger.warning("[Coco] cron job sync skipped (job gone): %s", item[2])
                 continue
             for key, bucket in (("prompt", "prompts"), ("schedule", "schedules"),
-                               ("script", "scripts"), ("no_agent", "scripts")):
+                               ("script", "scripts"), ("no_agent", "scripts"),
+                               ("deliver", "delivers")):
                 if key in updates and item[2] not in result[bucket]:
                     result[bucket].append(item[2])
             logger.info("[Coco] cron job synced: %s (%s)", item[2], ",".join(sorted(updates)))
@@ -268,18 +320,18 @@ def _sync_coco_jobs() -> dict:
     return result
 
 
-def _create_job(item, chat_id: str) -> None:
+def _create_job(item, chat_id: str, platform: str = "") -> None:
     """按清单条目建任务（脚本型任务不传工具集；create_job 的 prompt 是必填位置参数）"""
     from cron.jobs import create_job
     kwargs = _job_spec_kwargs(item)
     prompt = kwargs.pop("prompt", None)
     if prompt is not None:
         kwargs["enabled_toolsets"] = ["real_estate"]
-    create_job(prompt=prompt, deliver=f"feishu:{chat_id}", **kwargs)
+    create_job(prompt=prompt, deliver=deliver_target(chat_id, platform), **kwargs)
 
 
-def register_coco_cron_jobs(chat_id: str) -> dict:
-    """注册 Coco 定时任务到指定飞书会话（默认关闭，2026-08-12 定）
+def register_coco_cron_jobs(chat_id: str, platform: str = "") -> dict:
+    """注册 Coco 定时任务到指定会话（默认关闭，2026-08-12 定）
 
     默认不注册任何定时任务（消耗 token）。如需开启：在 .env.db 设置
     COCO_ENABLE_CRON=1 并重启服务，此函数才会注册 _AVAILABLE_JOBS 中的任务。
@@ -288,14 +340,15 @@ def register_coco_cron_jobs(chat_id: str) -> dict:
     并清掉废弃任务（对齐只改任务记录，不新增任务，不消耗额外 token）。
 
     Args:
-        chat_id: 飞书会话 ID
+        chat_id: 会话 ID
+        platform: 会话所在通道（weixin / feishu…）；不传则从会话上下文取
 
     Returns:
         dict: {"registered": [...], "skipped": [...], "synced": {...}}
     """
     result = {"registered": [], "skipped": []}
 
-    synced = _sync_coco_jobs()
+    synced = _sync_coco_jobs(platform, chat_id)
     if any(synced.values()):
         result["synced"] = synced
 
@@ -324,7 +377,7 @@ def register_coco_cron_jobs(chat_id: str) -> dict:
             result["skipped"].append(name)
             continue
         try:
-            _create_job(item, chat_id)
+            _create_job(item, chat_id, platform)
             result["registered"].append(name)
             logger.info("[Coco] cron job registered: %s -> %s", name, chat_id)
         except Exception as e:
@@ -342,7 +395,7 @@ def register_coco_cron_jobs(chat_id: str) -> dict:
     return result
 
 
-def enable_coco_cron_jobs(chat_id: str) -> dict:
+def enable_coco_cron_jobs(chat_id: str, platform: str = "") -> dict:
     """经纪人自助开启定时任务（2026-08-12 加）：注册 _AVAILABLE_JOBS 全部任务
 
     供工具 enable_cron 调用。与 register_coco_cron_jobs 不同：不受 COCO_ENABLE_CRON
@@ -351,7 +404,7 @@ def enable_coco_cron_jobs(chat_id: str) -> dict:
     result = {"registered": [], "skipped": []}
     if not _cron_store_ready():
         return {"registered": [], "skipped": [], "error": "定时任务服务暂时不可用，请稍后再试。"}
-    synced = _sync_coco_jobs()
+    synced = _sync_coco_jobs(platform, chat_id)
     if any(synced.values()):
         result["synced"] = synced
     for item in _AVAILABLE_JOBS:
