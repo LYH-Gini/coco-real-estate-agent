@@ -13,7 +13,7 @@
     6. 数据库结构是否已是最新（有无待执行迁移）
     7. COCO_ENC_KEY 与密钥备份
     8. 备份新鲜度（最新 dump 是否 <48h，2026-08-12 加）
-    9. 定时任务注册（早报/午间/逾期 3 个，默认关闭属预期）
+    9. 定时任务注册（5 条：早报/逾期提醒/机会提醒/收工小结/周报，默认关闭属预期）
     10. 技能同步
     11. 磁盘空间
     12. 网关运行期日志错误（已排除"重启导致飞书长连接正常断开"的噪音）
@@ -267,10 +267,20 @@ else:
 # ---- 9. cron 注册 ----
 print("\n[9] 定时任务（cron）")
 marker = os.path.join(HERMES_HOME, ".coco_cron_registered")
+# 时间表取自任务表（2026-10-03）：体检输出一度写死 9 月 23 日重设计之前的旧表，
+# 与现在的 5 条任务对不上。
+schedule = ""
+try:
+    sys.path.insert(0, INSTALL_DIR)
+    from agent.coco_cron import job_schedule_summary
+    schedule = job_schedule_summary()
+except Exception:
+    pass
+schedule_suffix = f"（{schedule}）" if schedule else ""
 if os.path.isfile(marker):
-    ok("定时任务已开启（早报 09:00 / 午间检查 13:00 / 逾期提醒每 30 分钟）")
+    ok(f"定时任务已开启{schedule_suffix}")
 else:
-    ok("定时任务默认关闭；需要时对 Coco 说一句「开启定时任务」即可（早报 09:00 / 午间检查 13:00 / 逾期提醒每 30 分钟）。")
+    ok(f"定时任务默认关闭；需要时对 Coco 说一句「开启定时任务」即可{schedule_suffix}。")
 
 # ---- 10. 技能同步 ----
 print("\n[10] 技能同步")

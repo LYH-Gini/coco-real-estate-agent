@@ -2655,14 +2655,9 @@ class FeishuAdapter(BasePlatformAdapter):
             marker = os.path.expanduser("~/.hermes/.coco_welcome_sent")
             if os.path.exists(marker):
                 return
-            welcome = (
-                "你好，我是 Coco，你的客户和房源管家。\n"
-                "可以直接发给我：\n"
-                "\"登记客户：张先生，预算300万，想买美兰区3室\"\n"
-                "\"添加房源：XX小区，200万，110平，3室2厅\"\n"
-                "我就能帮你建档、提醒跟进。目前你的数据库还是空的，先登记客户、添加房源，之后我就能自动帮你匹配房源。\n"
-                "另外提醒：定时任务默认关闭；需要时跟我说一句「开启定时任务」即可（早报 09:00 / 午间检查 13:00 / 逾期提醒每 30 分钟）。"
-            )
+            # 文案与网关开场白同一处（agent/coco_welcome.py）：定时任务时间表从任务表现取
+            from agent.coco_welcome import welcome_text
+            welcome = welcome_text()
             await self.send(chat_id=chat_id, content=welcome)
             try:
                 os.makedirs(os.path.dirname(marker), exist_ok=True)

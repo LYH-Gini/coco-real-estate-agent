@@ -15,7 +15,7 @@
 +            await self._maybe_send_coco_welcome(chat_id)
 +            # Coco: 首次对话提醒密钥备份（仅提醒一次，真实用户触发）
 +            await self._maybe_remind_key_backup(chat_id)
-+            # Coco: 首次对话自动注册定时任务（早报/午间/逾期检查）
++            # Coco: 首次对话自动注册定时任务（任务表见 agent/coco_cron.py）
 +            try:
 +                from agent.coco_cron import register_coco_cron_jobs
 +                await asyncio.get_event_loop().run_in_executor(
@@ -41,14 +41,9 @@
 +            marker = os.path.expanduser("~/.hermes/.coco_welcome_sent")
 +            if os.path.exists(marker):
 +                return
-+            welcome = (
-+                "你好，我是 Coco，你的客户和房源管家。\n"
-+                "可以直接发给我：\n"
-+                "\"登记客户：张先生，预算300万，想买美兰区3室\"\n"
-+                "\"添加房源：XX小区，200万，110平，3室2厅\"\n"
-+                "我就能帮你建档、提醒跟进。目前你的数据库还是空的，先登记客户、添加房源，之后我就能自动帮你匹配房源。\n"
-+                "另外提醒：系统支持每日早报、午间检查、逾期提醒等定时任务，默认关闭（节省用量）。需要开启的话，直接跟我说\"开启定时任务\"就行。"
-+            )
++            # 文案与网关开场白同一处（agent/coco_welcome.py）：定时任务时间表从任务表现取
++            from agent.coco_welcome import welcome_text
++            welcome = welcome_text()
 +            await self.send(chat_id=chat_id, content=welcome)
 +            try:
 +                os.makedirs(os.path.dirname(marker), exist_ok=True)

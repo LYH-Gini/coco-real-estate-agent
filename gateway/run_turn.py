@@ -1415,18 +1415,10 @@ class GatewayTurnMixin:
         if history:
             return
         if not await self.async_session_store.has_any_sessions():
-            # Coco first-contact note: self-introduction as Coco.
-            _intro_note = (
-                "[System note: This is the user's very first message ever. "
-                "开场白严格按下面模板输出，不要增删字词：\n"
-                "'你好，我是 Coco，你的客户和房源管家。\n"
-                "可以直接发给我：\n"
-                "\"登记客户：张先生，预算300万，想买美兰区3室\"\n"
-                "\"添加房源：XX小区，200万，110平，3室2厅\"\n"
-                "我就能帮你建档、提醒跟进。目前你的数据库还是空的，先登记客户、添加房源，之后我就能自动帮你匹配房源。\n"
-                "另外提醒：定时任务默认关闭；需要时跟我说一句「开启定时任务」即可（早报 09:00 / 午间检查 13:00 / 逾期提醒每 30 分钟）。\n"
-                "只输出这段话，不要加其他内容。]"
-            )
+            # Coco first-contact note: self-introduction as Coco（文案与飞书欢迎语同一处，
+            # 定时任务时间表从任务表现取 —— 见 agent/coco_welcome.py）
+            from agent.coco_welcome import first_contact_note
+            _intro_note = first_contact_note()
             # onboarding.profile_build == "ask" (default) and not yet offered: swap the plain intro for
             # a consent-gated profile-build directive. Fires at most once.
             try:

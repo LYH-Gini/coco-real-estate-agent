@@ -100,9 +100,10 @@ CONTENT_CHECKS = [
         # 的 _hmwa_first_contact_notes()。官方将来再拆分时，按同样方式更新这里的路径
         # （找不到文件即 FAIL，会提醒我们重新定位）。
         "gateway/run_turn.py",
-        [r"我是 Coco|你是 Coco"],
+        # 开场白正文已搬到 agent/coco_welcome.py（两处文案同一来源），这里查调用点
+        [r"first_contact_note|我是 Coco|你是 Coco"],
         "首次对话开场白变回官方文案（并可能带回官方 profile-build 引导）。"
-        "处理：按 patches/07-gateway-run-greeting.patch 恢复。",
+        "处理：按 patches/07-gateway-run-greeting.patch 恢复（文案本体在 agent/coco_welcome.py）。",
     ),
     (
         "08",

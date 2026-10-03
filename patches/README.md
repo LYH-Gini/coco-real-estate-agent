@@ -644,3 +644,18 @@ python3 scripts/smoke_test_real_estate.py
   别的会话地址不被改写）。自检第 01 项已扩成「工具集注册与通道挂载」，四个通道缺一个就 FAIL。
 - **上游变了怎么办**：`toolsets.py`、`plugins/platforms/feishu/adapter.py` 是同步时会被官方覆盖的文件，
   按 01 / 06 号补丁重新应用；`agent/coco_cron.py`、`tools/real_estate_cron_tools.py` 是自有文件，不在覆盖范围。
+
+### 40 首次对话文案：与任务表同一来源 + 示例用占位符（`agent/coco_welcome.py`）
+
+- **问题（真实事故）**：定时任务表 9 月 23 日重设计成 5 条（取消午间检查与每 30 分钟提醒）后，
+  网关开场白（`gateway/run_turn.py`）与飞书欢迎语（`plugins/platforms/feishu/adapter.py`）里
+  **还各自写着一份**旧的「早报 09:00 / 午间检查 13:00 / 逾期提醒每 30 分钟」——经纪人收到的第一条
+  消息就是过期信息；`coco check` 的第 [9] 项同样写死旧表。两处文案各存一份，改一处漏一处。
+- **改法**：新增 Coco 自有文件 `agent/coco_welcome.py`，欢迎语与开场白各一个函数、共用同一段正文；
+  **时间表从任务表现取**（`agent/coco_cron.job_schedule_summary()`），取不到就整段不带时间（不印可能过期的）。
+  两个官方调用点改成调它（见 06 / 07 号补丁）；`scripts/healthcheck.py` 第 [9] 项同样改用任务表。
+- **示例改成占位符**：`登记客户：X 先生，预算300万，想买XX区3室`（原来是真实片区名），与产品文案中立口径一致。
+- **回归**：`tests/real_estate/test_first_contact_wording.py`（时间表跟着任务表、5 条任务都在、无旧时间表、
+  示例无真实地名/人名、体检输出同一来源）；自检第 07 项改成查调用点（`first_contact_note`）。
+- **上游变了怎么办**：`gateway/run_turn.py` 与 `plugins/platforms/feishu/adapter.py` 会被官方覆盖，
+  按 06 / 07 补丁重新应用调用点；文案本体在自有文件里，不受同步影响。
