@@ -207,7 +207,7 @@ class TestDocsCommandsExist:
 
         # 官方 v0.21.5 把配对提示拆到独立模块（gateway/run_inbound_unauthorized.py）
         inbound = (REPO_ROOT / "gateway" / "run_inbound_unauthorized.py").read_text(encoding="utf-8")
-        assert "coco {profile_arg}pairing approve " in inbound, "配对提示应给 coco 命令"
+        assert "coco cli {profile_arg}pairing approve " in inbound, "配对提示应给 coco 命令"
         assert "hermes {profile_arg}pairing approve " not in inbound, "配对提示不该是 hermes 命令"
 
     def test_test_tag_only_on_test_channel(self, tmp_path):
